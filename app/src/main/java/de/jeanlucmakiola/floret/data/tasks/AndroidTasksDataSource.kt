@@ -71,7 +71,12 @@ class AndroidTasksDataSource @Inject constructor(
 
     private fun queryInstances(selection: String?, args: Array<String>?): List<Task> {
         val uri = TasksContract.instancesUri(authority())
-        return resolver.query(uri, TaskProjections.INSTANCES, selection, args, Instances.INSTANCE_DUE_SORTING)
+        // projection = null (all columns): the instances view differs across
+        // provider versions (e.g. tasks.org's bundled OpenTasks has no
+        // `is_recurring` / `distance_from_current`). The by-name mapper reads
+        // whatever is present and nulls the rest; the repository re-sorts, so we
+        // don't depend on a provider sort column either.
+        return resolver.query(uri, null, selection, args, null)
             ?.use { c ->
                 val reader = CursorColumnReader(c)
                 buildList { while (c.moveToNext()) add(TaskMapper.task(reader)) }
