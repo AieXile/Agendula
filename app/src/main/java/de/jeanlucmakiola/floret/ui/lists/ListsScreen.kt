@@ -1,7 +1,5 @@
 package de.jeanlucmakiola.floret.ui.lists
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,23 +10,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -39,19 +32,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.floret.R
 import de.jeanlucmakiola.floret.domain.SmartList
 import de.jeanlucmakiola.floret.domain.TaskFilter
+import de.jeanlucmakiola.floret.ui.common.GroupedRow
+import de.jeanlucmakiola.floret.ui.common.ListColorChip
+import de.jeanlucmakiola.floret.ui.common.positionOf
 
 /**
  * Home: smart lists (Today / Overdue / Upcoming / All) as tonal cards with live
@@ -105,7 +99,6 @@ private fun ListsContent(
             top = inner.calculateTopPadding(),
             bottom = inner.calculateBottomPadding() + 96.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { SmartGrid(state.smartCounts, onOpenFilter) }
 
@@ -114,8 +107,24 @@ private fun ListsContent(
         } else {
             item { SectionHeader(stringResource(R.string.lists_header)) }
             state.groups.forEach { group ->
-                item(key = "acct-${group.accountName}") {
-                    AccountGroupCard(group, onOpenFilter)
+                item(key = "acct-${group.accountName}") { AccountHeader(group.accountName) }
+                itemsIndexed(group.lists, key = { _, o -> o.list.id }) { index, overview ->
+                    GroupedRow(
+                        title = overview.list.name,
+                        position = positionOf(index, group.lists.size),
+                        minHeight = 72.dp,
+                        leading = { ListColorChip(overview.list.color) },
+                        trailing = {
+                            if (overview.openCount > 0) {
+                                Text(
+                                    overview.openCount.toString(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        },
+                        onClick = { onOpenFilter(TaskFilter.OfList(overview.list.id)) },
+                    )
                 }
             }
         }
@@ -180,74 +189,12 @@ private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick:
     }
 }
 
-/** One account's lists as a single rounded surface card (grouped-list pattern). */
-@Composable
-private fun AccountGroupCard(group: AccountGroup, onOpenFilter: (TaskFilter) -> Unit) {
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        AccountHeader(group.accountName)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-        ) {
-            group.lists.forEachIndexed { index, overview ->
-                ListRow(overview) { onOpenFilter(TaskFilter.OfList(overview.list.id)) }
-                if (index < group.lists.lastIndex) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(start = 52.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ListRow(overview: ListOverview, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ColorDot(overview.list.color, size = 16.dp)
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = overview.list.name,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.weight(1f),
-        )
-        if (overview.openCount > 0) {
-            Text(
-                text = overview.openCount.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColorDot(colorInt: Int, size: Dp = 12.dp) {
-    val color = if (colorInt != 0) Color(colorInt) else MaterialTheme.colorScheme.primary
-    Box(
-        Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color),
-    )
-}
-
 @Composable
 private fun SectionHeader(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 16.dp, bottom = 4.dp),
     )
 }
 
@@ -255,9 +202,9 @@ private fun SectionHeader(text: String) {
 private fun AccountHeader(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 6.dp),
+        modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp, bottom = 4.dp),
     )
 }
 
