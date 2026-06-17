@@ -1,0 +1,10 @@
+AuthorName: Jean-Luc Makiola
+License: MIT
+Name: Floret
+Summary: A modern Material 3 Expressive task app for Android.
+
+Categories:
+  - Time
+
+SourceCode: https://gitea.jeanlucmakiola.de/makiolaj/floret
+IssueTracker: https://gitea.jeanlucmakiola.de/makiolaj/floret/issues

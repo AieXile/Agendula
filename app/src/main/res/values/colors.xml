@@ -1,0 +1,6 @@
+<resources>
+    <!-- Seed color: warm mauve. Material 3 derives Light & Dark schemes from this. -->
+    <color name="seed">#FF7A5C6B</color>
+    <!-- Adaptive icon background -->
+    <color name="ic_launcher_background">#FF7A5C6B</color>
+</resources>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- No file-based backups; settings live in DataStore which is backed up by default. -->
+</full-backup-content>

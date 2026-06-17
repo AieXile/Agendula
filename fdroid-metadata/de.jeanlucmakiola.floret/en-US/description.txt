@@ -1,0 +1,10 @@
+Floret is a modern, open-source task app for Android. It works directly on an
+existing tasks provider (OpenTasks / tasks.org), so any CalDAV tasks synced to
+your device via DAVx5, SmoothSync or DecSync show up automatically, and changes
+you make sync back the same way — no own account, no own sync.
+
+The differentiator is the design: real Material 3 Expressive throughout, with
+dynamic color, expressive motion, and expressive shapes. Sibling to Calendula.
+
+Privacy: zero telemetry, no analytics, no network access of its own — your data
+never leaves the device except through the sync app you already trust.

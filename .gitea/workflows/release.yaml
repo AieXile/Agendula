@@ -1,0 +1,381 @@
+name: Release — F-Droid repo + Gitea release
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: docker
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Setup Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/android-sdk
+          key: ${{ runner.os }}-android-sdk-37-36.0.0
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # Lint already enforced on every push to main via ci.yaml.
+      # Release sanity only re-runs tests + a debug build to catch
+      # any tag-resolved drift (e.g. version code substitution issues).
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Assemble debug APK (sanity)
+        run: ./gradlew assembleDebug
+
+  build-and-deploy:
+    needs: ci
+    runs-on: docker
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Setup Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/android-sdk
+          key: ${{ runner.os }}-android-sdk-37-36.0.0
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Install jq
+        run: |
+          set -e
+          SUDO=""
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+          if command -v apt-get >/dev/null 2>&1; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y jq
+          elif command -v apk >/dev/null 2>&1; then
+            $SUDO apk add --no-cache jq
+          fi
+
+      # Tag-only build steps. On a manual workflow_dispatch (ref = a branch,
+      # not a tag) these are skipped: the job then just re-signs the existing
+      # index with the configured repo key and re-uploads — used for key
+      # rotation / repo recovery without publishing a new APK.
+      - name: Set version from git tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -e
+          RAW_TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          VERSION="${RAW_TAG#v}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          MAJOR=${MAJOR:-0}; MINOR=${MINOR:-0}; PATCH=${PATCH:-0}
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          echo "Version: $VERSION, VersionCode: $VERSION_CODE"
+          sed -i "s/versionName = \".*\"/versionName = \"$VERSION\"/" app/build.gradle.kts
+          sed -i "s/versionCode = .*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+          grep -E 'versionName|versionCode' app/build.gradle.kts
+          # Export for later steps (F-Droid changelog, mapping asset name).
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+
+      - name: Setup Android Keystore
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          mkdir -p app
+          echo "$KEYSTORE_BASE64" | base64 --decode > app/upload-keystore.jks
+          cat > key.properties <<EOF
+          storePassword=$KEY_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build release APK
+        if: startsWith(github.ref, 'refs/tags/')
+        run: ./gradlew assembleRelease
+
+      - name: Setup F-Droid Server Tools
+        run: |
+          SUDO=""
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y sshpass python3-pip
+          pip3 install --break-system-packages --upgrade fdroidserver
+
+      - name: Fetch existing F-Droid repo from Hetzner
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER }}
+          PASS: ${{ secrets.HETZNER_PASS }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20"
+          mkdir -p fdroid
+          # Pull only the published repo/ (all apps' APKs), any per-app
+          # metadata, and the repo icon — enough to rebuild the index without
+          # dropping the other apps. The signing key is deliberately NOT pulled
+          # from the box; it comes from CI secrets in the next step so it never
+          # has to live in the web-served tree.
+          sshpass -p "$PASS" scp $SSH_OPTS -r "$USER@$HOST:dev/fdroid/repo" fdroid/ 2>/dev/null || true
+          sshpass -p "$PASS" scp $SSH_OPTS -r "$USER@$HOST:dev/fdroid/metadata" fdroid/ 2>/dev/null || true
+          sshpass -p "$PASS" scp $SSH_OPTS "$USER@$HOST:dev/fdroid/icon.png" fdroid/ 2>/dev/null || true
+          mkdir -p fdroid/repo fdroid/metadata
+
+      - name: Restore F-Droid signing key and config from secrets
+        env:
+          FDROID_KEYSTORE_BASE64: ${{ secrets.FDROID_KEYSTORE_BASE64 }}
+          FDROID_CONFIG_BASE64: ${{ secrets.FDROID_CONFIG_BASE64 }}
+        run: |
+          set -euo pipefail
+          # Fail loudly if the repo key is not configured. NEVER auto-generate
+          # one: a fresh key changes the repo fingerprint and breaks every
+          # user's pinned repo. (Replaces the old `fdroid update --create-key`
+          # path, which silently rotated the key on a wiped server.)
+          if [ -z "${FDROID_KEYSTORE_BASE64:-}" ] || [ -z "${FDROID_CONFIG_BASE64:-}" ]; then
+            echo "ERROR: FDROID_KEYSTORE_BASE64 / FDROID_CONFIG_BASE64 secrets are not set." >&2
+            echo "Refusing to continue — will not auto-generate a new repo key." >&2
+            exit 1
+          fi
+          echo "$FDROID_KEYSTORE_BASE64" | base64 --decode > fdroid/keystore.p12
+          echo "$FDROID_CONFIG_BASE64"   | base64 --decode > fdroid/config.yml
+          test -s fdroid/keystore.p12
+          test -s fdroid/config.yml
+          mkdir -p fdroid/repo/icons
+
+      - name: Copy new APK to repo
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -e
+          mkdir -p fdroid/repo
+          REF_NAME="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          SAFE_REF_NAME="$(echo "$REF_NAME" | tr '/ ' '__' | tr -cd '[:alnum:]_.-')"
+          if [ -z "$SAFE_REF_NAME" ]; then
+            SAFE_REF_NAME="${GITHUB_SHA:-manual}"
+          fi
+          cp app/build/outputs/apk/release/app-release.apk "fdroid/repo/floret_${SAFE_REF_NAME}.apk"
+
+      - name: Copy metadata to F-Droid repo
+        run: |
+          mkdir -p fdroid/metadata
+          cp -r fdroid-metadata/* fdroid/metadata/
+
+      # Per-version "What's New" for F-Droid clients: the tag's CHANGELOG
+      # section written to changelogs/<versionCode>.txt (same extraction as the
+      # Gitea release notes). en-US only — F-Droid falls back to it for locales
+      # without their own changelog. fdroid update bakes this into the index.
+      - name: Generate F-Droid changelog for this version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -e
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            /^## \[/ { flag = 0 }
+            flag' CHANGELOG.md > /tmp/changelog.txt
+          sed -i -e '/./,$!d' /tmp/changelog.txt
+          if [ ! -s /tmp/changelog.txt ]; then
+            echo "See CHANGELOG.md for $VERSION." > /tmp/changelog.txt
+          fi
+          CL_DIR="fdroid/metadata/de.jeanlucmakiola.floret/en-US/changelogs"
+          mkdir -p "$CL_DIR"
+          cp /tmp/changelog.txt "$CL_DIR/${VERSION_CODE}.txt"
+          echo "Wrote $CL_DIR/${VERSION_CODE}.txt"
+
+      - name: Generate F-Droid Index
+        run: |
+          cd fdroid
+          fdroid update -c
+
+      - name: Upload repo/ to Hetzner
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER }}
+          PASS: ${{ secrets.HETZNER_PASS }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=20"
+          sshpass -p "$PASS" sftp $SSH_OPTS "$USER@$HOST" <<'SFTP'
+          -mkdir dev
+          -mkdir dev/fdroid
+          SFTP
+          # Publish the signed repo/ plus metadata/ (descriptions, screenshots,
+          # per-version changelogs) so changelog history survives across
+          # releases. keystore.p12 and config.yml are NEVER uploaded, so they
+          # can't re-enter the web-served tree; nginx serves only repo/ anyway.
+          sshpass -p "$PASS" scp $SSH_OPTS -r fdroid/repo fdroid/metadata "$USER@$HOST:dev/fdroid/"
+
+      # Archive the R8 mapping so user crash stacktraces stay deobfuscatable.
+      # Attached to the Gitea release (it's not an APK, so it fits the
+      # no-binaries rule). Best-effort: never fail a release over it.
+      - name: Attach R8 mapping to Gitea release
+        if: startsWith(github.ref, 'refs/tags/')
+        continue-on-error: true
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+        run: |
+          set -e
+          MAP="app/build/outputs/mapping/release/mapping.txt"
+          if [ ! -f "$MAP" ]; then echo "No mapping.txt (R8 off?) — skipping."; exit 0; fi
+          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          ASSET="mapping-${VERSION:-$TAG}.txt.gz"
+          gzip -c "$MAP" > "/tmp/$ASSET"
+          # The release is created by the gitea-release job; ensure it exists
+          # (idempotent) so this job doesn't race it to a 404.
+          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
+          if [ -z "$ID" ]; then
+            ID=$(curl -s -X POST -H "Authorization: token $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\"}" \
+              "$API/releases" | jq -r '.id // empty')
+          fi
+          if [ -z "$ID" ]; then echo "Could not resolve release id — skipping."; exit 0; fi
+          # Replace any prior asset of the same name (re-run safe).
+          OLD=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/$ID/assets" \
+            | jq -r --arg n "$ASSET" '.[] | select(.name==$n) | .id')
+          [ -n "$OLD" ] && curl -s -X DELETE -H "Authorization: token $TOKEN" "$API/releases/$ID/assets/$OLD" >/dev/null || true
+          curl -s -X POST -H "Authorization: token $TOKEN" \
+            -F "attachment=@/tmp/$ASSET" \
+            "$API/releases/$ID/assets?name=$ASSET" -o /dev/null -w "asset upload HTTP %{http_code}\n"
+
+  # A Gitea release per tag, carrying the tag's CHANGELOG section as its
+  # notes. Deliberately no APK assets — distribution stays with the F-Droid
+  # repo; the release is the human-readable record. Gated on the tests-only
+  # ci job (not the deploy) so notes appear even if the F-Droid upload has
+  # an infrastructure hiccup.
+  gitea-release:
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog section for this tag
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          VERSION="${TAG#v}"
+          # Everything between "## [<version>]" and the next "## [" heading.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            /^## \[/ { flag = 0 }
+            flag' CHANGELOG.md > release-notes.md
+          # Trim leading blank lines.
+          sed -i -e '/./,$!d' release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "_No changelog entry for ${VERSION} — see CHANGELOG.md._" > release-notes.md
+          fi
+          echo "--- release notes ---"
+          cat release-notes.md
+
+      - name: Create Gitea release
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          python3 - "$TAG" <<'PY' > payload.json
+          import json, sys
+          print(json.dumps({
+              "tag_name": sys.argv[1],
+              "name": sys.argv[1],
+              "body": open("release-notes.md").read(),
+              "draft": False,
+              "prerelease": False,
+          }))
+          PY
+          # Upsert: the build-and-deploy job may have created a bare release
+          # first (to attach the mapping asset), so PATCH the notes if it
+          # exists, otherwise POST a new one. Both paths are re-run safe.
+          curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" > existing.json
+          ID=$(python3 -c "import json,sys; d=json.load(open('existing.json')); print(d.get('id',''))" 2>/dev/null || true)
+          if [ -n "$ID" ]; then
+            CODE=$(curl -s -o response.json -w '%{http_code}' -X PATCH \
+              -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+              -d @payload.json "$API/releases/$ID")
+            OK=200
+          else
+            CODE=$(curl -s -o response.json -w '%{http_code}' -X POST \
+              -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+              -d @payload.json "$API/releases")
+            OK=201
+          fi
+          cat response.json
+          if [ "$CODE" != "$OK" ]; then
+            echo "Release upsert failed with HTTP $CODE (expected $OK)"
+            exit 1
+          fi
