@@ -105,7 +105,7 @@ private fun ListsContent(
             top = inner.calculateTopPadding(),
             bottom = inner.calculateBottomPadding() + 96.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { SmartGrid(state.smartCounts, onOpenFilter) }
 
@@ -126,10 +126,10 @@ private fun ListsContent(
 private fun SmartGrid(counts: List<SmartCount>, onOpenFilter: (TaskFilter) -> Unit) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         counts.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { smart ->
                     SmartCard(
                         count = smart,
@@ -161,20 +161,27 @@ private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick:
     val style = smartStyle(count.smart)
     ElevatedCard(
         onClick = onClick,
-        modifier = modifier.height(116.dp),
+        modifier = modifier.height(160.dp),
+        shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = style.container,
             contentColor = style.onContainer,
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(style.icon, contentDescription = null)
+            Icon(style.icon, contentDescription = null, modifier = Modifier.size(28.dp))
             Column {
-                Text(count.count.toString(), style = MaterialTheme.typography.headlineMedium)
-                Text(stringResource(style.labelRes), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    count.count.toString(),
+                    style = MaterialTheme.typography.displaySmall,
+                )
+                Text(
+                    stringResource(style.labelRes),
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
         }
     }
@@ -187,9 +194,9 @@ private fun AccountGroupCard(group: AccountGroup, onOpenFilter: (TaskFilter) -> 
         AccountHeader(group.accountName)
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(28.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ),
         ) {
             group.lists.forEachIndexed { index, overview ->
