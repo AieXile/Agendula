@@ -1,5 +1,8 @@
 package de.jeanlucmakiola.floret.ui.lists
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
@@ -18,18 +22,18 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,7 +70,7 @@ fun ListsScreen(
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 scrollBehavior = scrollBehavior,
             )
@@ -165,16 +169,24 @@ private fun smartStyle(smart: SmartList): SmartStyle {
     }
 }
 
+/**
+ * Clean tonal tile. The expressive touch is subtle: rounded corners gently morph
+ * rounder on press (the same quiet shape behaviour as the lists), not a loud
+ * silhouette.
+ */
 @Composable
 private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val style = smartStyle(count.smart)
-    ElevatedCard(
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val corner by animateDpAsState(if (pressed) 34.dp else 22.dp, label = "smartCorner")
+    Surface(
         onClick = onClick,
+        shape = RoundedCornerShape(corner),
+        color = style.container,
+        contentColor = style.onContainer,
+        interactionSource = interaction,
         modifier = modifier.height(116.dp),
-        colors = CardDefaults.elevatedCardColors(
-            containerColor = style.container,
-            contentColor = style.onContainer,
-        ),
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
