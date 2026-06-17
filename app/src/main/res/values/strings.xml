@@ -5,6 +5,17 @@
     <!-- Generic -->
     <string name="task_untitled">Untitled task</string>
 
+    <!-- Lists overview -->
+    <string name="lists_header">Lists</string>
+    <string name="new_task">New task</string>
+    <string name="lists_failure">Could not read your tasks.</string>
+    <string name="lists_empty">No task lists yet. Add one in your tasks app or with the + button.</string>
+    <string name="smart_today">Today</string>
+    <string name="smart_overdue">Overdue</string>
+    <string name="smart_upcoming">Upcoming</string>
+    <string name="smart_all">All</string>
+    <string name="open_count">%1$d open</string>
+
     <!-- Reminders -->
     <string name="reminder_due_at">Due %1$s</string>
     <string name="reminder_channel_name">Task reminders</string>
