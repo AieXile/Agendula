@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +31,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,6 +45,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -105,7 +105,7 @@ private fun ListsContent(
             top = inner.calculateTopPadding(),
             bottom = inner.calculateBottomPadding() + 96.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { SmartGrid(state.smartCounts, onOpenFilter) }
 
@@ -126,10 +126,10 @@ private fun ListsContent(
 private fun SmartGrid(counts: List<SmartCount>, onOpenFilter: (TaskFilter) -> Unit) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         counts.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { smart ->
                     SmartCard(
                         count = smart,
@@ -161,27 +161,20 @@ private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick:
     val style = smartStyle(count.smart)
     ElevatedCard(
         onClick = onClick,
-        modifier = modifier.height(160.dp),
-        shape = RoundedCornerShape(28.dp),
+        modifier = modifier.height(116.dp),
         colors = CardDefaults.elevatedCardColors(
             containerColor = style.container,
             contentColor = style.onContainer,
         ),
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(20.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(style.icon, contentDescription = null, modifier = Modifier.size(28.dp))
+            Icon(style.icon, contentDescription = null)
             Column {
-                Text(
-                    count.count.toString(),
-                    style = MaterialTheme.typography.displaySmall,
-                )
-                Text(
-                    stringResource(style.labelRes),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Text(count.count.toString(), style = MaterialTheme.typography.headlineMedium)
+                Text(stringResource(style.labelRes), style = MaterialTheme.typography.labelLarge)
             }
         }
     }
@@ -204,7 +197,7 @@ private fun AccountGroupCard(group: AccountGroup, onOpenFilter: (TaskFilter) -> 
                 if (index < group.lists.lastIndex) {
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(start = 56.dp),
+                        modifier = Modifier.padding(start = 52.dp),
                     )
                 }
             }
@@ -214,29 +207,36 @@ private fun AccountGroupCard(group: AccountGroup, onOpenFilter: (TaskFilter) -> 
 
 @Composable
 private fun ListRow(overview: ListOverview, onClick: () -> Unit) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        leadingContent = { ColorDot(overview.list.color) },
-        headlineContent = { Text(overview.list.name) },
-        trailingContent = {
-            if (overview.openCount > 0) {
-                Text(
-                    overview.openCount.toString(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ColorDot(overview.list.color, size = 16.dp)
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = overview.list.name,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+        )
+        if (overview.openCount > 0) {
+            Text(
+                text = overview.openCount.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
-private fun ColorDot(colorInt: Int) {
+private fun ColorDot(colorInt: Int, size: Dp = 12.dp) {
     val color = if (colorInt != 0) Color(colorInt) else MaterialTheme.colorScheme.primary
     Box(
         Modifier
-            .size(12.dp)
+            .size(size)
             .clip(CircleShape)
             .background(color),
     )
