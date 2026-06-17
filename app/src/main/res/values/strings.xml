@@ -1,4 +1,21 @@
 <resources>
     <string name="app_name">Floret</string>
     <string name="app_tagline">A modern Material 3 Expressive task app.\nComing into bloom.</string>
+
+    <!-- Generic -->
+    <string name="task_untitled">Untitled task</string>
+
+    <!-- Reminders -->
+    <string name="reminder_due_at">Due %1$s</string>
+    <string name="reminder_channel_name">Task reminders</string>
+    <string name="reminder_channel_desc">Notifications for tasks that are due.</string>
+
+    <!-- Provider / permission onboarding -->
+    <string name="onboarding_no_provider_title">A tasks app is needed</string>
+    <string name="onboarding_no_provider_body">Floret shows and edits the tasks stored by OpenTasks or tasks.org, synced by DAVx5. Install one of them to get started.</string>
+    <string name="onboarding_permission_title">Allow access to your tasks</string>
+    <string name="onboarding_permission_body">Floret needs permission to read and write your tasks. That\'s the only thing it ever asks for.</string>
+    <string name="onboarding_permission_button">Grant task access</string>
+    <string name="onboarding_install_opentasks">Install OpenTasks</string>
+    <string name="onboarding_install_tasksorg">Install tasks.org</string>
 </resources>

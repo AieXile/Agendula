@@ -2,13 +2,32 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!--
-      M0 skeleton: no permissions yet. Tasks-provider permissions
-      (org.dmfs.permission.* / org.tasks.permission.*), POST_NOTIFICATIONS,
-      RECEIVE_BOOT_COMPLETED, USE_EXACT_ALARM and the <queries> package
-      visibility block arrive with the data layer and reminder engine
-      (see docs/PLAN.md, §5–7).
-    -->
+    <!-- Tasks provider access. Both permission sets are declared; the active one
+         (org.tasks.* for tasks.org, org.dmfs.* for OpenTasks) is requested at
+         runtime by the permission flow. Both are dangerous-level. -->
+    <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
+    <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
+    <uses-permission android:name="org.tasks.permission.READ_TASKS" />
+    <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Exact due-time reminders: USE_EXACT_ALARM on 33+, SCHEDULE on 31-32. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- Package visibility (Android 11+): see the tasks providers so
+         resolveContentProvider works, and launchable apps so we can open the
+         provider / a store listing during onboarding. -->
+    <queries>
+        <provider android:authorities="org.dmfs.tasks" />
+        <provider android:authorities="org.tasks.opentasks" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".FloretApp"
@@ -31,6 +50,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Reminder alarm fires here (internal PendingIntent → not exported). -->
+        <receiver
+            android:name=".data.reminders.DueReminderReceiver"
+            android:exported="false" />
+
+        <!-- Re-arm alarms after reboot. -->
+        <receiver
+            android:name=".data.reminders.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Re-sync reminders when the provider changes (external DAVx5 sync).
+             Targets both known authorities; the host must be static. -->
+        <receiver
+            android:name=".data.reminders.ProviderChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PROVIDER_CHANGED" />
+                <data android:scheme="content" android:host="org.tasks.opentasks" />
+                <data android:scheme="content" android:host="org.dmfs.tasks" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
