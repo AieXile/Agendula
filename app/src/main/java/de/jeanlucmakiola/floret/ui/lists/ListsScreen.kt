@@ -14,21 +14,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -111,9 +114,8 @@ private fun ListsContent(
         } else {
             item { SectionHeader(stringResource(R.string.lists_header)) }
             state.groups.forEach { group ->
-                item(key = "acct-${group.accountName}") { AccountHeader(group.accountName) }
-                items(group.lists, key = { it.list.id }) { overview ->
-                    ListRow(overview) { onOpenFilter(TaskFilter.OfList(overview.list.id)) }
+                item(key = "acct-${group.accountName}") {
+                    AccountGroupCard(group, onOpenFilter)
                 }
             }
         }
@@ -178,10 +180,36 @@ private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick:
     }
 }
 
+/** One account's lists as a single rounded surface card (grouped-list pattern). */
+@Composable
+private fun AccountGroupCard(group: AccountGroup, onOpenFilter: (TaskFilter) -> Unit) {
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        AccountHeader(group.accountName)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
+        ) {
+            group.lists.forEachIndexed { index, overview ->
+                ListRow(overview) { onOpenFilter(TaskFilter.OfList(overview.list.id)) }
+                if (index < group.lists.lastIndex) {
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        modifier = Modifier.padding(start = 56.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ListRow(overview: ListOverview, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         leadingContent = { ColorDot(overview.list.color) },
         headlineContent = { Text(overview.list.name) },
         trailingContent = {
@@ -222,7 +250,7 @@ private fun AccountHeader(text: String) {
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 6.dp),
     )
 }
 

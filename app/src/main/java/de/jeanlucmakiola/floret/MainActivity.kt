@@ -12,11 +12,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import de.jeanlucmakiola.floret.data.demo.DemoSeeder
 import de.jeanlucmakiola.floret.data.prefs.ThemeMode
 import de.jeanlucmakiola.floret.ui.RootScreen
 import de.jeanlucmakiola.floret.ui.settings.SettingsViewModel
 import de.jeanlucmakiola.floret.ui.theme.FloretTheme
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * Single activity. The theme follows [SettingsViewModel]; [RootScreen] is the
@@ -26,9 +30,17 @@ import de.jeanlucmakiola.floret.ui.theme.FloretTheme
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject lateinit var demoSeeder: DemoSeeder
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Debug-only sample data: `am start ... --ez floret_seed true`. Seeds a
+        // local (non-syncing) demo list once; no-op without the extra.
+        if (BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_SEED, false)) {
+            lifecycleScope.launch { runCatching { demoSeeder.seed() } }
+        }
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val ui by settingsViewModel.state.collectAsStateWithLifecycle()
@@ -45,6 +57,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_TASK_ID = "de.jeanlucmakiola.floret.extra.TASK_ID"
+        private const val EXTRA_SEED = "floret_seed"
 
         /** Opens the app focused on a task (reminder taps). Routing lands with the UI. */
         fun taskIntent(context: Context, taskId: Long): Intent =
