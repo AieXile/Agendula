@@ -13,7 +13,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 The full non-visual stack ("backoffice") over the OpenTasks `TaskContract`
 provider is **done and unit-tested**; the Material 3 Expressive UI is being
 built screen by screen on top of it. App builds, gates on provider/permission,
-and renders the lists overview.
+and navigates lists → task list → detail / edit through base screen scaffolds.
 
 ---
 
@@ -44,12 +44,14 @@ Replace the functional scaffold with the real Material 3 Expressive UI, screen
 by screen, against the already-built ViewModels.
 - ✅ Provider/permission onboarding gate (`RootScreen`).
 - ✅ Lists overview (`ListsScreen`) — smart lists + user lists grouped by account.
-- 🚧 Navigation host wiring (the `onOpenFilter` / `onNewTask` callbacks in
-  `RootScreen` are currently stubs).
-- ⬜ Task list screen — checkbox rows, swipe-to-complete / swipe-to-delete,
-  inline add field, section headers for smart lists, FAB.
-- ⬜ Toggle complete (swipe + checkbox), create / edit / delete, local-list
-  creation wired to the UI.
+- ✅ Navigation host wiring (`FloretNavHost` + `Dest` route table: lists → task
+  list → detail / edit, each binding its M1 ViewModel from route args).
+- 🚧 Task list screen — base scaffold lands (checkbox rows, toggle-complete, open
+  / new-task nav). Remaining: swipe-to-complete / -delete, inline add field,
+  section headers for smart lists.
+- 🚧 Detail + edit screens — base scaffolds land (detail shows title /
+  description / subtasks with edit+delete; edit has title / description / save).
+  Remaining: full CRUD fields and local-list creation wired to the UI.
 
 ### ⬜ M3 — Detail / edit polish
 Task detail and edit screens: due/start date-time pickers, priority,

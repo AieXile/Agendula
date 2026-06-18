@@ -22,6 +22,7 @@ kotlinxDatetime = "0.7.0"
 kotlinxCoroutines = "1.10.2"
 turbine = "1.2.0"
 hiltNavigationCompose = "1.3.0"
+navigationCompose = "2.9.0"
 lifecycleCompose = "2.10.0"
 androidxTestRules = "1.7.0"
 # Glance: 1.1.1 is the latest stable (1.2.0 is still rc, 1.3.0 alpha).
@@ -77,6 +78,9 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 
 # Hilt navigation-compose (for hiltViewModel() in Composables)
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+
+# Navigation-compose (the NavHost / back stack)
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
 # Lifecycle compose (for collectAsStateWithLifecycle)
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleCompose" }

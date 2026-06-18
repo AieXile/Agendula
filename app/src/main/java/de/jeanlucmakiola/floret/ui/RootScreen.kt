@@ -19,13 +19,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.floret.R
 import de.jeanlucmakiola.floret.data.tasks.ProviderStatus
-import de.jeanlucmakiola.floret.ui.lists.ListsScreen
+import de.jeanlucmakiola.floret.ui.navigation.FloretNavHost
 import de.jeanlucmakiola.floret.ui.permission.PermissionViewModel
 
 /**
- * App root: gates on the tasks-provider permission, then shows the home
- * ([ListsScreen]). Navigation to the task-list / edit screens is wired as those
- * screens land (next milestones); the callbacks are stubs for now.
+ * App root: gates on the tasks-provider permission, then hands off to
+ * [FloretNavHost] (lists → task list → detail / edit).
  */
 @Composable
 fun RootScreen(
@@ -50,11 +49,7 @@ fun RootScreen(
             action = stringResource(R.string.onboarding_permission_button),
             onAction = { launcher.launch(permission.permissionsToRequest.toTypedArray()) },
         )
-        ProviderStatus.READY -> ListsScreen(
-            modifier = modifier,
-            onOpenFilter = { /* TODO: navigate to TaskListScreen */ },
-            onNewTask = { /* TODO: navigate to TaskEditScreen */ },
-        )
+        ProviderStatus.READY -> FloretNavHost(modifier = modifier)
     }
 }
 

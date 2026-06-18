@@ -4,6 +4,28 @@
 
     <!-- Generic -->
     <string name="task_untitled">Untitled task</string>
+    <string name="back">Back</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+
+    <!-- Task list -->
+    <string name="tasks_title">Tasks</string>
+    <string name="task_list_empty">No tasks here yet.</string>
+    <string name="task_list_failure">Could not load these tasks.</string>
+    <string name="smart_no_date">No date</string>
+    <string name="smart_completed">Completed</string>
+
+    <!-- Task detail -->
+    <string name="task_detail_title">Task</string>
+    <string name="task_detail_not_found">This task no longer exists.</string>
+    <string name="edit">Edit</string>
+
+    <!-- Task edit -->
+    <string name="edit_task_title">Edit task</string>
+    <string name="new_task_title">New task</string>
+    <string name="field_title">Title</string>
+    <string name="field_description">Description</string>
+    <string name="edit_save_failed">Could not save. Try again.</string>
 
     <!-- Lists overview -->
     <string name="lists_header">Lists</string>
