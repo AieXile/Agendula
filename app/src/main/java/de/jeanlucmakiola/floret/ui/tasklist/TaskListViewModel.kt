@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -23,7 +24,13 @@ import javax.inject.Inject
 sealed interface TaskListUiState {
     data object Loading : TaskListUiState
     data object Failure : TaskListUiState
-    data class Content(val tasks: List<Task>) : TaskListUiState
+
+    /**
+     * [listName] is the real list's name when the filter is a
+     * [TaskFilter.OfList] (for the top-bar title), `null` for smart lists —
+     * the screen falls back to the smart label in that case.
+     */
+    data class Content(val tasks: List<Task>, val listName: String? = null) : TaskListUiState
 }
 
 /**
@@ -42,8 +49,16 @@ class TaskListViewModel @Inject constructor(
     val state: StateFlow<TaskListUiState> =
         filter.filterNotNull()
             .flatMapLatest { f ->
-                repository.tasks(f)
-                    .map<List<Task>, TaskListUiState> { TaskListUiState.Content(it) }
+                val tasks = repository.tasks(f)
+                val content: kotlinx.coroutines.flow.Flow<TaskListUiState> = when (f) {
+                    is TaskFilter.OfList ->
+                        combine(tasks, repository.taskLists()) { list, lists ->
+                            TaskListUiState.Content(list, lists.firstOrNull { it.id == f.listId }?.name)
+                        }
+                    is TaskFilter.Smart ->
+                        tasks.map { TaskListUiState.Content(it) }
+                }
+                content
                     .onStart { emit(TaskListUiState.Loading) }
                     .catch { emit(TaskListUiState.Failure) }
             }

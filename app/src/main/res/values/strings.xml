@@ -27,6 +27,61 @@
     <string name="field_description">Description</string>
     <string name="edit_save_failed">Could not save. Try again.</string>
 
+    <!-- Task list: inline add + swipe -->
+    <string name="add_task_hint">Add a task</string>
+    <string name="cd_add_task">Add task</string>
+    <string name="cd_complete">Complete</string>
+    <string name="cd_reopen">Reopen</string>
+
+    <!-- Sections (due-date buckets) -->
+    <string name="section_overdue">Overdue</string>
+    <string name="section_today">Today</string>
+    <string name="section_upcoming">Upcoming</string>
+    <string name="section_no_date">No date</string>
+    <string name="section_completed">Completed</string>
+
+    <!-- Priority -->
+    <string name="priority_none">None</string>
+    <string name="priority_low">Low</string>
+    <string name="priority_medium">Medium</string>
+    <string name="priority_high">High</string>
+
+    <!-- Task detail -->
+    <string name="detail_mark_complete">Mark complete</string>
+    <string name="detail_mark_incomplete">Mark not complete</string>
+    <string name="detail_list">List</string>
+    <string name="detail_due">Due</string>
+    <string name="detail_start">Starts</string>
+    <string name="detail_priority">Priority</string>
+    <string name="detail_progress">Progress</string>
+    <string name="detail_subtasks">Subtasks</string>
+    <string name="percent_complete">%1$d%%</string>
+
+    <!-- Task edit -->
+    <string name="edit_list_label">List</string>
+    <string name="edit_start_label">Starts</string>
+    <string name="edit_due_label">Due</string>
+    <string name="edit_all_day">All day</string>
+    <string name="edit_priority_label">Priority</string>
+    <string name="edit_reminder_label">Reminder</string>
+    <string name="edit_set">Set</string>
+    <string name="edit_clear">Clear</string>
+
+    <!-- Reminder offsets -->
+    <string name="reminder_none">None</string>
+    <string name="reminder_at_due">At time of task</string>
+    <string name="reminder_5_min">5 minutes before</string>
+    <string name="reminder_10_min">10 minutes before</string>
+    <string name="reminder_30_min">30 minutes before</string>
+    <string name="reminder_1_hour">1 hour before</string>
+    <string name="reminder_1_day">1 day before</string>
+
+    <!-- Form validation -->
+    <string name="error_blank_title">Enter a title.</string>
+    <string name="error_no_list">Choose a list.</string>
+    <string name="error_due_before_start">Due can\'t be before the start.</string>
+    <string name="error_reminder_without_due">Set a due date to use a reminder.</string>
+
     <!-- Lists overview -->
     <string name="lists_header">Lists</string>
     <string name="new_task">New task</string>

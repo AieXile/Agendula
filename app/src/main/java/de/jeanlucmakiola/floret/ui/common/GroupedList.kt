@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -36,10 +37,51 @@ fun positionOf(index: Int, count: Int): Position = when {
     else -> Position.Middle
 }
 
+/** Corner radii for a grouped segment: full at the group's outer edges, small between. */
+fun groupedShape(position: Position, full: Dp, small: Dp): Shape = when (position) {
+    Position.Alone -> RoundedCornerShape(full)
+    Position.Top -> RoundedCornerShape(topStart = full, topEnd = full, bottomStart = small, bottomEnd = small)
+    Position.Middle -> RoundedCornerShape(small)
+    Position.Bottom -> RoundedCornerShape(topStart = small, topEnd = small, bottomStart = full, bottomEnd = full)
+}
+
 /**
- * One row in a grouped list: an M3 [ListItem] over a tonal [Surface] whose
- * corner radii come from its [position] (so a run of rows reads as a single
- * rounded card). Corners morph further on press — the expressive shape play.
+ * One segment of a grouped list: a tonal [Surface] whose corner radii come from
+ * [position] (so a run reads as a single rounded card), with a small gap below
+ * all but the last. Corners morph rounder on press — the expressive shape play.
+ * The caller supplies [content] and any horizontal inset via [modifier], so the
+ * same primitive serves both the 16dp-inset lists and full-width detail cards.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GroupedSurface(
+    position: Position,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    content: @Composable () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val full by animateDpAsState(if (pressed) 36.dp else 22.dp, label = "fullCorner")
+    val small by animateDpAsState(if (pressed) 36.dp else 6.dp, label = "smallCorner")
+    val shape = groupedShape(position, full, small)
+    val gap = when (position) {
+        Position.Top, Position.Middle -> Modifier.padding(bottom = 2.dp)
+        Position.Bottom, Position.Alone -> Modifier
+    }
+    val base = modifier.fillMaxWidth().then(gap)
+    if (onClick != null) {
+        Surface(onClick = onClick, color = color, shape = shape, interactionSource = interaction, modifier = base) { content() }
+    } else {
+        Surface(color = color, shape = shape, modifier = base) { content() }
+    }
+}
+
+/**
+ * One row in a grouped list: an M3 [ListItem] over a [GroupedSurface] (the
+ * tonal, position-shaped, press-morphing family container). Insets 16dp like
+ * the lists overview.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,24 +96,6 @@ fun GroupedRow(
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val full by animateDpAsState(if (pressed) 36.dp else 22.dp, label = "fullCorner")
-    val small by animateDpAsState(if (pressed) 36.dp else 6.dp, label = "smallCorner")
-    val shape = when (position) {
-        Position.Alone -> RoundedCornerShape(full)
-        Position.Top -> RoundedCornerShape(
-            topStart = full, topEnd = full, bottomStart = small, bottomEnd = small,
-        )
-        Position.Middle -> RoundedCornerShape(small)
-        Position.Bottom -> RoundedCornerShape(
-            topStart = small, topEnd = small, bottomStart = full, bottomEnd = full,
-        )
-    }
-    val gap = when (position) {
-        Position.Top, Position.Middle -> Modifier.padding(bottom = 2.dp)
-        Position.Bottom, Position.Alone -> Modifier
-    }
     val itemColors = if (selected) {
         ListItemDefaults.colors(
             containerColor = Color.Transparent,
@@ -83,7 +107,17 @@ fun GroupedRow(
     } else {
         ListItemDefaults.colors(containerColor = Color.Transparent)
     }
-    val item: @Composable () -> Unit = {
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    GroupedSurface(
+        position = position,
+        modifier = modifier.padding(horizontal = 16.dp),
+        onClick = onClick,
+        color = containerColor,
+    ) {
         ListItem(
             headlineContent = { Text(title) },
             supportingContent = summary?.let { text -> { Text(text) } },
@@ -92,25 +126,5 @@ fun GroupedRow(
             colors = itemColors,
             modifier = Modifier.heightIn(min = minHeight),
         )
-    }
-    val base = modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp)
-        .then(gap)
-    val containerColor = if (selected) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    if (onClick != null) {
-        Surface(
-            onClick = onClick,
-            color = containerColor,
-            shape = shape,
-            interactionSource = interaction,
-            modifier = base,
-        ) { item() }
-    } else {
-        Surface(color = containerColor, shape = shape, modifier = base) { item() }
     }
 }

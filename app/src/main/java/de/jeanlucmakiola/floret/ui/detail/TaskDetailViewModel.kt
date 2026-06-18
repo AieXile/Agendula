@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import de.jeanlucmakiola.floret.data.tasks.TasksRepository
 import de.jeanlucmakiola.floret.domain.Task
 import de.jeanlucmakiola.floret.domain.TaskDetail
+import de.jeanlucmakiola.floret.domain.TaskForm
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,5 +54,16 @@ class TaskDetailViewModel @Inject constructor(
 
     fun delete(task: Task) = viewModelScope.launch {
         runCatching { repository.deleteTask(task.taskId) }
+    }
+
+    /** Add a subtask (title only) under the currently-shown task. */
+    fun addSubtask(title: String) = viewModelScope.launch {
+        val parent = (state.value as? TaskDetailUiState.Content)?.detail?.task ?: return@launch
+        if (title.isBlank()) return@launch
+        runCatching {
+            repository.createTask(
+                TaskForm(title = title.trim(), listId = parent.listId, parentId = parent.taskId),
+            )
+        }
     }
 }
