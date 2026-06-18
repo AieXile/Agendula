@@ -6,6 +6,8 @@ the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-18
+
 ### Added
 - M1 data layer + logic ("backoffice"): the full non-visual stack over the
   OpenTasks `TaskContract` provider (authority resolved at runtime —
