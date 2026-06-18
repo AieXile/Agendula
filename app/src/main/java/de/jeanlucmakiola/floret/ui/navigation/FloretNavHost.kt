@@ -1,5 +1,10 @@
 package de.jeanlucmakiola.floret.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -28,11 +33,20 @@ import de.jeanlucmakiola.floret.ui.tasklist.TaskListViewModel
 @Composable
 fun FloretNavHost(modifier: Modifier = Modifier) {
     val nav = rememberNavController()
+    val slide = rememberNavSlideSpec()
 
     NavHost(
         navController = nav,
         startDestination = Dest.LISTS,
         modifier = modifier,
+        // Only the screen on top moves; the background is always held static.
+        // Forward is a plain fade-in over the held screen — calm, not a slide.
+        // Back (and the predictive-back drag, which drives popExit) is the snappy
+        // slide-out to the right, revealing the held screen unmoved.
+        enterTransition = { fadeIn() },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { slideOutHorizontally(slide) { it } + fadeOut() },
     ) {
         composable(Dest.LISTS) {
             ListsScreen(
