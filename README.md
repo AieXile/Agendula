@@ -22,10 +22,13 @@ database, no reinvented sync.
 A Calendula flower head is botanically made of many small *florets* — the
 individual items that make up the bloom. Floret is those items: your tasks.
 
-> **Status: M0 — skeleton.** Builds and shows a themed placeholder. The
-> `TaskContract` data layer, task screens, and reminder engine are the next
-> milestones. See [`docs/PLAN.md`](docs/PLAN.md) for the full roadmap and the
-> A-now-B-later architecture (front-end first; bundle the provider later).
+> **Status: data layer done, UI in progress.** The full non-visual stack over
+> the `TaskContract` provider — provider resolution, live-updating reads,
+> writes, smart-list filtering, and a self-scheduled reminder engine — is built
+> and unit-tested. The Material 3 Expressive screens are now being built on top,
+> one at a time. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for status,
+> [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for how it's built, and
+> [`docs/PLAN.md`](docs/PLAN.md) for the A-now-B-later design rationale.
 
 ## Sync sources (by design)
 
