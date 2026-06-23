@@ -266,18 +266,17 @@ private fun DetailBody(
             }
 
             // Subtasks — a genuine group: a connected grouped run whose first
-            // segment is the expand/collapse toggle.
-            if (detail.subtasks.isNotEmpty()) {
-                add {
-                    SubtasksGroup(
-                        subtasks = detail.subtasks,
-                        expanded = subtasksExpanded,
-                        onToggle = { subtasksExpanded = !subtasksExpanded },
-                        onToggleSubtask = onToggleSubtask,
-                        onAddSubtask = onAddSubtask,
-                        onOpenSubtask = onOpenSubtask,
-                    )
-                }
+            // segment is the expand/collapse toggle. Always shown (even with no
+            // subtasks yet) so the add field is reachable on any task.
+            add {
+                SubtasksGroup(
+                    subtasks = detail.subtasks,
+                    expanded = subtasksExpanded,
+                    onToggle = { subtasksExpanded = !subtasksExpanded },
+                    onToggleSubtask = onToggleSubtask,
+                    onAddSubtask = onAddSubtask,
+                    onOpenSubtask = onOpenSubtask,
+                )
             }
         }
         cards.forEachIndexed { index, card ->
@@ -326,12 +325,15 @@ private fun SubtasksGroup(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                text = "$done / ${subtasks.size}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
+            // No count until there's something to count.
+            if (subtasks.isNotEmpty()) {
+                Text(
+                    text = "$done / ${subtasks.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
             Icon(
                 imageVector = Icons.Rounded.ExpandMore,
                 contentDescription = null,
