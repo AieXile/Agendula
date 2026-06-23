@@ -2,7 +2,6 @@ package de.jeanlucmakiola.floret.data.tasks
 
 import de.jeanlucmakiola.floret.data.di.IoDispatcher
 import de.jeanlucmakiola.floret.domain.DayWindow
-import de.jeanlucmakiola.floret.domain.SmartList
 import de.jeanlucmakiola.floret.domain.Task
 import de.jeanlucmakiola.floret.domain.TaskDetail
 import de.jeanlucmakiola.floret.domain.TaskFilter
@@ -44,11 +43,28 @@ class TasksRepositoryImpl @Inject constructor(
     private fun loadTasks(filter: TaskFilter): List<Task> {
         val query = when (filter) {
             is TaskFilter.OfList -> TaskQuery(listId = filter.listId, includeCompleted = true)
-            is TaskFilter.Smart -> TaskQuery(includeCompleted = filter.list == SmartList.COMPLETED)
+            // Read completed tasks too, then let [TaskFiltering.matches] enforce each
+            // smart list's own open/closed semantics. We over-read on purpose so a
+            // parent's subtask-progress reflects ALL its children — completed ones
+            // included — even on smart lists that hide completed tasks themselves.
+            is TaskFilter.Smart -> TaskQuery(includeCompleted = true)
         }
         val (todayStart, todayEnd) = DayWindow.today(Clock.System.now(), ZoneId.systemDefault())
-        return dataSource.tasks(query)
+        val all = dataSource.tasks(query)
+        // (done, total) of direct children per parent, over the unfiltered set.
+        val progress: Map<Long, Pair<Int, Int>> = all
+            .filter { (it.parentId ?: 0L) > 0L }
+            .groupingBy { it.parentId!! }
+            .fold(0 to 0) { (done, total), t ->
+                (if (t.isCompleted) done + 1 else done) to (total + 1)
+            }
+        return all
             .filter { TaskFiltering.matches(it, filter, todayStart, todayEnd) }
+            .map { task ->
+                progress[task.taskId]?.let { (done, total) ->
+                    task.copy(subtaskDone = done, subtaskTotal = total)
+                } ?: task
+            }
             .sortedWith(TaskSorting.DEFAULT)
     }
 

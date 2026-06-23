@@ -52,6 +52,13 @@ data class Task(
     val distanceFromCurrent: Int?,
     val created: Instant?,
     val lastModified: Instant?,
+    /**
+     * Direct-subtask progress, filled in by the repository over the *full* task
+     * set so a parent's progress chip counts completed children even on smart
+     * lists that hide them. Both 0 when the task has no subtasks.
+     */
+    val subtaskTotal: Int = 0,
+    val subtaskDone: Int = 0,
 ) {
     val isCompleted: Boolean get() = status == TaskStatus.COMPLETED
     val isClosed: Boolean get() = status == TaskStatus.COMPLETED || status == TaskStatus.CANCELLED

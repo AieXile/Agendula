@@ -10,6 +10,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -147,12 +149,10 @@ private fun TaskListBody(
     viewModel: TaskListViewModel,
 ) {
     val (todayStart, todayEnd) = remember { DayWindow.today(Clock.System.now(), ZoneId.systemDefault()) }
-    // A parent represents its children via a progress chip, so drop children
-    // from the flat list — unless their parent isn't in this view (can happen in
-    // smart lists), where we keep them standalone so nothing silently vanishes.
-    val childrenByParent = remember(state.tasks) {
-        state.tasks.filter { (it.parentId ?: 0L) > 0L }.groupBy { it.parentId!! }
-    }
+    // A parent represents its children via a progress chip (counts come from the
+    // repository, over the full set), so drop children from the flat list — unless
+    // their parent isn't in this view (can happen in smart lists), where we keep
+    // them standalone so nothing silently vanishes.
     val displayTasks = remember(state.tasks) {
         val present = state.tasks.mapTo(HashSet()) { it.taskId }
         state.tasks.filter { (it.parentId ?: 0L) <= 0L || it.parentId !in present }
@@ -201,13 +201,12 @@ private fun TaskListBody(
             }
             if (!collapsible || completedExpanded) {
                 itemsIndexed(section.tasks, key = { _, t -> t.taskId }) { index, task ->
-                    val children = childrenByParent[task.taskId]
                     TaskRow(
                         task = task,
                         position = positionOf(index, section.tasks.size),
                         showListName = showListName,
-                        subtaskDone = children?.count { it.isCompleted } ?: 0,
-                        subtaskTotal = children?.size ?: 0,
+                        subtaskDone = task.subtaskDone,
+                        subtaskTotal = task.subtaskTotal,
                         onToggle = { viewModel.toggleComplete(task) },
                         onDelete = { viewModel.delete(task) },
                         onClick = { onOpenTask(task.taskId) },
@@ -300,7 +299,7 @@ private fun TaskRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun TaskRowContent(
     task: Task,
@@ -361,9 +360,13 @@ private fun TaskRowContent(
                 )
                 if (hasSupporting) {
                     Spacer(Modifier.height(3.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Flow so the chips wrap to a further line when due date + list
+                    // + subtask progress can't share one (e.g. a dated task with
+                    // subtasks), rather than squeezing the trailing chip.
+                    FlowRow(
+                        verticalArrangement = Arrangement.spacedBy(3.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (due != null) {
                             Text(
