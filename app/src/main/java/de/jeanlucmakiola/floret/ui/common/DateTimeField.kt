@@ -40,13 +40,13 @@ import kotlin.time.Instant
 
 private val zone: ZoneId get() = ZoneId.systemDefault()
 
-private fun Instant.toLocalDate(): LocalDate =
+internal fun Instant.toLocalDate(): LocalDate =
     java.time.Instant.ofEpochMilli(toEpochMilliseconds()).atZone(zone).toLocalDate()
 
-private fun Instant.toLocalTime(): LocalTime =
+internal fun Instant.toLocalTime(): LocalTime =
     java.time.Instant.ofEpochMilli(toEpochMilliseconds()).atZone(zone).toLocalTime()
 
-private fun localToInstant(date: LocalDate, time: LocalTime): Instant =
+internal fun localToInstant(date: LocalDate, time: LocalTime): Instant =
     Instant.fromEpochMilliseconds(date.atTime(time).atZone(zone).toInstant().toEpochMilli())
 
 /**

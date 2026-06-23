@@ -30,3 +30,18 @@ data class TaskForm(
 }
 
 enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITHOUT_DUE }
+
+/**
+ * Optional edit-form sections that can be shown or tucked behind "More fields"
+ * (the core Title / List / When are always visible). Which render by default is
+ * a setting; the rest unfold on demand. Declaring these as an enum keeps the
+ * disclosure generic, so adding a field later is one entry plus its card.
+ */
+enum class TaskFormField { Description, Priority, Reminder }
+
+/** The optional fields that already carry a value — auto-revealed when editing. */
+fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
+    if (!description.isNullOrBlank()) add(TaskFormField.Description)
+    if (priority != Priority.NONE) add(TaskFormField.Priority)
+    if (reminderMinutesBeforeDue != null) add(TaskFormField.Reminder)
+}

@@ -9,7 +9,9 @@ import de.jeanlucmakiola.floret.data.tasks.TasksRepository
 import de.jeanlucmakiola.floret.domain.Priority
 import de.jeanlucmakiola.floret.domain.TaskForm
 import de.jeanlucmakiola.floret.domain.TaskFormError
+import de.jeanlucmakiola.floret.domain.TaskFormField
 import de.jeanlucmakiola.floret.domain.TaskList
+import de.jeanlucmakiola.floret.domain.populatedFields
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +38,10 @@ data class TaskEditUiState(
     val parentId: Long? = null,
     val reminderMinutesBeforeDue: Int? = null,
     val lists: List<TaskList> = emptyList(),
+    /** Optional sections currently shown (core Title / List / When are always on). */
+    val visibleFields: Set<TaskFormField> = emptySet(),
+    /** Optional sections still tucked behind "More fields". */
+    val hiddenFields: List<TaskFormField> = emptyList(),
     val errors: Set<TaskFormError> = emptySet(),
     val saveFailed: Boolean = false,
     val saved: Boolean = false,
@@ -53,21 +59,28 @@ class TaskEditViewModel @Inject constructor(
 
     private var editingTaskId: Long? = null
 
+    /** Sections shown by default (a setting); the rest unfold via [revealField]. */
+    private var defaultFields: Set<TaskFormField> = emptySet()
+
     /** Start a fresh task, optionally pre-selecting a list / parent. */
     fun bindNew(presetListId: Long? = null, parentId: Long? = null) {
         editingTaskId = null
         viewModelScope.launch {
+            val settings = settingsPrefs.settings.first()
+            defaultFields = settings.defaultEditFields
             val lists = runCatching { repository.taskLists().first() }.getOrElse { emptyList() }
             val defaultList = presetListId
-                ?: settingsPrefs.settings.first().defaultListId
+                ?: settings.defaultListId
                 ?: lists.firstOrNull { !it.isLocal }?.id
                 ?: lists.firstOrNull()?.id
-            _state.value = TaskEditUiState(
-                loading = false,
-                isNew = true,
-                listId = defaultList,
-                parentId = parentId,
-                lists = lists,
+            _state.value = withFields(
+                TaskEditUiState(
+                    loading = false,
+                    isNew = true,
+                    listId = defaultList,
+                    parentId = parentId,
+                    lists = lists,
+                ),
             )
         }
     }
@@ -76,27 +89,48 @@ class TaskEditViewModel @Inject constructor(
     fun bindEdit(taskId: Long) {
         editingTaskId = taskId
         viewModelScope.launch {
+            defaultFields = settingsPrefs.settings.first().defaultEditFields
             val lists = runCatching { repository.taskLists().first() }.getOrElse { emptyList() }
             val task = runCatching { repository.taskDetail(taskId).first()?.task }.getOrNull()
             if (task == null) {
                 _state.value = _state.value.copy(loading = false, lists = lists)
                 return@launch
             }
-            _state.value = TaskEditUiState(
-                loading = false,
-                isNew = false,
-                title = task.title,
-                description = task.description.orEmpty(),
-                listId = task.listId,
-                start = task.start,
-                due = task.due,
-                isAllDay = task.isAllDay,
-                priority = task.priority,
-                parentId = task.parentId,
-                lists = lists,
+            _state.value = withFields(
+                TaskEditUiState(
+                    loading = false,
+                    isNew = false,
+                    title = task.title,
+                    description = task.description.orEmpty(),
+                    listId = task.listId,
+                    start = task.start,
+                    due = task.due,
+                    isAllDay = task.isAllDay,
+                    priority = task.priority,
+                    parentId = task.parentId,
+                    lists = lists,
+                ),
             )
         }
     }
+
+    /** Reveal an optional section (one tap from the "More fields" picker). */
+    fun revealField(field: TaskFormField) = update {
+        val visible = it.visibleFields + field
+        it.copy(visibleFields = visible, hiddenFields = hiddenOf(visible))
+    }
+
+    /**
+     * Resolve which optional sections are visible: the default set, plus any
+     * field that already carries a value (so editing never hides real data).
+     */
+    private fun withFields(state: TaskEditUiState): TaskEditUiState {
+        val visible = defaultFields + state.toForm().populatedFields()
+        return state.copy(visibleFields = visible, hiddenFields = hiddenOf(visible))
+    }
+
+    private fun hiddenOf(visible: Set<TaskFormField>): List<TaskFormField> =
+        TaskFormField.entries.filterNot { it in visible }
 
     fun onTitleChange(value: String) = update { it.copy(title = value, errors = emptySet()) }
     fun onDescriptionChange(value: String) = update { it.copy(description = value) }
@@ -109,17 +143,7 @@ class TaskEditViewModel @Inject constructor(
 
     fun save() {
         val current = _state.value
-        val form = TaskForm(
-            title = current.title,
-            listId = current.listId ?: 0L,
-            description = current.description.ifBlank { null },
-            start = current.start,
-            due = current.due,
-            isAllDay = current.isAllDay,
-            priority = current.priority,
-            parentId = current.parentId,
-            reminderMinutesBeforeDue = current.reminderMinutesBeforeDue,
-        )
+        val form = current.toForm()
         val errors = form.validate()
         if (errors.isNotEmpty()) {
             _state.value = current.copy(errors = errors)
@@ -142,3 +166,16 @@ class TaskEditViewModel @Inject constructor(
         _state.value = block(_state.value)
     }
 }
+
+/** Snapshot the editable state as a validated [TaskForm]. */
+private fun TaskEditUiState.toForm(): TaskForm = TaskForm(
+    title = title,
+    listId = listId ?: 0L,
+    description = description.ifBlank { null },
+    start = start,
+    due = due,
+    isAllDay = isAllDay,
+    priority = priority,
+    parentId = parentId,
+    reminderMinutesBeforeDue = reminderMinutesBeforeDue,
+)

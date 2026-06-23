@@ -66,6 +66,11 @@
     <string name="edit_reminder_label">Reminder</string>
     <string name="edit_set">Set</string>
     <string name="edit_clear">Clear</string>
+    <string name="edit_title_hint">Task title</string>
+    <string name="edit_when">When</string>
+    <string name="edit_more_fields">More fields</string>
+    <string name="close">Close</string>
+    <string name="dialog_cancel">Cancel</string>
 
     <!-- Reminder offsets -->
     <string name="reminder_none">None</string>
