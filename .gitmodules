@@ -1,0 +1,3 @@
+[submodule "floret-kit"]
+	path = floret-kit
+	url = https://gitea.jeanlucmakiola.de/makiolaj/floret-kit.git
