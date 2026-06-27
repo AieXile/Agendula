@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Floret</string>
+    <string name="app_name">Agendula</string>
     <string name="app_tagline">A modern Material 3 Expressive task app.\nComing into bloom.</string>
 
     <!-- Generic -->
@@ -136,19 +136,19 @@
 
     <!-- Provider / permission onboarding -->
     <string name="onboarding_no_provider_title">A tasks app is needed</string>
-    <string name="onboarding_no_provider_body">Floret shows and edits the tasks stored by OpenTasks or tasks.org, synced by DAVx5. Install one of them to get started.</string>
+    <string name="onboarding_no_provider_body">Agendula shows and edits the tasks stored by OpenTasks or tasks.org, synced by DAVx5. Install one of them to get started.</string>
     <string name="onboarding_permission_title">Allow access to your tasks</string>
-    <string name="onboarding_permission_body">Floret needs permission to read and write your tasks. That\'s the only thing it ever asks for.</string>
+    <string name="onboarding_permission_body">Agendula needs permission to read and write your tasks. That\'s the only thing it ever asks for.</string>
     <string name="onboarding_permission_button">Grant task access</string>
     <string name="onboarding_install_opentasks">Install OpenTasks</string>
     <string name="onboarding_install_tasksorg">Install tasks.org</string>
 
     <!-- Reminder onboarding (one-time, after the provider grant) -->
     <string name="reminder_onboarding_title">Never miss what\'s due</string>
-    <string name="reminder_onboarding_body">Tasks apps don\'t send reminders themselves, so Floret delivers them for you. Turn them on to get a notification when a task is due.</string>
+    <string name="reminder_onboarding_body">Tasks apps don\'t send reminders themselves, so Agendula delivers them for you. Turn them on to get a notification when a task is due.</string>
     <string name="reminder_onboarding_enable_button">Enable reminders</string>
     <string name="reminder_onboarding_skip_button">Not now</string>
-    <string name="reminder_benefit_delivery_title">Floret reminds you</string>
+    <string name="reminder_benefit_delivery_title">Agendula reminds you</string>
     <string name="reminder_benefit_delivery_body">It schedules a notification for each task with a due date.</string>
     <string name="reminder_benefit_timing_title">On your schedule</string>
     <string name="reminder_benefit_timing_body">Choose how far ahead to be reminded in Settings.</string>
@@ -170,14 +170,14 @@
     <string name="settings_license">License</string>
     <string name="settings_about_support">Support development</string>
     <string name="settings_about_version">Version %1$s</string>
-    <string name="settings_about_logo_desc">Floret app icon</string>
+    <string name="settings_about_logo_desc">Agendula app icon</string>
     <string name="settings_language">App language</string>
     <string name="settings_language_auto">System default</string>
     <string name="settings_report_problem">Report a problem</string>
     <string name="settings_report_problem_hint">Open the issue tracker</string>
-    <string name="about_source_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret</string>
-    <string name="report_issue_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret/issues/new</string>
-    <string name="about_license_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret/src/branch/main/LICENSE</string>
+    <string name="about_source_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula</string>
+    <string name="report_issue_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/issues/new</string>
+    <string name="about_license_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/src/branch/main/LICENSE</string>
     <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">Follow system</string>

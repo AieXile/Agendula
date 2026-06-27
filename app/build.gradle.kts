@@ -16,11 +16,11 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "de.jeanlucmakiola.floret"
+    namespace = "de.jeanlucmakiola.agendula"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "de.jeanlucmakiola.floret"
+        applicationId = "de.jeanlucmakiola.agendula"
         minSdk = 29
         targetSdk = 36
         // The git tag is the single source of truth for released builds: at

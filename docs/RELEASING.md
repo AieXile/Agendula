@@ -1,6 +1,6 @@
-# Floret — releasing
+# Agendula — releasing
 
-Floret is distributed through a **self-hosted F-Droid repo** (on Hetzner) with a
+Agendula is distributed through a **self-hosted F-Droid repo** (on Hetzner) with a
 human-readable **Gitea release** per tag. Both are produced automatically by
 `.gitea/workflows/release.yaml` when you push a tag. There are no APK assets on
 the Gitea release itself — distribution lives in the F-Droid repo; the release is
@@ -94,7 +94,7 @@ Keep this green before tagging.
 
 ## F-Droid metadata
 
-App store listing lives in `fdroid-metadata/` (`de.jeanlucmakiola.floret.yml`
+App store listing lives in `fdroid-metadata/` (`de.jeanlucmakiola.agendula.yml`
 plus `en-US/` summary/description). Per-version changelogs are generated into the
 repo's `metadata/.../en-US/changelogs/<versionCode>.txt` from `CHANGELOG.md` at
 release time; metadata is uploaded alongside `repo/` so changelog history

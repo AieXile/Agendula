@@ -1,6 +1,6 @@
-# Floret — architecture
+# Agendula — architecture
 
-This document describes how Floret is built **as it stands today**. For the
+This document describes how Agendula is built **as it stands today**. For the
 *why* behind the big decisions and the long-term plan, see
 [`PLAN.md`](PLAN.md); for status and what's next, see [`ROADMAP.md`](ROADMAP.md).
 
@@ -8,10 +8,10 @@ This document describes how Floret is built **as it stands today**. For the
 
 ## 1. The thesis in one sentence
 
-Floret is a Material 3 Expressive **front-end** over the OpenTasks
+Agendula is a Material 3 Expressive **front-end** over the OpenTasks
 `TaskContract` provider — it reads, writes, and reminds on top of a tasks store
 that some other app (DAVx5, SmoothSync, DecSync CC, tasks.org, …) syncs over
-CalDAV. **Floret owns no database and no sync stack.** It is the task-list
+CalDAV. **Agendula owns no database and no sync stack.** It is the task-list
 sibling to [Calendula](https://gitea.jeanlucmakiola.de/makiolaj/calendula),
 which does the same thing for `CalendarContract`.
 
@@ -69,7 +69,7 @@ Both are bound in Hilt in `data/di/DataModule.kt`.
 
 ## 3. Module & package layout
 
-Single `:app` module (Posture A). Package root `de.jeanlucmakiola.floret`.
+Single `:app` module (Posture A). Package root `de.jeanlucmakiola.agendula`.
 
 | Package | Contents |
 |---|---|
@@ -80,7 +80,7 @@ Single `:app` module (Posture A). Package root `de.jeanlucmakiola.floret`.
 | `data/di/` | `DataModule` (binds + provides), `Qualifiers` (`@IoDispatcher`). |
 | `data/demo/` | `DemoSeeder` (debug-only sample data). |
 | `ui/` | `theme/`, `common/` (GroupedList, ListChip), `lists/`, `tasklist/`, `detail/`, `edit/`, `settings/`, `permission/` (each a ViewModel + UiState; `lists` also has its screen), `RootScreen`. |
-| root | `FloretApp` (Hilt app), `MainActivity`. |
+| root | `AgendulaApp` (Hilt app), `MainActivity`. |
 
 ---
 
@@ -106,7 +106,7 @@ runtime perms for the active provider.
 ### 4.2 `TasksContract`
 
 A vendored subset of the Apache-2.0 OpenTasks `TaskContract` — column names,
-table paths, status/priority constants, the local-account type. Floret does
+table paths, status/priority constants, the local-account type. Agendula does
 **not** take a runtime dependency on OpenTasks; the authority is injected from
 `ProviderResolver`, never hardcoded in the contract.
 
@@ -117,7 +117,7 @@ occurrence is a row with the joined list colour, account, etc.), maps each
 cursor row through `ColumnReader` → `TaskMapper` → domain `Task`, and exposes
 the result as a `Flow`. A `ContentObserver` on the active authority's
 Tasks/TaskLists URIs bridges into the Flow via `callbackFlow`, so **any change
-re-emits** — Floret's own writes *and* external sync (DAVx5 pulling new tasks)
+re-emits** — Agendula's own writes *and* external sync (DAVx5 pulling new tasks)
 update the UI live, and multiple sync sources coexist in one list.
 
 ### 4.4 Writes — repository API
@@ -170,7 +170,7 @@ priority / etc.). None of this touches Android, which is why it's all in
 ## 6. Reminders — the one subsystem that does NOT mirror Calendula
 
 Calendula relies on the calendar provider broadcasting `EVENT_REMINDER`. **Tasks
-providers broadcast nothing**, so Floret schedules its own (`data/reminders/`):
+providers broadcast nothing**, so Agendula schedules its own (`data/reminders/`):
 
 - **`ReminderScheduler.sync()`** reads upcoming, non-closed, due-dated tasks
   within a rolling **30-day window**, computes each trigger as `due − lead`
@@ -186,7 +186,7 @@ providers broadcast nothing**, so Floret schedules its own (`data/reminders/`):
   sync changed the data). The store lets each run diff like Calendula diffs
   reminder rows.
 
-This is the single largest piece of genuinely-new code in Floret.
+This is the single largest piece of genuinely-new code in Agendula.
 
 ---
 
@@ -201,7 +201,7 @@ This is the single largest piece of genuinely-new code in Floret.
   domain, and `TasksRepository` do not change** — only the resolver's default and
   some manifest perms.
 
-Bundling the provider bundles **storage, not sync** — Floret stays a pure
+Bundling the provider bundles **storage, not sync** — Agendula stays a pure
 front-end over open backends either way.
 
 ---
@@ -228,8 +228,8 @@ checkbox/FAB/swipe motion).
 
 Hilt, `SingletonComponent`. `DataModule` has a `@Binds` module
 (`TasksDataSource` → `AndroidTasksDataSource`, `TasksRepository` →
-`TasksRepositoryImpl`) and a `@Provides` module (the `floret_prefs` DataStore,
-the `@IoDispatcher`). `FloretApp` is the `@HiltAndroidApp` entry point;
+`TasksRepositoryImpl`) and a `@Provides` module (the `agendula_prefs` DataStore,
+the `@IoDispatcher`). `AgendulaApp` is the `@HiltAndroidApp` entry point;
 `MainActivity` is `@AndroidEntryPoint`. ViewModels get the repository injected.
 
 ---

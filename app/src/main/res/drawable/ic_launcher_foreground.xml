@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Floret launcher icon foreground — PLACEHOLDER.
+    Agendula launcher icon foreground — PLACEHOLDER.
 
     A simple rounded check mark inside the 108dp adaptive-icon canvas
     (72dp safe zone). Deliberately not Calendula's calendar mark, so the two
-    apps never look alike. Replace with real branding (a stylized floret)
+    apps never look alike. Replace with real branding (a stylized agendula)
     when the design lands — see docs/PLAN.md §9.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"

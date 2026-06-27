@@ -1,4 +1,4 @@
-# Floret — roadmap
+# Agendula — roadmap
 
 Where the project is and where it's going. This is the **status** view; the
 design rationale behind each milestone lives in [`PLAN.md`](PLAN.md), and how the
@@ -50,7 +50,7 @@ The real Material 3 Expressive UI, built screen by screen against the M1
 ViewModels.
 - ✅ Provider/permission onboarding gate (`RootScreen`).
 - ✅ Lists overview (`ListsScreen`) — smart lists + user lists grouped by account.
-- ✅ Navigation host wiring (`FloretNavHost` + `Dest` route table: lists → task
+- ✅ Navigation host wiring (`AgendulaNavHost` + `Dest` route table: lists → task
   list → detail / edit, each binding its M1 ViewModel from route args).
 - ✅ Task list screen — checkbox rows + toggle-complete, swipe-to-complete /
   -delete (`SwipeToDismissBox`), inline add field (`InlineAdd` → `quickAdd`),
@@ -140,12 +140,12 @@ permissions; ship self-contained. UI / repository / domain untouched — see
 
 These carry over from [`PLAN.md`](PLAN.md) §9; resolved ones are struck through.
 
-1. ~~**Name** — `Floret`~~ confirmed (appId `de.jeanlucmakiola.floret`).
+1. ~~**Name** — `Agendula`~~ confirmed (appId `de.jeanlucmakiola.agendula`).
 2. ~~**tasks.org provider authority**~~ verified on device:
    `org.tasks.opentasks` + `org.tasks.permission.*`.
 3. **jtx Board** — support its richer contract later, or stay OpenTasks-only?
    (Not in the candidate list today.)
-4. **Posture B authority choice** — bundling `org.dmfs.tasks` makes Floret a
+4. **Posture B authority choice** — bundling `org.dmfs.tasks` makes Agendula a
    *replacement* for OpenTasks (one authority owner per device). Intended, but a
    conscious choice.
 5. **Recurring tasks** — read as occurrences today (`isRecurring` flag exists);

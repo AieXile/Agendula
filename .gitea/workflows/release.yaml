@@ -225,7 +225,7 @@ jobs:
           if [ -z "$SAFE_REF_NAME" ]; then
             SAFE_REF_NAME="${GITHUB_SHA:-manual}"
           fi
-          cp app/build/outputs/apk/release/app-release.apk "fdroid/repo/floret_${SAFE_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "fdroid/repo/agendula_${SAFE_REF_NAME}.apk"
 
       - name: Copy metadata to F-Droid repo
         run: |
@@ -248,7 +248,7 @@ jobs:
           if [ ! -s /tmp/changelog.txt ]; then
             echo "See CHANGELOG.md for $VERSION." > /tmp/changelog.txt
           fi
-          CL_DIR="fdroid/metadata/de.jeanlucmakiola.floret/en-US/changelogs"
+          CL_DIR="fdroid/metadata/de.jeanlucmakiola.agendula/en-US/changelogs"
           mkdir -p "$CL_DIR"
           cp /tmp/changelog.txt "$CL_DIR/${VERSION_CODE}.txt"
           echo "Wrote $CL_DIR/${VERSION_CODE}.txt"

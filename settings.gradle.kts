@@ -23,5 +23,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Floret"
+rootProject.name = "Agendula"
 include(":app")

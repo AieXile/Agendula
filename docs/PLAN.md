@@ -1,23 +1,25 @@
-# Floret — implementation plan
+# Agendula — implementation plan
 
 > A modern Material 3 Expressive **task** app for Android. Reads, writes, and
 > reminds — on top of an existing tasks provider (synced by DAVx5 / SmoothSync /
 > DecSync over CalDAV), with no own sync stack.
 >
 > Sibling to **Calendula**. Calendula is a calendar over `CalendarContract`;
-> Floret is a to-do list over the **OpenTasks `TaskContract` provider**. A
-> Calendula flower head is made of many small *florets* — the individual items
-> that make up the bloom.
+> Agendula is a to-do list over the **OpenTasks `TaskContract` provider**. The
+> name mirrors Calendula's: *agenda* (Latin, “things to be done”) + the `-ula`
+> ending — and a Calendula flower head is itself a cluster of small *florets*,
+> so the two apps are florets of one bloom.
 
-Working identifiers (placeholder, easily renamed):
-`applicationId = de.jeanlucmakiola.floret`, app name **Floret**.
+Identifiers: `applicationId = de.jeanlucmakiola.agendula`, app name **Agendula**
+(renamed from the working title *Floret*, which was promoted to the shared
+family / design-language name).
 
 ---
 
 ## 0. The thesis this app embodies
 
 A nice M3-Expressive front end over open backends, no reinvented storage or
-sync. Calendula proved the pattern against the OS calendar provider. Floret
+sync. Calendula proved the pattern against the OS calendar provider. Agendula
 applies it to tasks. The crucial difference: **there is no OS tasks provider**,
 so we depend on a tasks *provider app* being present — exactly as Calendula
 depends on a sync app like DAVx5 for CalDAV.
@@ -46,7 +48,7 @@ string leak above the data layer.**
 
 Calendula's layering is the template. Lift these **verbatim or near-verbatim**:
 
-| Area | From Calendula | Change for Floret |
+| Area | From Calendula | Change for Agendula |
 |---|---|---|
 | Gradle setup | `build.gradle.kts`, `settings.gradle.kts`, `gradle/libs.versions.toml`, wrapper, `key.properties` flow, versionCode-from-tag CI | namespace/appId only |
 | Build config | AGP 9.2.1, Kotlin 2.3.21, KSP, Hilt 2.59.2, compileSdk 37 / minSdk 29 / targetSdk 36, Java 17 | identical |
@@ -65,7 +67,7 @@ Calendula's layering is the template. Lift these **verbatim or near-verbatim**:
 `TaskContract` data layer, the task screens, and a **self-scheduled reminder
 engine** (see §6 — the one place Calendula's pattern does *not* carry over).
 
-### What does NOT exist here (why Floret is simpler than Calendula)
+### What does NOT exist here (why Agendula is simpler than Calendula)
 
 No month/week/day grid rendering. No recurrence-scoped writes ("this & following"
 vs "whole series"). No timezone/all-day gymnastics. Tasks are a flat-or-lightly-
@@ -76,7 +78,7 @@ nested list with a due date and a checkbox.
 ## 2. Module & package layout
 
 Single `:app` module for A (mirrors Calendula). Package root
-`de.jeanlucmakiola.floret`.
+`de.jeanlucmakiola.agendula`.
 
 ```
 domain/
@@ -111,10 +113,10 @@ ui/
   edit/                TaskEditScreen + VM + UiState
   settings/            (copy + adapt)
   permission/          provider-presence + permission + POST_NOTIFICATIONS onboarding
-  FloretHost.kt        nav host  (mirrors CalendarHost)
+  AgendulaHost.kt        nav host  (mirrors CalendarHost)
   RootScreen.kt
 widget/                Glance task widget (later milestone)
-FloretApp.kt, MainActivity.kt
+AgendulaApp.kt, MainActivity.kt
 ```
 
 ---
@@ -217,9 +219,9 @@ Material 3 Expressive throughout: `MaterialExpressiveTheme`,
 Three gates, in order:
 
 1. **Provider present?** `ProviderResolver.detect()`. If none → a screen
-   explaining Floret needs a tasks provider, with one-tap links to install
+   explaining Agendula needs a tasks provider, with one-tap links to install
    **OpenTasks** (FOSS) or **tasks.org**, plus "I use DAVx5 — set its Tasks app".
-   (This is Floret's "needs DAVx5" moment. Disappears entirely under Posture B.)
+   (This is Agendula's "needs DAVx5" moment. Disappears entirely under Posture B.)
 2. **Tasks read/write permission** — request the active provider's runtime perms
    (`org.dmfs.permission.*` etc.). Declared in the manifest *and* requested at
    runtime; resolved dynamically from the detected provider.
@@ -235,7 +237,7 @@ exactly like Calendula's launcher query.
 
 Calendula relies on the **calendar provider broadcasting `EVENT_REMINDER`** and
 just posts the notification (Etar model). **Tasks providers do not broadcast
-reminders.** So Floret must schedule its own:
+reminders.** So Agendula must schedule its own:
 
 - `DueReminderScheduler` (AlarmManager, exact alarms via `USE_EXACT_ALARM` /
   `SCHEDULE_EXACT_ALARM`) sets an alarm per task at `DUE` minus the chosen
@@ -273,7 +275,7 @@ receiver. **No `EVENT_REMINDER` receiver** (doesn't apply).
 ## 8. Milestones
 
 - **M0 — Skeleton.** Copy Gradle/version-catalog/theme/DI/app+activity from
-  Calendula, rename to Floret. Builds, shows themed empty scaffold. *(~½ day)*
+  Calendula, rename to Agendula. Builds, shows themed empty scaffold. *(~½ day)*
 - **M1 — Read path.** `TasksContract` + `ProviderResolver` + `OpenTasksDataSource`
   + repository. Lists overview + task list render real synced tasks (read-only),
   live-updating via ContentObserver. *(the meaty milestone)*
@@ -297,21 +299,22 @@ M4 (subtasks) and M5 (reminders) are the two spots needing real thought.
 
 ## 9. Open decisions / to verify
 
-1. **Name** — `Floret` is the working title (florets compose a Calendula head).
-   Confirm or replace before M0 (touches appId, namespace, package).
+1. ~~**Name**~~ — **Agendula** (final): *agenda* + Calendula's `-ula`. Renamed
+   from the working title *Floret*, which was promoted to the family /
+   design-language name.
 2. **tasks.org provider authority** — verify on a real device; OpenTasks
    (`org.dmfs.tasks`) is the certain target for v1.
 3. **jtx Board** — support its richer contract later, or stay OpenTasks-only?
-4. **B authority choice** — bundling `org.dmfs.tasks` makes Floret a *replacement*
+4. **B authority choice** — bundling `org.dmfs.tasks` makes Agendula a *replacement*
    for OpenTasks (one authority owner per device). Intended (one app instead of
    two), but a conscious choice.
 5. **Repo home** — sibling Gitea repo next to Calendula, MIT license, same CI.
 
 ---
 
-## 10. Sync sources Floret inherits for free (README copy)
+## 10. Sync sources Agendula inherits for free (README copy)
 
-Because Floret builds on the provider, not on any one sync app, it works with
+Because Agendula builds on the provider, not on any one sync app, it works with
 **anything that writes to the tasks provider**: DAVx5 (CalDAV), SmoothSync,
 CalDAV-Sync, DecSync CC, and any Android sync adapter — no per-app integration.
 Google Tasks / Microsoft To Do are out of scope by design (proprietary, would

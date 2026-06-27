@@ -1,6 +1,6 @@
-# Contributing to Floret
+# Contributing to Agendula
 
-Thanks for your interest in Floret — a Material 3 Expressive task app that's a
+Thanks for your interest in Agendula — a Material 3 Expressive task app that's a
 pure front-end over the OpenTasks `TaskContract` provider, with no own database
 or sync stack. Before diving in, skim [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 (how it's built), [`docs/ROADMAP.md`](docs/ROADMAP.md) (what's next), and
@@ -80,7 +80,7 @@ push, so run these locally before opening a PR. Keep CI green.
 
 ## Scope
 
-Floret stays true to its thesis: a front-end over **open** task backends
+Agendula stays true to its thesis: a front-end over **open** task backends
 (CalDAV / iCalendar / DecSync via the OpenTasks provider). Proprietary backends
 (Google Tasks, Microsoft To Do) are out of scope by design — they'd mean owning
 a sync stack. v1 targets the OpenTasks contract (OpenTasks + tasks.org); jtx's

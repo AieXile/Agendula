@@ -8,7 +8,7 @@ the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
 
 ### Added
 - M5 reminders onboarding & polish: a one-time reminder onboarding step after the
-  provider grant explains that Floret delivers due reminders itself and requests
+  provider grant explains that Agendula delivers due reminders itself and requests
   `POST_NOTIFICATIONS` (API 33+). A new **Settings** screen (gear on the lists
   overview), structured after Calendula as a category hub with sliding sub-screens
   (`CollapsingScaffold` + grouped category rows + full-screen `OptionPicker`):

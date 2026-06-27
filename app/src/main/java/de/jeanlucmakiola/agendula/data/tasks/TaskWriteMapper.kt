@@ -1,0 +1,74 @@
+package de.jeanlucmakiola.agendula.data.tasks
+
+import de.jeanlucmakiola.agendula.data.tasks.TasksContract.Lists
+import de.jeanlucmakiola.agendula.data.tasks.TasksContract.Tasks
+import de.jeanlucmakiola.agendula.domain.TaskForm
+import de.jeanlucmakiola.agendula.domain.toICal
+
+/**
+ * Turns a [TaskForm] / mutation into a name→value map. Pure (no ContentValues),
+ * so it unit-tests on the JVM; [AndroidTasksDataSource] converts the map to
+ * ContentValues. `null` values are written as SQL NULL (clears the column).
+ */
+object TaskWriteMapper {
+
+    fun taskValues(form: TaskForm, tzId: String): Map<String, Any?> = buildMap {
+        put(Tasks.TITLE, form.title.trim())
+        put(Tasks.LIST_ID, form.listId)
+        put(Tasks.DESCRIPTION, form.description?.trim()?.ifBlank { null })
+        put(Tasks.PRIORITY, form.priority.toICal())
+        // Keep completion in sync with progress whenever the form carries a
+        // percent (the Progress field was used). The provider already auto-
+        // completes at 100% but won't reopen below it — left to itself it strands
+        // a task "done at 75%" — so we set status both ways. COMPLETED is only
+        // cleared on reopen; at 100% we leave it for the provider to fill/keep so
+        // re-saving a finished task doesn't churn its completion timestamp. When
+        // no percent is present the standalone complete toggle stays authoritative.
+        val percent = form.percentComplete?.coerceIn(0, 100)
+        put(Tasks.PERCENT_COMPLETE, percent)
+        when {
+            percent == null -> Unit
+            percent >= 100 -> put(Tasks.STATUS, TasksContract.STATUS_COMPLETED)
+            percent > 0 -> {
+                put(Tasks.STATUS, TasksContract.STATUS_IN_PROCESS)
+                put(Tasks.COMPLETED, null)
+            }
+            else -> {
+                put(Tasks.STATUS, TasksContract.STATUS_NEEDS_ACTION)
+                put(Tasks.COMPLETED, null)
+            }
+        }
+        put(Tasks.IS_ALLDAY, if (form.isAllDay) 1 else 0)
+        put(Tasks.DTSTART, form.start?.toEpochMilliseconds())
+        put(Tasks.DUE, form.due?.toEpochMilliseconds())
+        put(Tasks.PARENT_ID, form.parentId)
+        // The provider treats a null tz as local time; set it explicitly for
+        // timed tasks so the stored instant is unambiguous across zones.
+        val timed = !form.isAllDay && (form.start != null || form.due != null)
+        put(Tasks.TZ, if (timed) tzId else null)
+    }
+
+    fun completionValues(completed: Boolean, nowMillis: Long): Map<String, Any?> =
+        if (completed) {
+            mapOf(
+                Tasks.STATUS to TasksContract.STATUS_COMPLETED,
+                Tasks.PERCENT_COMPLETE to 100,
+                Tasks.COMPLETED to nowMillis,
+            )
+        } else {
+            mapOf(
+                Tasks.STATUS to TasksContract.STATUS_NEEDS_ACTION,
+                Tasks.PERCENT_COMPLETE to null,
+                Tasks.COMPLETED to null,
+            )
+        }
+
+    fun localListValues(name: String, color: Int): Map<String, Any?> = mapOf(
+        Lists.NAME to name.trim(),
+        Lists.COLOR to color,
+        Lists.ACCOUNT_NAME to TasksContract.LOCAL_ACCOUNT_NAME,
+        Lists.ACCOUNT_TYPE to TasksContract.LOCAL_ACCOUNT_TYPE,
+        Lists.VISIBLE to 1,
+        Lists.SYNC_ENABLED to 1,
+    )
+}

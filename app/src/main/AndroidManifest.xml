@@ -30,7 +30,7 @@
     </queries>
 
     <application
-        android:name=".FloretApp"
+        android:name=".AgendulaApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -39,7 +39,7 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Floret"
+        android:theme="@style/Theme.Agendula"
         tools:targetApi="35">
         <activity
             android:name=".MainActivity"

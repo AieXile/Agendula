@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The languages Floret ships translations for. Single source of truth: each
+    The languages Agendula ships translations for. Single source of truth: each
     entry needs a matching res/values-<tag>/strings.xml, and is surfaced in both
     the in-app language picker (parsed at runtime by AppLanguage) and the system
     per-app language settings (Android 13+, via android:localeConfig). To add a
