@@ -6,7 +6,14 @@ the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-27
+
 ### Added
+- M2 Material 3 Expressive UI — the app is fully navigable now: the
+  provider/permission onboarding gate, the lists overview (smart lists + user
+  lists grouped by account), and the task list (swipe-to-complete / -delete,
+  inline add, smart-list section headers), detail, and create/edit screens, all
+  wired to the M1 ViewModels.
 - M3 detail/edit polish: a "Progress" slider (percent-complete, 5% detents,
   written to `Tasks.PERCENT_COMPLETE`) and conflict-safe saves — `updateTask`
   re-checks the provider's `last_modified` against the value captured when the
