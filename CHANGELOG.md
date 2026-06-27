@@ -6,6 +6,31 @@ the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Added
+- M3 detail/edit polish: a "Progress" slider (percent-complete, 5% detents,
+  written to `Tasks.PERCENT_COMPLETE`) and conflict-safe saves — `updateTask`
+  re-checks the provider's `last_modified` against the value captured when the
+  form loaded and surfaces an overwrite-or-cancel prompt instead of clobbering an
+  external change (e.g. a DAVx5 sync).
+- M4 subtasks (UI): reparent — a full-width, searchable "Parent task" sheet on
+  the edit form, with candidates grouped by due-date section, files a task under
+  any active top-level task in its list (or "None" to promote it); switching list
+  clears the now-invalid parent. Tapping a subtask in the detail screen opens its
+  own detail, which shows a "Part of …" parent card. On the task list a parent has
+  a dedicated expand button that reveals its children as a nested grouped run,
+  ending with an inline "add a subtask" row (an opt-out toggle is planned for the
+  M6 settings screen).
+- Priority is coloured by level (green / amber / red pastels) on the list, detail,
+  and edit screens.
+
+### Fixed
+- Overview open-counts now count top-level tasks only, so subtasks — and
+  especially open subtasks under a completed parent — no longer inflate a list's
+  "N open" or the smart-list counts.
+- Swipe-to-delete now reveals its red background + icon as you drag (tracking the
+  live direction, not just the settled target), and a floating "Deleted · Undo"
+  chip defers the actual delete so it can be restored.
+
 ## [0.1.0] - 2026-06-18
 
 ### Added

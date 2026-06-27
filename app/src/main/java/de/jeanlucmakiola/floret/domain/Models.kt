@@ -67,10 +67,11 @@ data class Task(
     val effectiveColor: Int get() = taskColor ?: listColor
 }
 
-/** Detail bundle: a task plus its direct children. */
+/** Detail bundle: a task, its parent (if it's a subtask), and its direct children. */
 data class TaskDetail(
     val task: Task,
     val subtasks: List<Task>,
+    val parent: Task? = null,
 )
 
 // --- pure provider <-> domain value mapping (unit-testable) ------------------

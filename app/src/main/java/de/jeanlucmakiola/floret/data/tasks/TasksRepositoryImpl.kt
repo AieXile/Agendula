@@ -22,6 +22,7 @@ import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Singleton
 class TasksRepositoryImpl @Inject constructor(
@@ -36,7 +37,11 @@ class TasksRepositoryImpl @Inject constructor(
 
     override fun taskDetail(taskId: Long): Flow<TaskDetail?> = observing {
         dataSource.task(taskId)?.let { task ->
-            TaskDetail(task, dataSource.subtasks(taskId).filter { it.taskId != taskId })
+            TaskDetail(
+                task = task,
+                subtasks = dataSource.subtasks(taskId).filter { it.taskId != taskId },
+                parent = task.parentId?.takeIf { it > 0 }?.let { dataSource.task(it) },
+            )
         }
     }
 
@@ -71,8 +76,17 @@ class TasksRepositoryImpl @Inject constructor(
     override suspend fun createTask(form: TaskForm): Long =
         withContext(io) { dataSource.insertTask(form) }
 
-    override suspend fun updateTask(taskId: Long, form: TaskForm) =
-        withContext(io) { dataSource.updateTask(taskId, form) }
+    override suspend fun updateTask(taskId: Long, form: TaskForm, expectedLastModified: Instant?) =
+        withContext(io) {
+            // Conflict-safe overwrite: re-read just before writing and bail if the
+            // provider's last_modified moved since the form captured it (external
+            // sync / another app). A null baseline means "force / overwrite anyway".
+            if (expectedLastModified != null) {
+                val current = dataSource.task(taskId)?.lastModified
+                if (current != null && current != expectedLastModified) throw TaskConflictException(taskId)
+            }
+            dataSource.updateTask(taskId, form)
+        }
 
     override suspend fun setCompleted(taskId: Long, completed: Boolean) =
         withContext(io) { dataSource.setCompleted(taskId, completed) }

@@ -29,9 +29,14 @@
 
     <!-- Task list: inline add + swipe -->
     <string name="add_task_hint">Add a task</string>
+    <string name="add_subtask_hint">Add a subtask</string>
     <string name="cd_add_task">Add task</string>
     <string name="cd_complete">Complete</string>
     <string name="cd_reopen">Reopen</string>
+    <string name="task_deleted">Deleted</string>
+    <string name="undo">Undo</string>
+    <string name="cd_expand_subtasks">Show subtasks</string>
+    <string name="cd_collapse_subtasks">Hide subtasks</string>
 
     <!-- Sections (due-date buckets) -->
     <string name="section_overdue">Overdue</string>
@@ -55,6 +60,8 @@
     <string name="detail_priority">Priority</string>
     <string name="detail_progress">Progress</string>
     <string name="detail_subtasks">Subtasks</string>
+    <string name="detail_parent">Parent task</string>
+    <string name="detail_part_of">Part of</string>
     <string name="percent_complete">%1$d%%</string>
 
     <!-- Task edit -->
@@ -63,6 +70,11 @@
     <string name="edit_due_label">Due</string>
     <string name="edit_all_day">All day</string>
     <string name="edit_priority_label">Priority</string>
+    <string name="edit_progress_label">Progress</string>
+    <string name="edit_parent_label">Parent task</string>
+    <string name="edit_parent_none">None (top-level)</string>
+    <string name="edit_parent_search">Search tasks</string>
+    <string name="edit_parent_empty">No matching tasks in this list.</string>
     <string name="edit_reminder_label">Reminder</string>
     <string name="edit_set">Set</string>
     <string name="edit_clear">Clear</string>
@@ -71,6 +83,11 @@
     <string name="edit_more_fields">More fields</string>
     <string name="close">Close</string>
     <string name="dialog_cancel">Cancel</string>
+
+    <!-- Save conflict -->
+    <string name="edit_conflict_title">Task changed elsewhere</string>
+    <string name="edit_conflict_body">This task was updated somewhere else (a sync or another app) since you opened it. Overwrite those changes with your edits?</string>
+    <string name="edit_conflict_overwrite">Overwrite</string>
 
     <!-- Reminder offsets -->
     <string name="reminder_none">None</string>

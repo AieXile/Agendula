@@ -49,16 +49,20 @@ class ListsViewModel @Inject constructor(
 
     private fun buildContent(lists: List<TaskList>, openTasks: List<Task>): ListsUiState.Content {
         val (todayStart, todayEnd) = DayWindow.today(Clock.System.now(), ZoneId.systemDefault())
+        // Count only top-level tasks: a subtask is represented by its parent (and
+        // its progress chip), and an open subtask under a *completed* parent must
+        // not read as an open item here. Mirrors the task list collapsing subtasks.
+        val topLevel = openTasks.filter { !it.isSubtask }
         fun count(smart: SmartList) =
-            openTasks.count { TaskFiltering.matches(it, TaskFilter.Smart(smart), todayStart, todayEnd) }
+            topLevel.count { TaskFiltering.matches(it, TaskFilter.Smart(smart), todayStart, todayEnd) }
 
         val smartCounts = listOf(
             SmartCount(SmartList.TODAY, count(SmartList.TODAY)),
             SmartCount(SmartList.OVERDUE, count(SmartList.OVERDUE)),
             SmartCount(SmartList.UPCOMING, count(SmartList.UPCOMING)),
-            SmartCount(SmartList.ALL, openTasks.size),
+            SmartCount(SmartList.ALL, topLevel.size),
         )
-        val openByList = openTasks.groupingBy { it.listId }.eachCount()
+        val openByList = topLevel.groupingBy { it.listId }.eachCount()
         val groups = lists
             .groupBy { it.accountName }
             .map { (account, accountLists) ->

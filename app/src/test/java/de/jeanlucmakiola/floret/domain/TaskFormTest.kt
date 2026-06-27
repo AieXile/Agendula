@@ -35,4 +35,13 @@ class TaskFormTest {
         val errors = TaskForm(title = "x", listId = 1, reminderMinutesBeforeDue = 10).validate()
         assertThat(errors).contains(TaskFormError.REMINDER_WITHOUT_DUE)
     }
+
+    @Test
+    fun `progress and parent auto-reveal only when they carry a value`() {
+        assertThat(TaskForm(title = "x", listId = 1).populatedFields()).isEmpty()
+        assertThat(TaskForm(title = "x", listId = 1, percentComplete = 0, parentId = 0).populatedFields())
+            .isEmpty()
+        assertThat(TaskForm(title = "x", listId = 1, percentComplete = 30, parentId = 9).populatedFields())
+            .containsExactly(TaskFormField.Progress, TaskFormField.Parent)
+    }
 }

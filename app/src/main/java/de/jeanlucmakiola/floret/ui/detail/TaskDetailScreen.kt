@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.automirrored.rounded.Notes
+import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Checklist
@@ -70,12 +71,12 @@ import de.jeanlucmakiola.floret.R
 import de.jeanlucmakiola.floret.domain.Task
 import de.jeanlucmakiola.floret.domain.TaskDetail
 import de.jeanlucmakiola.floret.ui.common.GroupedSurface
+import de.jeanlucmakiola.floret.ui.common.PriorityChip
 import de.jeanlucmakiola.floret.ui.common.formatDate
 import de.jeanlucmakiola.floret.ui.common.formatTime
 import de.jeanlucmakiola.floret.ui.common.pastelize
 import de.jeanlucmakiola.floret.ui.common.positionOf
 import de.jeanlucmakiola.floret.ui.tasklist.priorityLabel
-import de.jeanlucmakiola.floret.ui.tasklist.priorityTint
 
 /**
  * One task's detail. Each fact is its own tonal card with a leading icon (the
@@ -88,6 +89,7 @@ fun TaskDetailScreen(
     onEdit: () -> Unit,
     onDeleted: () -> Unit,
     onBack: () -> Unit,
+    onOpenTask: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TaskDetailViewModel = hiltViewModel(),
 ) {
@@ -136,7 +138,7 @@ fun TaskDetailScreen(
                 onToggle = { viewModel.toggleComplete(s.detail.task) },
                 onToggleSubtask = { viewModel.toggleComplete(it) },
                 onAddSubtask = { viewModel.addSubtask(it) },
-                onOpenSubtask = { /* reserved: subtask navigation lands with the subtasks milestone */ },
+                onOpenTask = onOpenTask,
             )
         }
     }
@@ -149,7 +151,7 @@ private fun DetailBody(
     onToggle: () -> Unit,
     onToggleSubtask: (Task) -> Unit,
     onAddSubtask: (String) -> Unit,
-    onOpenSubtask: (Long) -> Unit,
+    onOpenTask: (Long) -> Unit,
 ) {
     val task = detail.task
     val dark = isSystemInDarkTheme()
@@ -190,6 +192,28 @@ private fun DetailBody(
 
         // One card per fact; gaps between, no shared container (they aren't a group).
         val cards = buildList<@Composable () -> Unit> {
+            // Parent — only when this is a subtask. Conveys that it's filed under
+            // another task (and so doesn't stand alone in the list); taps open it.
+            detail.parent?.let { parent ->
+                add {
+                    DetailCard(
+                        icon = Icons.Rounded.AccountTree,
+                        iconContentDescription = stringResource(R.string.detail_parent),
+                        onClick = { onOpenTask(parent.taskId) },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.detail_part_of),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = parent.title.ifBlank { stringResource(R.string.task_untitled) },
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                }
+            }
+
             // When — the Calendula time card: date primary, time(s) secondary.
             taskWhenLines(task)?.let { (primary, secondary) ->
                 add {
@@ -221,25 +245,28 @@ private fun DetailBody(
                 }
             }
 
-            // Priority — the flag moves to the front, tinted like the list rows.
+            // Priority — a coloured status chip in the level's hue.
             if (task.priority != de.jeanlucmakiola.floret.domain.Priority.NONE) {
                 add {
                     DetailCard(
                         icon = Icons.Rounded.Flag,
-                        iconTint = priorityTint(task.priority),
                         iconContentDescription = stringResource(R.string.detail_priority),
                     ) {
-                        Text(priorityLabel(task.priority), style = MaterialTheme.typography.titleMedium)
+                        PriorityChip(
+                            priority = task.priority,
+                            label = priorityLabel(task.priority),
+                            showIcon = false,
+                        )
                     }
                 }
             }
 
-            // Progress — only meaningful with subtasks. Uses the provider's
-            // percent when set, otherwise the subtask completion ratio.
-            if (detail.subtasks.isNotEmpty()) {
-                val total = detail.subtasks.size
-                val doneCount = detail.subtasks.count { it.isCompleted }
-                val pct = task.percentComplete ?: (doneCount * 100 / total)
+            // Progress — shown when the task carries its own percent or has
+            // subtasks (then the completion ratio fills in if no percent is set).
+            val hasSubtasks = detail.subtasks.isNotEmpty()
+            if ((task.percentComplete ?: 0) > 0 || hasSubtasks) {
+                val pct = task.percentComplete
+                    ?: (detail.subtasks.count { it.isCompleted } * 100 / detail.subtasks.size)
                 add {
                     DetailCard(icon = Icons.Rounded.Percent, iconContentDescription = stringResource(R.string.detail_progress)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -275,7 +302,7 @@ private fun DetailBody(
                     onToggle = { subtasksExpanded = !subtasksExpanded },
                     onToggleSubtask = onToggleSubtask,
                     onAddSubtask = onAddSubtask,
-                    onOpenSubtask = onOpenSubtask,
+                    onOpenSubtask = onOpenTask,
                 )
             }
         }
@@ -436,13 +463,12 @@ private fun DetailCard(
     icon: ImageVector,
     iconContentDescription: String?,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    val shape = RoundedCornerShape(16.dp)
+    val color = MaterialTheme.colorScheme.surfaceContainerHigh
+    val body: @Composable () -> Unit = {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -456,6 +482,11 @@ private fun DetailCard(
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f), content = content)
         }
+    }
+    if (onClick != null) {
+        Surface(onClick = onClick, color = color, shape = shape, modifier = Modifier.fillMaxWidth()) { body() }
+    } else {
+        Surface(color = color, shape = shape, modifier = Modifier.fillMaxWidth()) { body() }
     }
 }
 

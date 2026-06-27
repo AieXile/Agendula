@@ -20,11 +20,16 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Notes
+import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Checklist
@@ -33,7 +38,9 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Percent
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
@@ -42,10 +49,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -54,17 +64,21 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,21 +86,31 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.floret.R
+import de.jeanlucmakiola.floret.domain.DayWindow
 import de.jeanlucmakiola.floret.domain.Priority
+import de.jeanlucmakiola.floret.domain.Task
 import de.jeanlucmakiola.floret.domain.TaskFormError
 import de.jeanlucmakiola.floret.domain.TaskFormField
 import de.jeanlucmakiola.floret.domain.TaskList
+import de.jeanlucmakiola.floret.domain.TaskSection
+import de.jeanlucmakiola.floret.domain.TaskSections
+import de.jeanlucmakiola.floret.ui.common.GroupedRow
 import de.jeanlucmakiola.floret.ui.common.InlineTextField
 import de.jeanlucmakiola.floret.ui.common.OptionCard
+import de.jeanlucmakiola.floret.ui.common.priorityFill
 import de.jeanlucmakiola.floret.ui.common.formatDate
 import de.jeanlucmakiola.floret.ui.common.formatTime
 import de.jeanlucmakiola.floret.ui.common.localToInstant
 import de.jeanlucmakiola.floret.ui.common.pastelize
+import de.jeanlucmakiola.floret.ui.common.positionOf
 import de.jeanlucmakiola.floret.ui.common.toLocalDate
 import de.jeanlucmakiola.floret.ui.common.toLocalTime
 import de.jeanlucmakiola.floret.ui.tasklist.priorityLabel
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -160,6 +184,7 @@ private fun EditContent(
 
     var pickerTarget by remember { mutableStateOf<PickerTarget?>(null) }
     var showListPicker by rememberSaveable { mutableStateOf(false) }
+    var showParentPicker by rememberSaveable { mutableStateOf(false) }
     var showReminderPicker by rememberSaveable { mutableStateOf(false) }
     var showFieldPicker by rememberSaveable { mutableStateOf(false) }
 
@@ -297,14 +322,26 @@ private fun EditContent(
                         )
                     }
                     Spacer(Modifier.height(12.dp))
+                    // The M3 single-select segmented row, but the active segment
+                    // takes its priority hue so the choice reads in colour.
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         Priority.entries.forEachIndexed { index, priority ->
+                            val fill = priorityFill(priority, dark)
+                            val active = fill.isSpecified
                             SegmentedButton(
                                 selected = state.priority == priority,
                                 onClick = { viewModel.onPriorityChange(priority) },
                                 shape = SegmentedButtonDefaults.itemShape(index, Priority.entries.size),
-                                // Drop the selected-check icon; with four buttons
-                                // its reserved width is what crowds the labels.
+                                colors = SegmentedButtonDefaults.colors(
+                                    activeContainerColor = if (active) fill else MaterialTheme.colorScheme.secondaryContainer,
+                                    activeContentColor = when {
+                                        !active -> MaterialTheme.colorScheme.onSecondaryContainer
+                                        fill.luminance() > 0.5f -> Color.Black
+                                        else -> Color.White
+                                    },
+                                ),
+                                // Drop the selected-check icon; with four buttons its
+                                // reserved width is what crowds the labels.
                                 icon = {},
                             ) {
                                 Text(
@@ -315,6 +352,76 @@ private fun EditContent(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        OptionalFormSection(visible = TaskFormField.Progress in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            val pct = state.percentComplete ?: 0
+            // Full-width like Priority: the slider needs the card's whole width,
+            // so the label/readout sit on a header row above it.
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Rounded.Percent,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(R.string.edit_progress_label),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text(
+                            text = stringResource(R.string.percent_complete, pct),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Slider(
+                        value = pct.toFloat(),
+                        onValueChange = { viewModel.onPercentChange(it.toInt()) },
+                        valueRange = 0f..100f,
+                        steps = 19, // 5% detents
+                    )
+                }
+            }
+        }
+
+        OptionalFormSection(visible = TaskFormField.Parent in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            EditCard(
+                icon = Icons.Rounded.AccountTree,
+                iconContentDescription = stringResource(R.string.edit_parent_label),
+                onClick = { showParentPicker = true },
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = state.parent?.title?.ifBlank { stringResource(R.string.task_untitled) }
+                                ?: stringResource(R.string.edit_parent_none),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.edit_parent_label),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -388,6 +495,31 @@ private fun EditContent(
             selectedId = state.listId,
             onSelect = { viewModel.onListChange(it); showListPicker = false },
             onDismiss = { showListPicker = false },
+        )
+    }
+
+    if (showParentPicker) {
+        ParentPickerSheet(
+            candidates = state.parentCandidates,
+            selectedId = state.parentId,
+            onSelect = { viewModel.onParentChange(it); showParentPicker = false },
+            onDismiss = { showParentPicker = false },
+        )
+    }
+
+    if (state.saveConflict) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConflict,
+            title = { Text(stringResource(R.string.edit_conflict_title)) },
+            text = { Text(stringResource(R.string.edit_conflict_body)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.save(force = true) }) {
+                    Text(stringResource(R.string.edit_conflict_overwrite))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissConflict) { Text(stringResource(R.string.dialog_cancel)) }
+            },
         )
     }
 
@@ -650,6 +782,139 @@ private fun ListPickerDialog(
     )
 }
 
+/**
+ * Pick the task to file this one under, or "None" to keep it top-level. A
+ * full-width modal sheet (not a cramped dialog): a search field filters by title,
+ * and candidates group under the same due-date sections as the task list
+ * (Overdue / Today / Upcoming / No date) so the right one is easy to find in a
+ * long list. Only active tasks are offered (the VM filters closed ones out).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun ParentPickerSheet(
+    candidates: List<Task>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    // Animate the sheet out before reporting the pick, so it doesn't snap shut.
+    fun choose(id: Long?) {
+        scope.launch { sheetState.hide() }.invokeOnCompletion {
+            if (!sheetState.isVisible) onSelect(id)
+        }
+    }
+
+    var query by rememberSaveable { mutableStateOf("") }
+    val filtered = remember(candidates, query) {
+        val q = query.trim()
+        if (q.isEmpty()) candidates else candidates.filter { it.title.contains(q, ignoreCase = true) }
+    }
+    val (todayStart, todayEnd) = remember { DayWindow.today(Clock.System.now(), ZoneId.systemDefault()) }
+    val sections = remember(filtered) { TaskSections.of(filtered, todayStart, todayEnd) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 32.dp),
+        ) {
+            item(key = "title") {
+                Text(
+                    text = stringResource(R.string.edit_parent_label),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                )
+            }
+            // The search field pins to the top of the sheet while the list scrolls.
+            stickyHeader(key = "search") {
+                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) {
+                                IconButton(onClick = { query = "" }) {
+                                    Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.edit_clear))
+                                }
+                            }
+                        },
+                        placeholder = { Text(stringResource(R.string.edit_parent_search)) },
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                    )
+                }
+            }
+            // "None" — promote to top-level. Pinned above the grouped candidates.
+            item(key = "none") {
+                GroupedRow(
+                    title = stringResource(R.string.edit_parent_none),
+                    position = de.jeanlucmakiola.floret.ui.common.Position.Alone,
+                    selected = selectedId == null,
+                    minHeight = 56.dp,
+                    onClick = { choose(null) },
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+
+            if (sections.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        text = stringResource(R.string.edit_parent_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+                    )
+                }
+            }
+
+            sections.forEach { section ->
+                stickyHeader(key = "hdr-${section.section}") {
+                    SheetSectionHeader(parentSectionLabel(section.section))
+                }
+                itemsIndexed(section.tasks, key = { _, t -> t.taskId }) { index, task ->
+                    GroupedRow(
+                        title = task.title.ifBlank { stringResource(R.string.task_untitled) },
+                        position = positionOf(index, section.tasks.size),
+                        summary = task.due?.formatDate(),
+                        selected = task.taskId == selectedId,
+                        minHeight = 56.dp,
+                        onClick = { choose(task.taskId) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Section header inside the parent sheet — opaque so rows scroll cleanly under it. */
+@Composable
+private fun SheetSectionHeader(text: String) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp, bottom = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun parentSectionLabel(section: TaskSection): String = stringResource(
+    when (section) {
+        TaskSection.OVERDUE -> R.string.section_overdue
+        TaskSection.TODAY -> R.string.section_today
+        TaskSection.UPCOMING -> R.string.section_upcoming
+        TaskSection.NO_DATE -> R.string.section_no_date
+        TaskSection.COMPLETED -> R.string.section_completed
+    },
+)
+
 @Composable
 private fun ReminderPickerDialog(
     selected: Int?,
@@ -706,12 +971,16 @@ private fun FieldPickerDialog(
 private fun fieldLabel(field: TaskFormField): Int = when (field) {
     TaskFormField.Description -> R.string.field_description
     TaskFormField.Priority -> R.string.edit_priority_label
+    TaskFormField.Progress -> R.string.edit_progress_label
+    TaskFormField.Parent -> R.string.edit_parent_label
     TaskFormField.Reminder -> R.string.edit_reminder_label
 }
 
 private fun fieldIcon(field: TaskFormField): ImageVector = when (field) {
     TaskFormField.Description -> Icons.AutoMirrored.Rounded.Notes
     TaskFormField.Priority -> Icons.Rounded.Flag
+    TaskFormField.Progress -> Icons.Rounded.Percent
+    TaskFormField.Parent -> Icons.Rounded.AccountTree
     TaskFormField.Reminder -> Icons.Rounded.Notifications
 }
 

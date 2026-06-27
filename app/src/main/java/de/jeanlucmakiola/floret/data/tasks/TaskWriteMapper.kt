@@ -17,6 +17,27 @@ object TaskWriteMapper {
         put(Tasks.LIST_ID, form.listId)
         put(Tasks.DESCRIPTION, form.description?.trim()?.ifBlank { null })
         put(Tasks.PRIORITY, form.priority.toICal())
+        // Keep completion in sync with progress whenever the form carries a
+        // percent (the Progress field was used). The provider already auto-
+        // completes at 100% but won't reopen below it — left to itself it strands
+        // a task "done at 75%" — so we set status both ways. COMPLETED is only
+        // cleared on reopen; at 100% we leave it for the provider to fill/keep so
+        // re-saving a finished task doesn't churn its completion timestamp. When
+        // no percent is present the standalone complete toggle stays authoritative.
+        val percent = form.percentComplete?.coerceIn(0, 100)
+        put(Tasks.PERCENT_COMPLETE, percent)
+        when {
+            percent == null -> Unit
+            percent >= 100 -> put(Tasks.STATUS, TasksContract.STATUS_COMPLETED)
+            percent > 0 -> {
+                put(Tasks.STATUS, TasksContract.STATUS_IN_PROCESS)
+                put(Tasks.COMPLETED, null)
+            }
+            else -> {
+                put(Tasks.STATUS, TasksContract.STATUS_NEEDS_ACTION)
+                put(Tasks.COMPLETED, null)
+            }
+        }
         put(Tasks.IS_ALLDAY, if (form.isAllDay) 1 else 0)
         put(Tasks.DTSTART, form.start?.toEpochMilliseconds())
         put(Tasks.DUE, form.due?.toEpochMilliseconds())

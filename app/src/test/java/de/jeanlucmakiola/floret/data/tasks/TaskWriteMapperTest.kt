@@ -29,6 +29,50 @@ class TaskWriteMapperTest {
     }
 
     @Test
+    fun `percent complete is written and clamped to 0-100`() {
+        val values = TaskWriteMapper.taskValues(
+            TaskForm(title = "x", listId = 1L, percentComplete = 140),
+            tzId = "UTC",
+        )
+        assertThat(values[Tasks.PERCENT_COMPLETE]).isEqualTo(100)
+
+        val unset = TaskWriteMapper.taskValues(TaskForm(title = "x", listId = 1L), tzId = "UTC")
+        assertThat(unset[Tasks.PERCENT_COMPLETE]).isNull()
+    }
+
+    @Test
+    fun `progress keeps completion in sync both ways`() {
+        // 100% completes the task (timestamp left to the provider / existing value).
+        val done = TaskWriteMapper.taskValues(
+            TaskForm(title = "x", listId = 1L, percentComplete = 100),
+            tzId = "UTC",
+        )
+        assertThat(done[Tasks.STATUS]).isEqualTo(TasksContract.STATUS_COMPLETED)
+        assertThat(done.containsKey(Tasks.COMPLETED)).isFalse()
+
+        // Below 100% reopens it and clears the completion timestamp.
+        val reopened = TaskWriteMapper.taskValues(
+            TaskForm(title = "x", listId = 1L, percentComplete = 75),
+            tzId = "UTC",
+        )
+        assertThat(reopened[Tasks.STATUS]).isEqualTo(TasksContract.STATUS_IN_PROCESS)
+        assertThat(reopened[Tasks.COMPLETED]).isNull()
+
+        // No percent in the form ⇒ status is left to the complete toggle.
+        val untouched = TaskWriteMapper.taskValues(TaskForm(title = "x", listId = 1L), tzId = "UTC")
+        assertThat(untouched.containsKey(Tasks.STATUS)).isFalse()
+    }
+
+    @Test
+    fun `parent id is written so a task can be filed under another`() {
+        val values = TaskWriteMapper.taskValues(
+            TaskForm(title = "x", listId = 1L, parentId = 7L),
+            tzId = "UTC",
+        )
+        assertThat(values[Tasks.PARENT_ID]).isEqualTo(7L)
+    }
+
+    @Test
     fun `all-day task clears the timezone`() {
         val form = TaskForm(
             title = "Holiday",

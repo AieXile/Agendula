@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.jeanlucmakiola.floret.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.data.reminders.ReminderScheduler
+import de.jeanlucmakiola.floret.data.tasks.TaskConflictException
 import de.jeanlucmakiola.floret.data.tasks.TasksRepository
 import de.jeanlucmakiola.floret.domain.Priority
+import de.jeanlucmakiola.floret.domain.Task
+import de.jeanlucmakiola.floret.domain.TaskFilter
 import de.jeanlucmakiola.floret.domain.TaskForm
 import de.jeanlucmakiola.floret.domain.TaskFormError
 import de.jeanlucmakiola.floret.domain.TaskFormField
@@ -36,16 +39,24 @@ data class TaskEditUiState(
     val isAllDay: Boolean = false,
     val priority: Priority = Priority.NONE,
     val parentId: Long? = null,
+    val percentComplete: Int? = null,
     val reminderMinutesBeforeDue: Int? = null,
     val lists: List<TaskList> = emptyList(),
+    /** Top-level tasks in the current list this task can be filed under (reparent). */
+    val parentCandidates: List<Task> = emptyList(),
     /** Optional sections currently shown (core Title / List / When are always on). */
     val visibleFields: Set<TaskFormField> = emptySet(),
     /** Optional sections still tucked behind "More fields". */
     val hiddenFields: List<TaskFormField> = emptyList(),
     val errors: Set<TaskFormError> = emptySet(),
     val saveFailed: Boolean = false,
+    /** The task changed underneath us; the screen asks to overwrite or cancel. */
+    val saveConflict: Boolean = false,
     val saved: Boolean = false,
-)
+) {
+    /** The currently-selected parent task, if this task is filed under one. */
+    val parent: Task? get() = parentCandidates.firstOrNull { it.taskId == parentId }
+}
 
 @HiltViewModel
 class TaskEditViewModel @Inject constructor(
@@ -59,12 +70,16 @@ class TaskEditViewModel @Inject constructor(
 
     private var editingTaskId: Long? = null
 
+    /** `last_modified` captured when the form loaded — the conflict-check baseline. */
+    private var baselineLastModified: Instant? = null
+
     /** Sections shown by default (a setting); the rest unfold via [revealField]. */
     private var defaultFields: Set<TaskFormField> = emptySet()
 
     /** Start a fresh task, optionally pre-selecting a list / parent. */
     fun bindNew(presetListId: Long? = null, parentId: Long? = null) {
         editingTaskId = null
+        baselineLastModified = null
         viewModelScope.launch {
             val settings = settingsPrefs.settings.first()
             defaultFields = settings.defaultEditFields
@@ -80,6 +95,7 @@ class TaskEditViewModel @Inject constructor(
                     listId = defaultList,
                     parentId = parentId,
                     lists = lists,
+                    parentCandidates = loadParents(defaultList, selfId = null),
                 ),
             )
         }
@@ -96,6 +112,7 @@ class TaskEditViewModel @Inject constructor(
                 _state.value = _state.value.copy(loading = false, lists = lists)
                 return@launch
             }
+            baselineLastModified = task.lastModified
             _state.value = withFields(
                 TaskEditUiState(
                     loading = false,
@@ -108,10 +125,24 @@ class TaskEditViewModel @Inject constructor(
                     isAllDay = task.isAllDay,
                     priority = task.priority,
                     parentId = task.parentId,
+                    percentComplete = task.percentComplete,
                     lists = lists,
+                    parentCandidates = loadParents(task.listId, selfId = taskId),
                 ),
             )
         }
+    }
+
+    /**
+     * Tasks the edited task can be filed under: active, top-level tasks in
+     * [listId], minus the task itself (a task can't parent itself). Restricting to
+     * top-level keeps the hierarchy one level deep (matching the detail screen),
+     * and to active so you don't file work under something already done/cancelled.
+     */
+    private suspend fun loadParents(listId: Long?, selfId: Long?): List<Task> {
+        if (listId == null) return emptyList()
+        val tasks = runCatching { repository.tasks(TaskFilter.OfList(listId)).first() }.getOrElse { emptyList() }
+        return tasks.filter { !it.isClosed && !it.isSubtask && it.taskId != selfId }
     }
 
     /** Reveal an optional section (one tap from the "More fields" picker). */
@@ -134,14 +165,30 @@ class TaskEditViewModel @Inject constructor(
 
     fun onTitleChange(value: String) = update { it.copy(title = value, errors = emptySet()) }
     fun onDescriptionChange(value: String) = update { it.copy(description = value) }
-    fun onListChange(listId: Long) = update { it.copy(listId = listId, errors = emptySet()) }
+
+    /** Switching list invalidates the parent (it lived in the old list); reload candidates. */
+    fun onListChange(listId: Long) {
+        if (_state.value.listId == listId) return // re-picking the same list keeps the parent
+        update { it.copy(listId = listId, parentId = null, errors = emptySet()) }
+        viewModelScope.launch {
+            val candidates = loadParents(listId, selfId = editingTaskId)
+            update { it.copy(parentCandidates = candidates) }
+        }
+    }
+
     fun onStartChange(value: Instant?) = update { it.copy(start = value) }
     fun onDueChange(value: Instant?) = update { it.copy(due = value) }
     fun onAllDayChange(value: Boolean) = update { it.copy(isAllDay = value) }
     fun onPriorityChange(value: Priority) = update { it.copy(priority = value) }
+    fun onPercentChange(value: Int?) = update { it.copy(percentComplete = value?.coerceIn(0, 100)) }
+    fun onParentChange(parentId: Long?) = update { it.copy(parentId = parentId) }
     fun onReminderChange(minutesBeforeDue: Int?) = update { it.copy(reminderMinutesBeforeDue = minutesBeforeDue) }
 
-    fun save() {
+    /** Dismiss the conflict prompt without saving (the user keeps editing). */
+    fun dismissConflict() = update { it.copy(saveConflict = false) }
+
+    /** [force] = overwrite even if the task changed since it loaded (conflict prompt). */
+    fun save(force: Boolean = false) {
         val current = _state.value
         val form = current.toForm()
         val errors = form.validate()
@@ -152,12 +199,20 @@ class TaskEditViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val id = editingTaskId
-                if (id == null) repository.createTask(form) else repository.updateTask(id, form)
+                if (id == null) {
+                    repository.createTask(form)
+                } else {
+                    repository.updateTask(id, form, expectedLastModified = if (force) null else baselineLastModified)
+                }
                 reminderScheduler.sync()
             }.onSuccess {
-                _state.value = _state.value.copy(saved = true, saveFailed = false)
-            }.onFailure {
-                _state.value = _state.value.copy(saveFailed = true)
+                _state.value = _state.value.copy(saved = true, saveFailed = false, saveConflict = false)
+            }.onFailure { error ->
+                _state.value = if (error is TaskConflictException) {
+                    _state.value.copy(saveConflict = true, saveFailed = false)
+                } else {
+                    _state.value.copy(saveFailed = true)
+                }
             }
         }
     }
@@ -177,5 +232,6 @@ private fun TaskEditUiState.toForm(): TaskForm = TaskForm(
     isAllDay = isAllDay,
     priority = priority,
     parentId = parentId,
+    percentComplete = percentComplete,
     reminderMinutesBeforeDue = reminderMinutesBeforeDue,
 )

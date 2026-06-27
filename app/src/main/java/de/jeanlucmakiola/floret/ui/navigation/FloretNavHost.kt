@@ -86,6 +86,9 @@ fun FloretNavHost(modifier: Modifier = Modifier) {
                 onEdit = { nav.navigate(Dest.TaskEdit.buildEdit(taskId)) },
                 onDeleted = { nav.popBackStack() },
                 onBack = { nav.popBackStack() },
+                // A subtask opens its own detail — another entry on the stack, with
+                // its own VM bound to that id (it may have children of its own).
+                onOpenTask = { subtaskId -> nav.navigate(Dest.TaskDetail.build(subtaskId)) },
             )
         }
 

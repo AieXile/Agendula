@@ -16,6 +16,8 @@ data class TaskForm(
     val isAllDay: Boolean = false,
     val priority: Priority = Priority.NONE,
     val parentId: Long? = null,
+    /** 0..100 progress; `null` leaves it unset (cleared). */
+    val percentComplete: Int? = null,
     /** Minutes before [due] to fire a reminder; `null` = no reminder. */
     val reminderMinutesBeforeDue: Int? = null,
 ) {
@@ -37,11 +39,13 @@ enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITH
  * a setting; the rest unfold on demand. Declaring these as an enum keeps the
  * disclosure generic, so adding a field later is one entry plus its card.
  */
-enum class TaskFormField { Description, Priority, Reminder }
+enum class TaskFormField { Description, Priority, Progress, Parent, Reminder }
 
 /** The optional fields that already carry a value — auto-revealed when editing. */
 fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
     if (!description.isNullOrBlank()) add(TaskFormField.Description)
     if (priority != Priority.NONE) add(TaskFormField.Priority)
+    if ((percentComplete ?: 0) > 0) add(TaskFormField.Progress)
+    if (parentId != null && parentId > 0) add(TaskFormField.Parent)
     if (reminderMinutesBeforeDue != null) add(TaskFormField.Reminder)
 }
