@@ -6,6 +6,24 @@ the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
 
 ## [Unreleased]
 
+### Added
+- M5 reminders onboarding & polish: a one-time reminder onboarding step after the
+  provider grant explains that Floret delivers due reminders itself and requests
+  `POST_NOTIFICATIONS` (API 33+). A new **Settings** screen (gear on the lists
+  overview), structured after Calendula as a category hub with sliding sub-screens
+  (`CollapsingScaffold` + grouped category rows + full-screen `OptionPicker`):
+  an About card, **Appearance** (theme, dynamic colour), **Task form** (which
+  optional edit-form fields show by default, default list, the add-a-subtask-row
+  opt-out), and **Reminders** (a master enable switch that re-requests the
+  notification permission, a "when to remind" default offset, and — on Android 12
+  only — an exact-alarm status row that deep-links to system settings).
+- The reminders master switch gates the whole engine: turning it off clears every
+  scheduled alarm and suppresses any that fire.
+- Expressive top-bar actions: a reusable `ShapedActionButton` wraps an action icon
+  in a tonal M3 Expressive `MaterialShapes` container (the settings entry uses the
+  faceted Gem shape, tertiary tones), with a small press scale/rotate flourish.
+  Future top-bar actions pick their own shape from the `ActionShapes` registry.
+
 ## [0.2.0] - 2026-06-27
 
 ### Added

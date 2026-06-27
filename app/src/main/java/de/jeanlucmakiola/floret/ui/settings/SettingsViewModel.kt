@@ -3,10 +3,12 @@ package de.jeanlucmakiola.floret.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.jeanlucmakiola.floret.data.prefs.ListReminderOverride
 import de.jeanlucmakiola.floret.data.prefs.Settings
 import de.jeanlucmakiola.floret.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.data.prefs.ThemeMode
 import de.jeanlucmakiola.floret.data.tasks.TasksRepository
+import de.jeanlucmakiola.floret.domain.TaskFormField
 import de.jeanlucmakiola.floret.domain.TaskList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -40,4 +42,16 @@ class SettingsViewModel @Inject constructor(
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { prefs.setDynamicColor(enabled) }
     fun setDefaultList(id: Long?) = viewModelScope.launch { prefs.setDefaultListId(id) }
     fun setReminderLeadMinutes(minutes: Int) = viewModelScope.launch { prefs.setReminderLeadMinutes(minutes) }
+    fun setRemindersEnabled(enabled: Boolean) = viewModelScope.launch { prefs.setRemindersEnabled(enabled) }
+    fun setShowAddSubtaskRow(show: Boolean) = viewModelScope.launch { prefs.setShowAddSubtaskRow(show) }
+
+    /** Toggle whether [field] shows by default on a new task's edit form. */
+    fun setFormFieldDefault(field: TaskFormField, enabled: Boolean) = viewModelScope.launch {
+        val current = state.value.settings.defaultEditFields
+        prefs.setDefaultEditFields(if (enabled) current + field else current - field)
+    }
+
+    /** Set (or clear, via [ListReminderOverride.Inherit]) a list's reminder override. */
+    fun setListReminderOverride(listId: Long, override: ListReminderOverride) =
+        viewModelScope.launch { prefs.setListReminderOverride(listId, override) }
 }

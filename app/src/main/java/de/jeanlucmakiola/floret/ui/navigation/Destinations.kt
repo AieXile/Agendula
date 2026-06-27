@@ -23,6 +23,9 @@ object Dest {
     /** Home — smart lists + the user's lists. */
     const val LISTS = "lists"
 
+    /** App preferences. */
+    const val SETTINGS = "settings"
+
     /**
      * One [TaskFilter]'s tasks. Carries *either* `listId` (a real list) *or*
      * `smart` (a [SmartList] name); whichever is set decides the filter.

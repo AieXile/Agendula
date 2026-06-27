@@ -12,11 +12,14 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 The full non-visual stack ("backoffice") over the OpenTasks `TaskContract`
 provider is **done and unit-tested**, and the Material 3 Expressive UI is built
-through **M4**: lists → task list (swipe gestures, inline add, smart-list section
+through **M5**: lists → task list (swipe gestures, inline add, smart-list section
 headers) → detail / edit with full CRUD, date-time pickers, priority,
 percent-complete, conflict-safe saves, per-task reminders, and subtask
-create + reparent. Remaining work is M5 (notification / exact-alarm onboarding,
-default reminder UI) and M6 (Settings screen, Glance widget, i18n, release).
+create + reparent — plus a one-time reminder onboarding step and a Settings
+screen (theme, dynamic colour, due-reminder master toggle + default offset +
+exact-alarm status, default list, and the add-a-subtask-row opt-out). Remaining
+work is M6 (Glance widget, translations, F-Droid release; the Settings screen
+landed early with M5 and still needs a language entry).
 
 ---
 
@@ -85,7 +88,7 @@ ViewModels.
   last segment while the next top-level task stays mid-run. Children are
   full-width, set a step down in tone (`surfaceContainer` vs the parents'
   `surfaceContainerHigh`) and with no colour bar (checkbox stays aligned). An expanded group ends with an inline "add a subtask"
-  row (always on for now; an opt-out toggle lands with the M6 settings screen).
+  row (on by default; opt out in Settings → Tasks since M5).
   Offered only where the list holds all the children (a real list; smart lists
   that omit off-day children stay collapsed). `TaskDetail.parent` carries the
   parent for the detail card.
@@ -95,25 +98,32 @@ ViewModels.
   promote it); switching list clears the now-invalid parent. Candidates stay
   active + top-level to keep nesting one level deep, matching the detail screen.
 
-### 🚧 M5 — Reminders onboarding & polish
+### ✅ M5 — Reminders onboarding & polish
 The engine exists (M1: `ReminderScheduler` + boot / provider-change re-sync,
 `DueReminderReceiver`, `TaskNotifier`).
 - ✅ Per-task reminder-offset UI (`ReminderPickerDialog` → `TaskForm`
   `reminderMinutesBeforeDue`).
-- ⬜ `POST_NOTIFICATIONS` + exact-alarm onboarding flow — currently only graceful
-  runtime checks (`TaskNotifier.canPost`, `canScheduleExactAlarms`), no
-  user-facing gate.
-- ⬜ Default reminder-offset settings UI — `SettingsPrefs`/`SettingsViewModel`
-  back it, but no Composable exposes it.
-- ⬜ End-to-end verification on device.
+- ✅ `POST_NOTIFICATIONS` onboarding flow — a one-time `ReminderOnboardingScreen`
+  (Calendula's shell + copy adapted for tasks) gated in `RootScreen` after the
+  provider/permission grant; it requests the runtime permission (API 33+) and
+  records the choice (`reminderOnboardingDone`). Re-requestable from Settings.
+- ✅ Exact-alarm surface — a status row in Settings → Reminders, shown only on
+  Android 12 (where `SCHEDULE_EXACT_ALARM` is revocable), deep-linking to the
+  system grant screen; on 13+ the app holds `USE_EXACT_ALARM` (always granted).
+- ✅ Default reminder-offset settings UI — exposed as "When to remind" in
+  Settings → Reminders (`reminderLeadMinutes`), behind a master `remindersEnabled`
+  switch that gates the entire engine (`ReminderScheduler` clears all alarms when
+  off; `DueReminderReceiver` suppresses any in-flight fire).
+- ⬜ End-to-end verification on device (build + unit tests green; not yet run on
+  a device with a live provider).
 
 ### 🚧 M6 — Settings, widget, i18n, release
 - ✅ F-Droid metadata scaffolded (`fdroid-metadata/`).
-- ⬜ Settings screen — `SettingsViewModel` exists but no `SettingsScreen`
-  Composable and it is not in the nav graph (only used by `MainActivity` for
-  app-level theming). Needs theme / dynamic-color / language, default list,
-  default reminder, and the opt-out toggle for the task list's inline
-  add-a-subtask row (on by default since M4).
+- ✅ Settings screen — landed early with M5 (`SettingsScreen` in the nav graph,
+  reached by the gear on the lists overview). Covers theme, dynamic colour, due
+  reminders (toggle + default offset + exact-alarm status), default list, and the
+  add-a-subtask-row opt-out. Still ⬜ a **language** entry (deferred until there
+  are translations to switch to).
 - ⬜ Glance task-list widget — deps present in `build.gradle.kts`, zero impl.
 - ⬜ Translations — only `res/values/` (English); no `values-XX`.
 - ⬜ Finalize F-Droid metadata, confirm CI release flow.

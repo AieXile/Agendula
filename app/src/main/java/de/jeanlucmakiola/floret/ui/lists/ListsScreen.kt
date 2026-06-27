@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,8 +48,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.floret.R
 import de.jeanlucmakiola.floret.domain.SmartList
 import de.jeanlucmakiola.floret.domain.TaskFilter
+import de.jeanlucmakiola.floret.ui.common.ActionShapes
 import de.jeanlucmakiola.floret.ui.common.GroupedRow
 import de.jeanlucmakiola.floret.ui.common.ListColorChip
+import de.jeanlucmakiola.floret.ui.common.ShapedActionButton
 import de.jeanlucmakiola.floret.ui.common.positionOf
 
 /**
@@ -61,6 +64,7 @@ import de.jeanlucmakiola.floret.ui.common.positionOf
 fun ListsScreen(
     onOpenFilter: (TaskFilter) -> Unit,
     onNewTask: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ListsViewModel = hiltViewModel(),
 ) {
@@ -72,6 +76,17 @@ fun ListsScreen(
         topBar = {
             MediumTopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    ShapedActionButton(
+                        shape = ActionShapes.Settings,
+                        icon = Icons.Rounded.Settings,
+                        contentDescription = stringResource(R.string.settings_title),
+                        onClick = onOpenSettings,
+                        modifier = Modifier.padding(end = 8.dp),
+                        size = 48.dp,
+                        iconSize = 26.dp,
+                    )
+                },
                 scrollBehavior = scrollBehavior,
             )
         },

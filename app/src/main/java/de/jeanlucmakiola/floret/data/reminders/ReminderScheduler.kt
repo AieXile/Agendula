@@ -33,11 +33,11 @@ class ReminderScheduler @Inject constructor(
 ) {
     suspend fun sync() = withContext(io) {
         val provider = providerResolver.resolve()
-        if (provider == null || !providerResolver.hasPermission(provider)) {
+        val settings = settingsPrefs.settings.first()
+        if (provider == null || !providerResolver.hasPermission(provider) || !settings.remindersEnabled) {
             clearAll()
             return@withContext
         }
-        val lead = settingsPrefs.settings.first().reminderLeadMinutes.coerceAtLeast(0)
         val now = System.currentTimeMillis()
         val horizon = now + WINDOW_MS
         val tasks = runCatching { dataSource.tasks(TaskQuery(includeCompleted = false)) }
@@ -45,7 +45,13 @@ class ReminderScheduler @Inject constructor(
 
         val desired = tasks
             .filter { !it.isClosed && it.due != null }
-            .associate { it.taskId to (it.due!!.toEpochMilliseconds() - lead * 60_000L) }
+            .mapNotNull { task ->
+                // The task's list may override the global lead, or opt out entirely
+                // (override = null), in which case it gets no reminder at all.
+                val lead = settings.reminderLeadFor(task.listId) ?: return@mapNotNull null
+                task.taskId to (task.due!!.toEpochMilliseconds() - lead.coerceAtLeast(0) * 60_000L)
+            }
+            .toMap()
             .filterValues { it in now..horizon }
 
         val previous = store.all()

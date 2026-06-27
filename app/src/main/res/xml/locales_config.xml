@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The languages Floret ships translations for. Single source of truth: each
+    entry needs a matching res/values-<tag>/strings.xml, and is surfaced in both
+    the in-app language picker (parsed at runtime by AppLanguage) and the system
+    per-app language settings (Android 13+, via android:localeConfig). To add a
+    translation, drop in the values-<tag> folder and add one <locale> line here.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+</locale-config>

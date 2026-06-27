@@ -2,6 +2,7 @@ package de.jeanlucmakiola.floret.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,8 @@ import de.jeanlucmakiola.floret.R
 import de.jeanlucmakiola.floret.data.tasks.ProviderStatus
 import de.jeanlucmakiola.floret.ui.navigation.FloretNavHost
 import de.jeanlucmakiola.floret.ui.permission.PermissionViewModel
+import de.jeanlucmakiola.floret.ui.permission.ReminderOnboardingScreen
+import de.jeanlucmakiola.floret.ui.permission.ReminderOnboardingViewModel
 
 /**
  * App root: gates on the tasks-provider permission, then hands off to
@@ -49,7 +52,31 @@ fun RootScreen(
             action = stringResource(R.string.onboarding_permission_button),
             onAction = { launcher.launch(permission.permissionsToRequest.toTypedArray()) },
         )
-        ProviderStatus.READY -> FloretNavHost(modifier = modifier)
+        ProviderStatus.READY -> ReadyGate(modifier = modifier)
+    }
+}
+
+/**
+ * Second one-time gate after the provider grant: the reminder onboarding step.
+ * [ReminderOnboardingViewModel.onboardingDone] is null until DataStore's first
+ * emission — render nothing for that frame rather than flash the wrong screen.
+ * A cross-fade eases the hand-off to the app instead of snapping.
+ */
+@Composable
+private fun ReadyGate(
+    modifier: Modifier = Modifier,
+    onboardingViewModel: ReminderOnboardingViewModel = hiltViewModel(),
+) {
+    val done by onboardingViewModel.onboardingDone.collectAsStateWithLifecycle()
+    Crossfade(targetState = done, label = "reminderOnboardingGate") { state ->
+        when (state) {
+            true -> FloretNavHost(modifier = modifier)
+            false -> ReminderOnboardingScreen(
+                onFinished = onboardingViewModel::finish,
+                modifier = modifier,
+            )
+            null -> {}
+        }
     }
 }
 

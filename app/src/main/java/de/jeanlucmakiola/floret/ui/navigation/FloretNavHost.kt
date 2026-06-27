@@ -18,6 +18,7 @@ import de.jeanlucmakiola.floret.ui.detail.TaskDetailViewModel
 import de.jeanlucmakiola.floret.ui.edit.TaskEditScreen
 import de.jeanlucmakiola.floret.ui.edit.TaskEditViewModel
 import de.jeanlucmakiola.floret.ui.lists.ListsScreen
+import de.jeanlucmakiola.floret.ui.settings.SettingsScreen
 import de.jeanlucmakiola.floret.ui.tasklist.TaskListScreen
 import de.jeanlucmakiola.floret.ui.tasklist.TaskListViewModel
 
@@ -52,7 +53,12 @@ fun FloretNavHost(modifier: Modifier = Modifier) {
             ListsScreen(
                 onOpenFilter = { filter -> nav.navigate(Dest.TaskList.build(filter)) },
                 onNewTask = { nav.navigate(Dest.TaskEdit.buildNew()) },
+                onOpenSettings = { nav.navigate(Dest.SETTINGS) },
             )
+        }
+
+        composable(Dest.SETTINGS) {
+            SettingsScreen(onBack = { nav.popBackStack() })
         }
 
         composable(Dest.TaskList.route, arguments = Dest.TaskList.arguments) { entry ->

@@ -311,15 +311,21 @@ private fun TaskListBody(
                         )
                         add(RenderRow(ListRow.Parent(task, canExpand, isExpanded), parentPosition))
                         if (isExpanded) {
-                            // Subtasks connect up to the parent (small top) and to
-                            // each other; the inline add row below closes the group,
-                            // so every subtask is mid-run (small top + bottom).
-                            children.sortedBy { it.isCompleted }.forEach { sub ->
-                                add(RenderRow(ListRow.Sub(sub), cornerPosition(topFull = false, bottomFull = false)))
+                            // When the add row is hidden (M5 setting), the last subtask
+                            // instead rounds the group off (full bottom).
+                            val sorted = children.sortedBy { it.isCompleted }
+                            sorted.forEachIndexed { c, sub ->
+                                // Subtasks connect up to the parent (small top); with the
+                                // add row present every subtask is mid-run, otherwise the
+                                // last one closes the group (full bottom).
+                                val closesGroup = !state.showAddSubtaskRow && c == sorted.lastIndex
+                                add(RenderRow(ListRow.Sub(sub), cornerPosition(topFull = false, bottomFull = closesGroup)))
                             }
                             // The add row rounds the group off (full bottom),
                             // independent of whatever top-level task follows.
-                            add(RenderRow(ListRow.AddSub(task), cornerPosition(topFull = false, bottomFull = true)))
+                            if (state.showAddSubtaskRow) {
+                                add(RenderRow(ListRow.AddSub(task), cornerPosition(topFull = false, bottomFull = true)))
+                            }
                         }
                     }
                 }

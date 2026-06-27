@@ -98,6 +98,20 @@
     <string name="reminder_1_hour">1 hour before</string>
     <string name="reminder_1_day">1 day before</string>
 
+    <!-- Reminder custom lead time + per-list overrides -->
+    <string name="reminder_custom">Custom</string>
+    <string name="reminder_custom_with_value">Custom (%1$s)</string>
+    <string name="reminder_custom_set">Set</string>
+    <string name="reminder_custom_amount">Enter an amount</string>
+    <string name="reminder_use_default">Use default</string>
+    <string name="reminder_unit_minutes">Minutes</string>
+    <string name="reminder_unit_hours">Hours</string>
+    <string name="reminder_unit_days">Days</string>
+    <string name="reminder_unit_weeks">Weeks</string>
+    <string name="settings_list_reminders_title">Per-list reminders</string>
+    <string name="settings_list_reminders_hint">Override the default reminder for individual lists</string>
+    <string name="settings_list_reminder_inherits">Default (%1$s)</string>
+
     <!-- Form validation -->
     <string name="error_blank_title">Enter a title.</string>
     <string name="error_no_list">Choose a list.</string>
@@ -128,4 +142,77 @@
     <string name="onboarding_permission_button">Grant task access</string>
     <string name="onboarding_install_opentasks">Install OpenTasks</string>
     <string name="onboarding_install_tasksorg">Install tasks.org</string>
+
+    <!-- Reminder onboarding (one-time, after the provider grant) -->
+    <string name="reminder_onboarding_title">Never miss what\'s due</string>
+    <string name="reminder_onboarding_body">Tasks apps don\'t send reminders themselves, so Floret delivers them for you. Turn them on to get a notification when a task is due.</string>
+    <string name="reminder_onboarding_enable_button">Enable reminders</string>
+    <string name="reminder_onboarding_skip_button">Not now</string>
+    <string name="reminder_benefit_delivery_title">Floret reminds you</string>
+    <string name="reminder_benefit_delivery_body">It schedules a notification for each task with a due date.</string>
+    <string name="reminder_benefit_timing_title">On your schedule</string>
+    <string name="reminder_benefit_timing_body">Choose how far ahead to be reminded in Settings.</string>
+    <string name="reminder_benefit_reversible_title">Change it anytime</string>
+    <string name="reminder_benefit_reversible_body">Turn reminders off whenever you like — it\'s just a switch.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_appearance_subtitle">Theme and colour</string>
+    <string name="settings_section_task_form">Task form</string>
+    <string name="settings_task_form_subtitle">Default fields, list and subtasks</string>
+    <string name="settings_reminders_subtitle">Notifications for due tasks</string>
+    <string name="settings_form_fields_hint">Fields shown by default on a new task. The rest sit behind \"More fields\".</string>
+    <string name="settings_dynamic_color_unavailable">Available on Android 12 and later</string>
+    <!-- About -->
+    <string name="settings_about_author">by Jean-Luc Makiola</string>
+    <string name="settings_about_source">Source</string>
+    <string name="settings_license">License</string>
+    <string name="settings_about_support">Support development</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_logo_desc">Floret app icon</string>
+    <string name="settings_language">App language</string>
+    <string name="settings_language_auto">System default</string>
+    <string name="settings_report_problem">Report a problem</string>
+    <string name="settings_report_problem_hint">Open the issue tracker</string>
+    <string name="about_source_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret</string>
+    <string name="report_issue_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret/issues/new</string>
+    <string name="about_license_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/floret/src/branch/main/LICENSE</string>
+    <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Dynamic colour</string>
+    <string name="settings_dynamic_color_hint">Use colours from your wallpaper</string>
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_reminders">Due reminders</string>
+    <string name="settings_reminders_hint">Notify me when a task is due</string>
+    <string name="settings_default_reminder">When to remind</string>
+    <string name="settings_exact_alarms">Exact timing</string>
+    <string name="settings_exact_alarms_allowed">Reminders fire at the exact time</string>
+    <string name="settings_exact_alarms_blocked">Blocked — tap to allow exact reminders</string>
+    <string name="settings_section_tasks">Tasks</string>
+    <string name="settings_default_list">Default list</string>
+    <string name="settings_default_list_first">First available list</string>
+    <string name="settings_add_subtask_row">Show \"add a subtask\" row</string>
+    <string name="settings_add_subtask_row_hint">An add field at the end of an expanded task\'s subtasks</string>
+
+    <!-- Reminder lead times (custom amounts) -->
+    <plurals name="reminder_minutes">
+        <item quantity="one">%1$d minute before</item>
+        <item quantity="other">%1$d minutes before</item>
+    </plurals>
+    <plurals name="reminder_hours">
+        <item quantity="one">%1$d hour before</item>
+        <item quantity="other">%1$d hours before</item>
+    </plurals>
+    <plurals name="reminder_days">
+        <item quantity="one">%1$d day before</item>
+        <item quantity="other">%1$d days before</item>
+    </plurals>
+    <plurals name="reminder_weeks">
+        <item quantity="one">%1$d week before</item>
+        <item quantity="other">%1$d weeks before</item>
+    </plurals>
 </resources>

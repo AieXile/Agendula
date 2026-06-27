@@ -4,10 +4,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import dagger.hilt.android.AndroidEntryPoint
+import de.jeanlucmakiola.floret.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.data.tasks.TasksDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +23,7 @@ class DueReminderReceiver : BroadcastReceiver() {
 
     @Inject lateinit var dataSource: TasksDataSource
     @Inject lateinit var notifier: TaskNotifier
+    @Inject lateinit var settingsPrefs: SettingsPrefs
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -30,6 +33,7 @@ class DueReminderReceiver : BroadcastReceiver() {
         val pending = goAsync()
         scope.launch {
             try {
+                if (!settingsPrefs.settings.first().remindersEnabled) return@launch
                 val task = runCatching { dataSource.task(taskId) }.getOrNull()
                 if (task != null && !task.isClosed) notifier.postDue(task)
             } finally {

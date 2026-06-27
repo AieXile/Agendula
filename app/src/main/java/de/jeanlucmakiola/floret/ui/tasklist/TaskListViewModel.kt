@@ -3,6 +3,7 @@ package de.jeanlucmakiola.floret.ui.tasklist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.jeanlucmakiola.floret.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.data.tasks.TasksRepository
 import de.jeanlucmakiola.floret.domain.Task
 import de.jeanlucmakiola.floret.domain.TaskFilter
@@ -30,7 +31,12 @@ sealed interface TaskListUiState {
      * [TaskFilter.OfList] (for the top-bar title), `null` for smart lists —
      * the screen falls back to the smart label in that case.
      */
-    data class Content(val tasks: List<Task>, val listName: String? = null) : TaskListUiState
+    data class Content(
+        val tasks: List<Task>,
+        val listName: String? = null,
+        /** Whether the inline "add a subtask" row shows on expanded groups (M5 setting). */
+        val showAddSubtaskRow: Boolean = true,
+    ) : TaskListUiState
 }
 
 /**
@@ -42,6 +48,7 @@ sealed interface TaskListUiState {
 @HiltViewModel
 class TaskListViewModel @Inject constructor(
     private val repository: TasksRepository,
+    private val settingsPrefs: SettingsPrefs,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow<TaskFilter?>(null)
@@ -62,10 +69,15 @@ class TaskListViewModel @Inject constructor(
                         tasks.map { TaskListUiState.Content(it) }
                 }
                 // Drop rows pending an undoable delete so the row vanishes on swipe
-                // while the actual provider delete waits for the snackbar to commit.
-                combine(content, pendingDeletes) { st, pending ->
+                // while the actual provider delete waits for the snackbar to commit,
+                // and fold in the live "show add-subtask row" setting.
+                val showAddSub = settingsPrefs.settings.map { it.showAddSubtaskRow }
+                combine(content, pendingDeletes, showAddSub) { st, pending, showRow ->
                     if (st is TaskListUiState.Content) {
-                        st.copy(tasks = st.tasks.filter { it.taskId !in pending })
+                        st.copy(
+                            tasks = st.tasks.filter { it.taskId !in pending },
+                            showAddSubtaskRow = showRow,
+                        )
                     } else {
                         st
                     }
