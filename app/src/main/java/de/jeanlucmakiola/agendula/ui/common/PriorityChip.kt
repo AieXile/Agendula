@@ -46,6 +46,27 @@ fun priorityFill(priority: Priority, dark: Boolean): Color {
 }
 
 /**
+ * Foreground tint (icon/text) for a priority level — the same red/amber/green as
+ * [priorityFill], but kept saturated enough to read as a small glyph directly on
+ * the surface rather than as a soft fill. Used by the task list's quiet meta line,
+ * where priority is a tinted flag instead of a filled pill. [Priority.NONE] is
+ * unspecified (callers render it neutral / omit it).
+ */
+fun priorityAccent(priority: Priority, dark: Boolean): Color {
+    val base = when (priority) {
+        Priority.HIGH -> 0xFFE53935.toInt()   // red
+        Priority.MEDIUM -> 0xFFFB8C00.toInt() // orange-amber (darker than the fill for contrast)
+        Priority.LOW -> 0xFF43A047.toInt()    // green
+        Priority.NONE -> return Color.Unspecified
+    }
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(base, hsv)
+    hsv[1] = if (dark) 0.55f else 0.85f
+    hsv[2] = if (dark) 0.85f else 0.62f // light on dark surfaces; deep on light ones
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
  * A coloured status pill for a task's priority: a flag plus the level's [label],
  * filled in that level's pastel hue. Used read-only in the list and detail
  * screens (default [selected] = true), and as a selectable option in the edit
@@ -91,14 +112,14 @@ fun PriorityChip(
 
     val body: @Composable () -> Unit = {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (showIcon) {
-                Icon(Icons.Rounded.Flag, contentDescription = null, tint = iconTint, modifier = Modifier.size(15.dp))
+                Icon(Icons.Rounded.Flag, contentDescription = null, tint = iconTint, modifier = Modifier.size(14.dp))
             }
-            Text(label, style = MaterialTheme.typography.labelMedium, color = content)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = content)
         }
     }
     val shape = RoundedCornerShape(50)

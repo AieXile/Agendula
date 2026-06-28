@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -88,10 +89,9 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
-import de.jeanlucmakiola.agendula.ui.common.ListNameChip
+import de.jeanlucmakiola.agendula.ui.common.priorityAccent
 import de.jeanlucmakiola.floret.components.Position
-import de.jeanlucmakiola.agendula.ui.common.PriorityChip
-import de.jeanlucmakiola.floret.time.formatDateTime
+import de.jeanlucmakiola.floret.time.formatDateTimeCompact
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
 import java.time.ZoneId
@@ -163,16 +163,24 @@ fun TaskListScreen(
                 TaskListUiState.Failure -> CenteredMessage(stringResource(R.string.task_list_failure), inner)
                 is TaskListUiState.Content -> TaskListBody(s, filter, inner, onOpenTask, onRequestDelete, viewModel)
             }
-            UndoChip(
-                visible = undoTarget != null,
-                onUndo = {
-                    undoTarget?.let { viewModel.undoDelete(it.taskId) }
-                    undoTarget = null
-                },
+            // A FAB-height band anchored at the bottom-start with the FAB's own
+            // margin; centring the chip in it lines the chip up beside the bottom-end
+            // FAB at exactly its height, rather than sitting a touch above it.
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = inner.calculateBottomPadding() + 24.dp),
-            )
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = inner.calculateBottomPadding() + 16.dp)
+                    .height(56.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                UndoChip(
+                    visible = undoTarget != null,
+                    onUndo = {
+                        undoTarget?.let { viewModel.undoDelete(it.taskId) }
+                        undoTarget = null
+                    },
+                )
+            }
         }
     }
 }
@@ -251,6 +259,23 @@ private fun TaskListBody(
     val childrenByParent = remember(state.tasks) {
         state.tasks.filter { it.isSubtask }.groupBy { it.parentId!! }
     }
+    // In a smart list a parent's subtasks are usually filtered out (they're undated
+    // or due other days), so we pull them on demand. Report only expanded parents
+    // whose full child set isn't already in this view; the VM then observes those
+    // children live. In a real list that set is empty, so no extra queries run.
+    val tasksById = remember(state.tasks) { state.tasks.associateBy { it.taskId } }
+    val parentsNeedingChildren = expandedParents.filter { id ->
+        val parent = tasksById[id]
+        parent != null && (childrenByParent[id]?.size ?: 0) != parent.subtaskTotal
+    }.toSet()
+    LaunchedEffect(parentsNeedingChildren) { viewModel.setLazyChildParents(parentsNeedingChildren) }
+    val lazyChildren by viewModel.lazyChildren.collectAsStateWithLifecycle()
+    // A parent's full child set: the rows already in this view when we hold them
+    // all, otherwise the lazily-loaded set fetched for smart lists.
+    fun childrenOf(task: Task): List<Task> {
+        val inList = childrenByParent[task.taskId].orEmpty()
+        return if (inList.size == task.subtaskTotal) inList else lazyChildren[task.taskId].orEmpty()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -295,19 +320,21 @@ private fun TaskListBody(
                 val rows = buildList {
                     val topLevel = section.tasks
                     topLevel.forEachIndexed { p, task ->
-                        val children = childrenByParent[task.taskId].orEmpty()
-                        // Only expandable when we hold every child: true in a real
-                        // list, but a smart list may omit children due on other
-                        // days, and a half-shown set would mislead.
-                        val canExpand = task.subtaskTotal > 0 && children.size == task.subtaskTotal
+                        // The full child set — already in this view for a real list,
+                        // or fetched on demand for a smart list (childrenOf). A parent
+                        // is expandable whenever it has children; until a smart list's
+                        // set has loaded the group simply shows nothing extra.
+                        val children = childrenOf(task)
+                        val canExpand = task.subtaskTotal > 0
                         val isExpanded = canExpand && task.taskId in expandedParents
+                        val hasExpansionContent = children.isNotEmpty() || state.showAddSubtaskRow
                         // Top-level tasks keep their own connected run — full top
                         // only on the first, full bottom only on the last — so the
                         // task after an expanded one stays mid-run (small top). An
                         // expanded parent's bottom opens (small) to meet its subtasks.
                         val parentPosition = cornerPosition(
                             topFull = p == 0,
-                            bottomFull = if (isExpanded) false else p == topLevel.lastIndex,
+                            bottomFull = if (isExpanded && hasExpansionContent) false else p == topLevel.lastIndex,
                         )
                         add(RenderRow(ListRow.Parent(task, canExpand, isExpanded), parentPosition))
                         if (isExpanded) {
@@ -331,8 +358,13 @@ private fun TaskListBody(
                 }
                 itemsIndexed(rows, key = { _, r -> r.row.key }) { index, r ->
                     val lastInRun = index == rows.lastIndex
+                    // animateItem so an (un)expanding group fades its subtasks in/out
+                    // and slides the rows below — clean whether the children were
+                    // already loaded (real list) or arrive a frame later (smart list).
+                    val rowModifier = Modifier.animateItem()
                     when (val row = r.row) {
                         is ListRow.Parent -> TaskRow(
+                            modifier = rowModifier,
                             task = row.task,
                             position = r.position,
                             lastInRun = lastInRun,
@@ -356,6 +388,7 @@ private fun TaskListBody(
                             onClick = { onOpenTask(row.task.taskId) },
                         )
                         is ListRow.Sub -> SubtaskRow(
+                            modifier = rowModifier,
                             task = row.task,
                             position = r.position,
                             lastInRun = lastInRun,
@@ -363,6 +396,7 @@ private fun TaskListBody(
                             onClick = { onOpenTask(row.task.taskId) },
                         )
                         is ListRow.AddSub -> AddSubtaskRow(
+                            modifier = rowModifier,
                             position = r.position,
                             lastInRun = lastInRun,
                             onAdd = { viewModel.quickAddSubtask(row.parent, it) },
@@ -435,6 +469,7 @@ private fun TaskRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -455,7 +490,7 @@ private fun TaskRow(
 
     SwipeToDismissBox(
         state = dismissState,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
         // dismissDirection (not targetValue) tracks the live drag, so the colour +
         // icon reveal as you swipe rather than only once the threshold is crossed.
         backgroundContent = { SwipeBackground(dismissState.dismissDirection, task.isCompleted) },
@@ -482,10 +517,11 @@ private fun TaskRowContent(
     val full by animateDpAsState(if (pressed) 36.dp else 22.dp, label = "fullCorner")
     val small by animateDpAsState(if (pressed) 36.dp else 6.dp, label = "smallCorner")
     val dark = isSystemInDarkTheme()
-    val due = task.due?.formatDateTime(task.isAllDay)
+    val due = task.due?.formatDateTimeCompact(task.isAllDay)
     val listName = task.listName?.takeIf { showListName && it.isNotBlank() }
-    val hasSupporting = due != null || listName != null || subtaskTotal > 0 ||
-        task.priority != Priority.NONE
+    // Everything secondary collapses into one quiet supporting line below the title.
+    val hasMeta = task.priority != Priority.NONE || due != null || subtaskTotal > 0 ||
+        listName != null
 
     Surface(
         onClick = onClick,
@@ -526,29 +562,17 @@ private fun TaskRowContent(
                         MaterialTheme.colorScheme.onSurface
                     },
                 )
-                if (hasSupporting) {
+                if (hasMeta) {
                     Spacer(Modifier.height(3.dp))
-                    // Flow so the chips wrap to a further line when due date + list
-                    // + subtask progress can't share one (e.g. a dated task with
-                    // subtasks), rather than squeezing the trailing chip.
-                    FlowRow(
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        itemVerticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (task.priority != Priority.NONE) {
-                            PriorityChip(task.priority, priorityLabel(task.priority))
-                        }
-                        if (due != null) {
-                            Text(
-                                text = due,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (listName != null) ListNameChip(listName, task.effectiveColor)
-                        if (subtaskTotal > 0) SubtaskCountChip(subtaskDone, subtaskTotal)
-                    }
+                    TaskMetaLine(
+                        priority = task.priority,
+                        due = due,
+                        subtaskDone = subtaskDone,
+                        subtaskTotal = subtaskTotal,
+                        listName = listName,
+                        listColor = task.effectiveColor,
+                        dark = dark,
+                    )
                 }
             }
             // Trailing area is only ever the expand control, so the row's right
@@ -561,29 +585,83 @@ private fun TaskRowContent(
     }
 }
 
-/** A small neutral pill showing subtask progress, e.g. "3 / 5". */
+/**
+ * The single low-emphasis supporting line under a task title: priority, due date,
+ * subtask progress and (in mixed views) the list name, joined by middots. The text
+ * is quiet `onSurfaceVariant` throughout; the only colour is the priority flag and
+ * the list name (tinted to its list) — so even a fully-populated row stays calm and
+ * one line instead of a stack of filled pills.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SubtaskCountChip(done: Int, total: Int) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        shape = RoundedCornerShape(50),
+private fun TaskMetaLine(
+    priority: Priority,
+    due: String?,
+    subtaskDone: Int,
+    subtaskTotal: Int,
+    listName: String?,
+    listColor: Int,
+    dark: Boolean,
+) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val style = MaterialTheme.typography.bodySmall
+    val segments = buildList<@Composable () -> Unit> {
+        if (priority != Priority.NONE) {
+            add {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Icon(
+                        Icons.Rounded.Flag,
+                        contentDescription = null,
+                        tint = priorityAccent(priority, dark),
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(priorityLabel(priority), style = style, color = muted)
+                }
+            }
+        }
+        if (due != null) add { Text(due, style = style, color = muted) }
+        if (subtaskTotal > 0) {
+            add {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ListAlt,
+                        contentDescription = null,
+                        tint = muted,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text("$subtaskDone / $subtaskTotal", style = style, color = muted)
+                }
+            }
+        }
+        if (listName != null) {
+            add {
+                Text(
+                    listName,
+                    style = style,
+                    color = pastelize(listColor, dark),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+    FlowRow(
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ListAlt,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = "$done / $total",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        segments.forEachIndexed { i, segment ->
+            // A middot between segments — its own flow item, so the line can still
+            // wrap gracefully when truly everything is set on a narrow screen.
+            if (i > 0) {
+                Text("·", style = style, color = muted, modifier = Modifier.padding(horizontal = 6.dp))
+            }
+            segment()
         }
     }
 }
@@ -599,6 +677,7 @@ private fun AddSubtaskRow(
     position: Position,
     lastInRun: Boolean,
     onAdd: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var text by remember { mutableStateOf("") }
     fun submit() {
@@ -612,7 +691,7 @@ private fun AddSubtaskRow(
         shape = cardShape(position, 22.dp, 6.dp),
         // Same tone as the subtask rows it closes, so the group reads as one unit.
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 12.dp, end = 8.dp),
@@ -725,6 +804,7 @@ private fun SubtaskRow(
     lastInRun: Boolean,
     onToggle: () -> Unit,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -738,7 +818,7 @@ private fun SubtaskRow(
         // reads as a distinct, recessive tone — the nesting cue alongside shape.
         color = MaterialTheme.colorScheme.surfaceContainer,
         interactionSource = interaction,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
     ) {
         Row(
             modifier = Modifier

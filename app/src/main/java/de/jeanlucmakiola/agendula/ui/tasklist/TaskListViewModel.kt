@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -86,6 +87,32 @@ class TaskListViewModel @Inject constructor(
                     .catch { emit(TaskListUiState.Failure) }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TaskListUiState.Loading)
+
+    /**
+     * Parents the screen has expanded whose children it can't pull from the list
+     * itself — i.e. smart lists, where the date filter drops a parent's subtasks.
+     * For each we observe the full child set live (below), so the group can expand.
+     */
+    private val lazyChildParents = MutableStateFlow<Set<Long>>(emptySet())
+
+    /**
+     * The on-demand child sets, keyed by parent id, kept live. Empty for real
+     * lists (the screen reports no parents there, since it already holds every
+     * child) so no redundant queries run.
+     */
+    val lazyChildren: StateFlow<Map<Long, List<Task>>> =
+        lazyChildParents
+            .flatMapLatest { ids ->
+                if (ids.isEmpty()) {
+                    flowOf(emptyMap())
+                } else {
+                    combine(ids.map { id -> repository.subtasks(id).map { id to it } }) { it.toMap() }
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** The screen reports which expanded parents need their children fetched. */
+    fun setLazyChildParents(ids: Set<Long>) { lazyChildParents.value = ids }
 
     fun bind(taskFilter: TaskFilter) { filter.value = taskFilter }
 

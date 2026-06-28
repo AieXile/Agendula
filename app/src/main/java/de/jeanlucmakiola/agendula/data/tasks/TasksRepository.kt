@@ -19,6 +19,13 @@ enum class ProviderStatus { READY, NEEDS_PERMISSION, NO_PROVIDER }
 interface TasksRepository {
     fun taskLists(): Flow<List<TaskList>>
     fun tasks(filter: TaskFilter): Flow<List<Task>>
+
+    /**
+     * The direct children of [parentId], re-emitting live like the other flows.
+     * Lets a smart-list view pull a parent's full subtask set on demand — those
+     * children are usually filtered out of the list's own (date-based) query.
+     */
+    fun subtasks(parentId: Long): Flow<List<Task>>
     fun taskDetail(taskId: Long): Flow<TaskDetail?>
 
     suspend fun createTask(form: TaskForm): Long

@@ -35,6 +35,12 @@ class TasksRepositoryImpl @Inject constructor(
 
     override fun tasks(filter: TaskFilter): Flow<List<Task>> = observing { loadTasks(filter) }
 
+    override fun subtasks(parentId: Long): Flow<List<Task>> = observing {
+        dataSource.subtasks(parentId)
+            .filter { it.taskId != parentId }
+            .sortedWith(TaskSorting.DEFAULT)
+    }
+
     override fun taskDetail(taskId: Long): Flow<TaskDetail?> = observing {
         dataSource.task(taskId)?.let { task ->
             TaskDetail(
