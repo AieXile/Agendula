@@ -32,6 +32,12 @@ data class Settings(
     /** Whether the inline "add a subtask" row shows on expanded task-list groups. */
     val showAddSubtaskRow: Boolean = true,
     /**
+     * Add affordance for a list: `false` = the floating "New task" button (opens
+     * the editor); `true` = a quick-add bar pinned to the bottom of a real list.
+     * Smart lists always use the button (they have no single list to add into).
+     */
+    val bottomAddBar: Boolean = false,
+    /**
      * Per-list overrides of [reminderLeadMinutes]: a list present in the map
      * overrides the global default (a null value = no reminder); absent = inherit.
      */
@@ -58,6 +64,7 @@ class SettingsPrefs @Inject constructor(
             reminderLeadMinutes = p[REMINDER_LEAD] ?: 0,
             remindersEnabled = p[REMINDERS_ENABLED] ?: true,
             showAddSubtaskRow = p[SHOW_ADD_SUBTASK_ROW] ?: true,
+            bottomAddBar = p[BOTTOM_ADD_BAR] ?: false,
             perListReminderOverride = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]),
             defaultEditFields = p[DEFAULT_EDIT_FIELDS].orEmpty()
                 .mapNotNull { name -> runCatching { TaskFormField.valueOf(name) }.getOrNull() }
@@ -82,6 +89,8 @@ class SettingsPrefs @Inject constructor(
 
     suspend fun setShowAddSubtaskRow(show: Boolean) = dataStore.edit { it[SHOW_ADD_SUBTASK_ROW] = show }
 
+    suspend fun setBottomAddBar(enabled: Boolean) = dataStore.edit { it[BOTTOM_ADD_BAR] = enabled }
+
     /** Set (or clear, via [ReminderOverride.Inherit]) a list's reminder override. */
     suspend fun setListReminderOverride(listId: Long, override: ReminderOverride) = dataStore.edit { p ->
         val current = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]).toMutableMap()
@@ -100,6 +109,7 @@ class SettingsPrefs @Inject constructor(
         val REMINDER_LEAD = intPreferencesKey("reminder_lead_minutes")
         val REMINDERS_ENABLED = booleanPreferencesKey("reminders_enabled")
         val SHOW_ADD_SUBTASK_ROW = booleanPreferencesKey("show_add_subtask_row")
+        val BOTTOM_ADD_BAR = booleanPreferencesKey("bottom_add_bar")
         val REMINDER_ONBOARDING_DONE = booleanPreferencesKey("reminder_onboarding_done")
         val LIST_REMINDER_OVERRIDE = stringPreferencesKey("list_reminder_override")
         val DEFAULT_EDIT_FIELDS = stringSetPreferencesKey("default_edit_fields")

@@ -44,6 +44,7 @@ class SettingsViewModel @Inject constructor(
     fun setReminderLeadMinutes(minutes: Int) = viewModelScope.launch { prefs.setReminderLeadMinutes(minutes) }
     fun setRemindersEnabled(enabled: Boolean) = viewModelScope.launch { prefs.setRemindersEnabled(enabled) }
     fun setShowAddSubtaskRow(show: Boolean) = viewModelScope.launch { prefs.setShowAddSubtaskRow(show) }
+    fun setBottomAddBar(enabled: Boolean) = viewModelScope.launch { prefs.setBottomAddBar(enabled) }
 
     /** Toggle whether [field] shows by default on a new task's edit form. */
     fun setFormFieldDefault(field: TaskFormField, enabled: Boolean) = viewModelScope.launch {

@@ -37,6 +37,8 @@ sealed interface TaskListUiState {
         val listName: String? = null,
         /** Whether the inline "add a subtask" row shows on expanded groups (M5 setting). */
         val showAddSubtaskRow: Boolean = true,
+        /** Whether a real list uses the bottom quick-add bar instead of the FAB. */
+        val bottomAddBar: Boolean = false,
     ) : TaskListUiState
 }
 
@@ -71,13 +73,14 @@ class TaskListViewModel @Inject constructor(
                 }
                 // Drop rows pending an undoable delete so the row vanishes on swipe
                 // while the actual provider delete waits for the snackbar to commit,
-                // and fold in the live "show add-subtask row" setting.
-                val showAddSub = settingsPrefs.settings.map { it.showAddSubtaskRow }
-                combine(content, pendingDeletes, showAddSub) { st, pending, showRow ->
+                // and fold in the live UI settings (add-subtask row, bottom add bar).
+                val uiPrefs = settingsPrefs.settings.map { it.showAddSubtaskRow to it.bottomAddBar }
+                combine(content, pendingDeletes, uiPrefs) { st, pending, (showRow, bottomBar) ->
                     if (st is TaskListUiState.Content) {
                         st.copy(
                             tasks = st.tasks.filter { it.taskId !in pending },
                             showAddSubtaskRow = showRow,
+                            bottomAddBar = bottomBar,
                         )
                     } else {
                         st

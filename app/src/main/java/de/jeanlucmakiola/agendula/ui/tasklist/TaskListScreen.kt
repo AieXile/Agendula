@@ -21,6 +21,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,6 +74,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -115,7 +122,13 @@ fun TaskListScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val listName = (state as? TaskListUiState.Content)?.listName
+    val content = state as? TaskListUiState.Content
+    val listName = content?.listName
+    val listId = (filter as? TaskFilter.OfList)?.listId
+    // One add affordance, never two: a real list with the setting on gets a pinned
+    // bottom quick-add bar; everything else (incl. smart lists, which have no single
+    // target list) gets the floating "New task" button.
+    val showBottomAddBar = content?.bottomAddBar == true && listId != null
 
     // Swipe-delete hides the row at once, then a floating "Deleted · Undo" chip
     // gives an undo window: Undo restores it, otherwise the delete commits. A
@@ -150,11 +163,18 @@ fun TaskListScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNewTask,
-                icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.new_task)) },
-            )
+            if (!showBottomAddBar) {
+                ExtendedFloatingActionButton(
+                    onClick = onNewTask,
+                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.new_task)) },
+                )
+            }
+        },
+        bottomBar = {
+            if (showBottomAddBar) {
+                listId?.let { id -> QuickAddBar(onAdd = { title -> viewModel.quickAdd(title, id) }) }
+            }
         },
     ) { inner ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -277,19 +297,16 @@ private fun TaskListBody(
         return if (inList.size == task.subtaskTotal) inList else lazyChildren[task.taskId].orEmpty()
     }
 
+    // When the bottom quick-add bar is shown it already lives in the scaffold's
+    // bottomBar (so `inner` covers it); otherwise reserve room to clear the FAB.
+    val bottomBarShown = state.bottomAddBar && listId != null
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             top = inner.calculateTopPadding() + 8.dp,
-            bottom = inner.calculateBottomPadding() + 96.dp,
+            bottom = inner.calculateBottomPadding() + if (bottomBarShown) 16.dp else 96.dp,
         ),
     ) {
-        if (listId != null) {
-            item(key = "inline-add") {
-                InlineAdd(onAdd = { title -> viewModel.quickAdd(title, listId) })
-            }
-        }
-
         if (state.tasks.isEmpty()) {
             item(key = "empty") { EmptyState(stringResource(R.string.task_list_empty)) }
         }
@@ -409,9 +426,9 @@ private fun TaskListBody(
 }
 
 /** Inline "add a task" — title only, into the current list. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun InlineAdd(onAdd: (String) -> Unit) {
+private fun InlineAdd(onAdd: (String) -> Unit, elevated: Boolean = false) {
     var text by remember { mutableStateOf("") }
     fun submit() {
         if (text.isNotBlank()) {
@@ -419,10 +436,25 @@ private fun InlineAdd(onAdd: (String) -> Unit) {
             text = ""
         }
     }
+    // Compose keeps a TextField focused (cursor blinking) even after the keyboard
+    // is dismissed by a tap outside it — so when the IME hides, drop focus too.
+    val focusManager = LocalFocusManager.current
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(imeVisible) {
+        if (!imeVisible) focusManager.clearFocus()
+    }
     Surface(
         shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        // Floating use (bottom quick-add) steps up to the brightest container tone
+        // — a real step above the surfaceContainerHigh task cards — and lifts off
+        // the list with a heavier shadow, so it doesn't blend into the rows.
+        color = if (elevated) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
+        shadowElevation = if (elevated) 8.dp else 0.dp,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         TextField(
             value = text,
@@ -447,6 +479,23 @@ private fun InlineAdd(onAdd: (String) -> Unit) {
             ),
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/**
+ * The bottom quick-add field: [InlineAdd] pinned as the scaffold's bottomBar, but
+ * with no bar plate of its own — the rounded field floats on the screen background
+ * (its own shadow lifting it off the list). Rides above the keyboard and clears the
+ * navigation bar (ime ∪ navigation-bar insets).
+ */
+@Composable
+private fun QuickAddBar(onAdd: (String) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+    ) {
+        InlineAdd(onAdd = onAdd, elevated = true)
     }
 }
 

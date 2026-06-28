@@ -338,7 +338,7 @@ private fun TaskFormScreen(
         GroupedRow(
             title = stringResource(R.string.settings_add_subtask_row),
             summary = stringResource(R.string.settings_add_subtask_row_hint),
-            position = Position.Bottom,
+            position = Position.Middle,
             trailing = {
                 Switch(
                     checked = state.settings.showAddSubtaskRow,
@@ -346,6 +346,18 @@ private fun TaskFormScreen(
                 )
             },
             onClick = { viewModel.setShowAddSubtaskRow(!state.settings.showAddSubtaskRow) },
+        )
+        GroupedRow(
+            title = stringResource(R.string.settings_bottom_add_bar),
+            summary = stringResource(R.string.settings_bottom_add_bar_hint),
+            position = Position.Bottom,
+            trailing = {
+                Switch(
+                    checked = state.settings.bottomAddBar,
+                    onCheckedChange = viewModel::setBottomAddBar,
+                )
+            },
+            onClick = { viewModel.setBottomAddBar(!state.settings.bottomAddBar) },
         )
     }
 

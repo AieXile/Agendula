@@ -198,6 +198,8 @@
     <string name="settings_default_list_first">First available list</string>
     <string name="settings_add_subtask_row">Show \"add a subtask\" row</string>
     <string name="settings_add_subtask_row_hint">An add field at the end of an expanded task\'s subtasks</string>
+    <string name="settings_bottom_add_bar">Bottom quick-add bar</string>
+    <string name="settings_bottom_add_bar_hint">Add tasks from a bar pinned to the bottom of a list, instead of the floating button</string>
 
     <!-- Reminder lead times (custom amounts) -->
     <plurals name="reminder_minutes">
