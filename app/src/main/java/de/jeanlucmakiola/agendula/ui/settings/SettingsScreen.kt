@@ -93,6 +93,7 @@ import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
+import de.jeanlucmakiola.floret.identity.predictiveBack
 import de.jeanlucmakiola.floret.locale.AppLanguage
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
@@ -128,6 +129,9 @@ fun SettingsScreen(
 
     Box(
         modifier = modifier
+            // At the hub, the back gesture previews the pop to the lists overview;
+            // in a section the BackHandler above takes it (section -> hub) instead.
+            .predictiveBack(onBack = onBack, enabled = section == null)
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
     ) {
