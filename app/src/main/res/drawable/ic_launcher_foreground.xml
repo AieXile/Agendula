@@ -12,9 +12,14 @@
     <monochrome> slot so Android 13+ themed-icon launchers can recolour it.
 
     Centering / scale:
-    - The artwork's visual centre sits at (269, 256) in the 512 viewport.
-    - Pivot there, scale 0.66 (matching Calendula's ~2.8dp stroke weight and
-      generous padding), then translate (-13, 0) onto the 512 canvas centre.
+    - Scale 0.66 about the canvas centre (matching Calendula's ~2.8dp stroke
+      weight and generous padding).
+    - The eye centres on the task CARD, not the card+bloom bounding box (the
+      bloom is a small badge that overhangs the bottom-right). So vertically we
+      centre the card itself: its geometric centre is y=242.76, so we pivot the
+      Y-scale there and translate +13.24 to drop that centre onto the canvas
+      centre (256). Horizontally the card already sits centred, so X scales
+      about 256 untouched.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -22,12 +27,11 @@
     android:viewportWidth="512"
     android:viewportHeight="512">
     <group
-        android:pivotX="269"
-        android:pivotY="256"
+        android:pivotX="256"
+        android:pivotY="242.76"
         android:scaleX="0.66"
         android:scaleY="0.66"
-        android:translateX="-13"
-        android:translateY="0">
+        android:translateY="13.24">
         <!-- Task card (rounded square, opening at the bottom-right for the bloom) -->
         <path
             android:strokeColor="#FFFAF6F0"
