@@ -1,48 +1,28 @@
 package de.jeanlucmakiola.agendula.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import de.jeanlucmakiola.floret.identity.FloretExpressiveTheme
 
 /**
- * App theme. Honors:
- *   - System light/dark.
- *   - Dynamic Color on API 31+, else falls back to the hand-tuned scheme
- *     derived from [AgendulaSeed].
- *
- * Mirrors Calendula's theme: MaterialExpressiveTheme routes all component +
- * custom motion through MaterialTheme.motionScheme. STANDARD over expressive()
- * is the same deliberate choice — spring choreography without the overshoot.
- *
- * A Settings screen can later override dynamicColor and theme mode; the M0
- * foundation just follows the system.
+ * Agendula's theme: the family's [FloretExpressiveTheme] machinery (dynamic
+ * colour on API 31+, system light/dark, the standard motion scheme) fed with
+ * Agendula's own identity — its seed-derived fallback schemes
+ * ([AgendulaLightFallback] / [AgendulaDarkFallback]) and [AgendulaTypography].
+ * The mechanics live in floret-kit; the look stays here.
  */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AgendulaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val ctx = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
-        }
-        darkTheme -> AgendulaDarkFallback
-        else -> AgendulaLightFallback
-    }
-
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
+    FloretExpressiveTheme(
+        lightScheme = AgendulaLightFallback,
+        darkScheme = AgendulaDarkFallback,
+        darkTheme = darkTheme,
+        dynamicColor = dynamicColor,
         typography = AgendulaTypography,
-        motionScheme = MotionScheme.standard(),
         content = content,
     )
 }

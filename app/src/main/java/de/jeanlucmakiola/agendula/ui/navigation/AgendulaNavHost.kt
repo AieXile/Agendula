@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.ui.navigation
 
+import de.jeanlucmakiola.floret.identity.rememberNavSlideSpec
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
