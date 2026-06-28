@@ -3,7 +3,7 @@ package de.jeanlucmakiola.agendula.ui.common
 import de.jeanlucmakiola.floret.components.FullScreenPicker
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.positionOf
-import de.jeanlucmakiola.floret.components.InlineTextField
+import de.jeanlucmakiola.floret.components.DialogAmountField
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.ReminderUnit
@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.jeanlucmakiola.agendula.R
 
@@ -144,19 +143,7 @@ private fun CustomReminderEditor(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    InlineTextField(
-                        value = amountText,
-                        onValueChange = { text -> if (text.length <= 3 && text.all(Char::isDigit)) onAmountChange(text) },
-                        placeholder = "10",
-                        textStyle = MaterialTheme.typography.titleMedium,
-                        keyboardType = KeyboardType.Number,
-                        modifier = Modifier.width(72.dp).padding(horizontal = 14.dp, vertical = 12.dp),
-                    )
-                }
+                DialogAmountField(value = amountText, onValueChange = onAmountChange, placeholder = "10")
                 Spacer(Modifier.width(16.dp))
                 Text(
                     text = amount?.let { reminderLeadTimeLabel(it * unit.minutesFactor) }
