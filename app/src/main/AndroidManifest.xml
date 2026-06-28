@@ -52,6 +52,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Standalone crash-report surface; MainActivity routes here on a
+             startup crash-loop. Not exported, kept out of recents. -->
+        <activity
+            android:name=".ui.crash.CrashReportActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask" />
+
         <!-- Reminder alarm fires here (internal PendingIntent → not exported). -->
         <receiver
             android:name=".data.reminders.DueReminderReceiver"

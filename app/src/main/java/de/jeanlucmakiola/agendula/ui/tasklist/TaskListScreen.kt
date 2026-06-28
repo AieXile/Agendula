@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
-import de.jeanlucmakiola.agendula.domain.DayWindow
+import de.jeanlucmakiola.floret.time.DayWindow
 import de.jeanlucmakiola.agendula.domain.Priority
 import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.domain.Task
@@ -91,7 +91,7 @@ import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.agendula.ui.common.ListNameChip
 import de.jeanlucmakiola.agendula.ui.common.Position
 import de.jeanlucmakiola.agendula.ui.common.PriorityChip
-import de.jeanlucmakiola.agendula.ui.common.formatDateTime
+import de.jeanlucmakiola.floret.time.formatDateTime
 import de.jeanlucmakiola.agendula.ui.common.pastelize
 import de.jeanlucmakiola.agendula.ui.common.positionOf
 import java.time.ZoneId

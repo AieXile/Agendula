@@ -72,8 +72,8 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
 import de.jeanlucmakiola.agendula.ui.common.GroupedSurface
 import de.jeanlucmakiola.agendula.ui.common.PriorityChip
-import de.jeanlucmakiola.agendula.ui.common.formatDate
-import de.jeanlucmakiola.agendula.ui.common.formatTime
+import de.jeanlucmakiola.floret.time.formatDate
+import de.jeanlucmakiola.floret.time.formatTime
 import de.jeanlucmakiola.agendula.ui.common.pastelize
 import de.jeanlucmakiola.agendula.ui.common.positionOf
 import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel

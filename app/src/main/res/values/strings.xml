@@ -176,6 +176,7 @@
     <string name="settings_report_problem">Report a problem</string>
     <string name="settings_report_problem_hint">Open the issue tracker</string>
     <string name="about_source_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula</string>
+    <string name="crash_report_issue_title">Crash report</string>
     <string name="report_issue_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/issues/new</string>
     <string name="about_license_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/src/branch/main/LICENSE</string>
     <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>

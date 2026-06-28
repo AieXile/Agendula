@@ -2,7 +2,7 @@ package de.jeanlucmakiola.agendula.data.demo
 
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
-import de.jeanlucmakiola.agendula.domain.DayWindow
+import de.jeanlucmakiola.floret.time.DayWindow
 import de.jeanlucmakiola.agendula.domain.Priority
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import kotlinx.coroutines.CoroutineDispatcher

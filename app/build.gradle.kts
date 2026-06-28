@@ -120,6 +120,8 @@ dependencies {
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.coroutines.core)
+    implementation("de.jeanlucmakiola.floret:core-time")
+    implementation("de.jeanlucmakiola.floret:core-crash")
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

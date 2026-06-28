@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
-import de.jeanlucmakiola.agendula.domain.DayWindow
+import de.jeanlucmakiola.floret.time.DayWindow
 import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
