@@ -1,22 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Agendula launcher icon foreground — PLACEHOLDER.
+    Agendula launcher icon foreground.
 
-    A simple rounded check mark inside the 108dp adaptive-icon canvas
-    (72dp safe zone). Deliberately not Calendula's calendar mark, so the two
-    apps never look alike. Replace with real branding (a stylized agendula)
-    when the design lands — see docs/PLAN.md §9.
+    Converted from design/icon/agendula_icon.svg (512x512 viewport): a rounded
+    line-art task card with a check mark, plus a small Calendula bloom badge in
+    the bottom-right corner — the sibling of Calendula's calendar mark.
+
+    Strokes render in off-white (#FAF6F0) over the plum background drawable
+    (drawable/ic_launcher_background.xml = @color/ic_launcher_background, the
+    hue-rotated counterpart of Calendula's slate). The same vector fills the
+    <monochrome> slot so Android 13+ themed-icon launchers can recolour it.
+
+    Centering / scale:
+    - The artwork's visual centre sits at (269, 256) in the 512 viewport.
+    - Pivot there, scale 0.66 (matching Calendula's ~2.8dp stroke weight and
+      generous padding), then translate (-13, 0) onto the 512 canvas centre.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M36,55 l13,13 l25,-27" />
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="269"
+        android:pivotY="256"
+        android:scaleX="0.66"
+        android:scaleY="0.66"
+        android:translateX="-13"
+        android:translateY="0">
+        <!-- Task card (rounded square, opening at the bottom-right for the bloom) -->
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="20"
+            android:strokeMiterLimit="12"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M370.207 254.345V168.276C370.207 144.508 350.939 125.241 327.172 125.241H178.207C154.439 125.241 135.172 144.508 135.172 168.276V317.241C135.172 341.008 154.439 360.276 178.207 360.276H269.241" />
+        <!-- Check mark -->
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="20"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M193 245.569L231.822 287L320 199" />
+        <!-- Calendula bloom: petals around the centre -->
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M346.672 323.721C356.301 323.721 364.107 312.367 364.107 298.361C364.107 284.354 356.301 273 346.672 273C337.042 273 329.236 284.354 329.236 298.361C329.236 312.367 337.042 323.721 346.672 323.721Z" />
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M355.716 330.293C358.692 339.451 371.903 343.366 385.224 339.038C398.544 334.71 406.931 323.777 403.955 314.619C400.98 305.461 387.769 301.546 374.448 305.874C361.127 310.202 352.741 321.135 355.716 330.293Z" />
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M352.262 340.926C344.471 346.586 344.83 360.36 353.063 371.691C361.295 383.022 374.284 387.62 382.075 381.96C389.865 376.3 389.506 362.526 381.274 351.194C373.041 339.863 360.052 335.266 352.262 340.926Z" />
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M341.082 340.926C333.291 335.266 320.302 339.863 312.069 351.194C303.837 362.526 303.478 376.3 311.268 381.96C319.059 387.62 332.048 383.022 340.28 371.691C348.513 360.36 348.872 346.585 341.082 340.926Z" />
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M337.627 330.293C340.602 321.135 332.216 310.202 318.895 305.874C305.574 301.546 292.363 305.461 289.388 314.619C286.412 323.777 294.799 334.71 308.119 339.038C321.44 343.366 334.651 339.451 337.627 330.293Z" />
+        <!-- Bloom centre -->
+        <path
+            android:strokeColor="#FFFAF6F0"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M346.672 342.742C351.924 342.742 356.182 338.484 356.182 333.232C356.182 327.979 351.924 323.721 346.672 323.721C341.419 323.721 337.161 327.979 337.161 333.232C337.161 338.484 341.419 342.742 346.672 342.742Z" />
+    </group>
 </vector>
