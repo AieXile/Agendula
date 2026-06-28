@@ -87,9 +87,9 @@ import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.data.prefs.ListReminderOverride
 import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.domain.TaskFormField
-import de.jeanlucmakiola.agendula.ui.common.CollapsingScaffold
+import de.jeanlucmakiola.floret.components.CollapsingScaffold
 import de.jeanlucmakiola.floret.components.GroupedRow
-import de.jeanlucmakiola.agendula.ui.common.OptionPicker
+import de.jeanlucmakiola.floret.components.OptionPicker
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
 import de.jeanlucmakiola.floret.components.pastelize
