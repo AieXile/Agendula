@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.ui.lists
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,11 +49,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -99,7 +104,13 @@ fun ListsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var query by rememberSaveable { mutableStateOf("") }
-    var searchExpanded by rememberSaveable { mutableStateOf(false) }
+    var searchActive by rememberSaveable { mutableStateOf(false) }
+    val closeSearch = {
+        query = ""
+        searchActive = false
+    }
+    // System back closes search before leaving the screen.
+    BackHandler(enabled = searchActive, onBack = closeSearch)
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -108,11 +119,19 @@ fun ListsScreen(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     ShapedActionButton(
+                        shape = ActionShapes.Search,
+                        icon = Icons.Rounded.Search,
+                        contentDescription = stringResource(R.string.home_search_hint),
+                        onClick = { searchActive = true },
+                        size = 48.dp,
+                        iconSize = 26.dp,
+                    )
+                    ShapedActionButton(
                         shape = ActionShapes.Settings,
                         icon = Icons.Rounded.Settings,
                         contentDescription = stringResource(R.string.settings_title),
                         onClick = onOpenSettings,
-                        modifier = Modifier.padding(end = 8.dp),
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         size = 48.dp,
                         iconSize = 26.dp,
                     )
@@ -122,7 +141,7 @@ fun ListsScreen(
         },
         floatingActionButton = {
             // The FAB would otherwise float over the expanded search results.
-            if (!searchExpanded) {
+            if (!searchActive) {
                 ExtendedFloatingActionButton(
                     onClick = onNewTask,
                     icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
@@ -131,9 +150,6 @@ fun ListsScreen(
             }
         },
     ) { inner ->
-        // The search bar overlays the top of the content; when expanded it grows to
-        // cover the home content with live results. The content's own top padding
-        // clears the collapsed bar so the hero isn't hidden behind it.
         Box(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
             when (val s = state) {
                 ListsUiState.Loading -> Unit // brief; avoids a flash before first emission
@@ -144,26 +160,26 @@ fun ListsScreen(
                         state = s,
                         onOpenFilter = onOpenFilter,
                         onOpenTask = onOpenTask,
-                        topPadding = SEARCH_BAR_CLEARANCE,
+                        topPadding = 0.dp,
                         bottomPadding = inner.calculateBottomPadding() + 96.dp,
                     )
-                    HomeSearchBar(
-                        query = query,
-                        onQueryChange = { query = it },
-                        expanded = searchExpanded,
-                        onExpandedChange = { searchExpanded = it },
-                        allTasks = s.allTasks,
-                        onOpenTask = onOpenTask,
-                        modifier = Modifier.align(Alignment.TopCenter),
-                    )
+                    // Only present while searching — it expands to cover the home
+                    // content with live results, and is absent otherwise.
+                    if (searchActive) {
+                        HomeSearchBar(
+                            query = query,
+                            onQueryChange = { query = it },
+                            onClose = closeSearch,
+                            allTasks = s.allTasks,
+                            onOpenTask = onOpenTask,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
+                    }
                 }
             }
         }
     }
 }
-
-/** Top inset the home content reserves for the collapsed search bar. */
-private val SEARCH_BAR_CLEARANCE = 72.dp
 
 @Composable
 private fun ListsContent(
@@ -239,17 +255,17 @@ private fun ListsContent(
 }
 
 /**
- * The home search: a Material 3 SearchBar that expands in place to show tasks whose
- * title matches the query, across every list (completed included). The leading icon
- * flips to a back arrow while expanded; collapsing clears the field.
+ * The home search: a Material 3 SearchBar shown only while searching (triggered by
+ * the top-bar search action). It opens expanded and focused, covering the home
+ * content with tasks whose title matches the query, across every list (completed
+ * included). The back arrow or system back closes it via [onClose].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
+    onClose: () -> Unit,
     allTasks: List<Task>,
     onOpenTask: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -261,36 +277,34 @@ private fun HomeSearchBar(
             .filter { it.title.contains(q, ignoreCase = true) }
             .sortedWith(compareBy({ it.isCompleted }, { it.title.lowercase() }))
     }
-    val collapse = {
-        onQueryChange("")
-        onExpandedChange(false)
-    }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     SearchBar(
-        modifier = modifier.fillMaxWidth().padding(horizontal = if (expanded) 0.dp else 16.dp),
-        expanded = expanded,
-        onExpandedChange = onExpandedChange,
+        modifier = modifier.fillMaxWidth(),
+        expanded = true,
+        onExpandedChange = { if (!it) onClose() },
+        // The enclosing app bar already consumes the status-bar inset; without this
+        // the search bar would add it again and float with a large top gap.
+        windowInsets = WindowInsets(0),
         inputField = {
             SearchBarDefaults.InputField(
+                modifier = Modifier.focusRequester(focusRequester),
                 query = query,
                 onQueryChange = onQueryChange,
                 onSearch = {},
-                expanded = expanded,
-                onExpandedChange = onExpandedChange,
+                expanded = true,
+                onExpandedChange = { if (!it) onClose() },
                 placeholder = { Text(stringResource(R.string.home_search_hint)) },
                 leadingIcon = {
-                    if (expanded) {
-                        IconButton(onClick = collapse) {
-                            Icon(
-                                Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(R.string.home_search_close),
-                            )
-                        }
-                    } else {
-                        Icon(Icons.Rounded.Search, contentDescription = null)
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.home_search_close),
+                        )
                     }
                 },
                 trailingIcon = {
-                    if (expanded && query.isNotEmpty()) {
+                    if (query.isNotEmpty()) {
                         IconButton(onClick = { onQueryChange("") }) {
                             Icon(
                                 Icons.Rounded.Close,
@@ -315,7 +329,7 @@ private fun HomeSearchBar(
                     UpcomingRow(
                         task = task,
                         onClick = {
-                            collapse()
+                            onClose()
                             onOpenTask(task.taskId)
                         },
                     )
