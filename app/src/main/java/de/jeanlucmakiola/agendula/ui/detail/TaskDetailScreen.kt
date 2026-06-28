@@ -70,12 +70,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
-import de.jeanlucmakiola.agendula.ui.common.GroupedSurface
+import de.jeanlucmakiola.floret.components.GroupedSurface
 import de.jeanlucmakiola.agendula.ui.common.PriorityChip
 import de.jeanlucmakiola.floret.time.formatDate
 import de.jeanlucmakiola.floret.time.formatTime
-import de.jeanlucmakiola.agendula.ui.common.pastelize
-import de.jeanlucmakiola.agendula.ui.common.positionOf
+import de.jeanlucmakiola.floret.components.pastelize
+import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel
 
 /**

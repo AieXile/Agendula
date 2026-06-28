@@ -123,6 +123,7 @@ dependencies {
     implementation("de.jeanlucmakiola.floret:core-time")
     implementation("de.jeanlucmakiola.floret:core-crash")
     implementation("de.jeanlucmakiola.floret:identity")
+    implementation("de.jeanlucmakiola.floret:components")
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

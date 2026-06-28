@@ -94,15 +94,15 @@ import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
-import de.jeanlucmakiola.agendula.ui.common.GroupedRow
-import de.jeanlucmakiola.agendula.ui.common.InlineTextField
-import de.jeanlucmakiola.agendula.ui.common.OptionCard
+import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.InlineTextField
+import de.jeanlucmakiola.floret.components.OptionCard
 import de.jeanlucmakiola.agendula.ui.common.priorityFill
 import de.jeanlucmakiola.floret.time.formatDate
 import de.jeanlucmakiola.floret.time.formatTime
 import de.jeanlucmakiola.agendula.ui.common.localToInstant
-import de.jeanlucmakiola.agendula.ui.common.pastelize
-import de.jeanlucmakiola.agendula.ui.common.positionOf
+import de.jeanlucmakiola.floret.components.pastelize
+import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.agendula.ui.common.toLocalDate
 import de.jeanlucmakiola.agendula.ui.common.toLocalTime
 import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel
@@ -853,7 +853,7 @@ private fun ParentPickerSheet(
             item(key = "none") {
                 GroupedRow(
                     title = stringResource(R.string.edit_parent_none),
-                    position = de.jeanlucmakiola.agendula.ui.common.Position.Alone,
+                    position = de.jeanlucmakiola.floret.components.Position.Alone,
                     selected = selectedId == null,
                     minHeight = 56.dp,
                     onClick = { choose(null) },

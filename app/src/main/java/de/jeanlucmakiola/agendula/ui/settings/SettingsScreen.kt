@@ -88,12 +88,12 @@ import de.jeanlucmakiola.agendula.data.prefs.ListReminderOverride
 import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.agendula.ui.common.CollapsingScaffold
-import de.jeanlucmakiola.agendula.ui.common.GroupedRow
+import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.agendula.ui.common.OptionPicker
-import de.jeanlucmakiola.agendula.ui.common.Position
+import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
-import de.jeanlucmakiola.agendula.ui.common.pastelize
-import de.jeanlucmakiola.agendula.ui.common.positionOf
+import de.jeanlucmakiola.floret.components.pastelize
+import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
 
 /** The settings sub-screens reached from the hub's category rows. */

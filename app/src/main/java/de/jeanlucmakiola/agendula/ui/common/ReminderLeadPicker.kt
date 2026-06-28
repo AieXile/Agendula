@@ -1,5 +1,9 @@
 package de.jeanlucmakiola.agendula.ui.common
 
+import de.jeanlucmakiola.floret.components.Position
+import de.jeanlucmakiola.floret.components.positionOf
+import de.jeanlucmakiola.floret.components.InlineTextField
+import de.jeanlucmakiola.floret.components.GroupedRow
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn

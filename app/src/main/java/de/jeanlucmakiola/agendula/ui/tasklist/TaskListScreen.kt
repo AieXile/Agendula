@@ -89,11 +89,11 @@ import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.agendula.ui.common.ListNameChip
-import de.jeanlucmakiola.agendula.ui.common.Position
+import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.agendula.ui.common.PriorityChip
 import de.jeanlucmakiola.floret.time.formatDateTime
-import de.jeanlucmakiola.agendula.ui.common.pastelize
-import de.jeanlucmakiola.agendula.ui.common.positionOf
+import de.jeanlucmakiola.floret.components.pastelize
+import de.jeanlucmakiola.floret.components.positionOf
 import java.time.ZoneId
 import kotlin.time.Clock
 

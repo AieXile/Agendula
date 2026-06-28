@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.ui.common
 
+import de.jeanlucmakiola.floret.components.pastelize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement

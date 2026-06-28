@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.ui.common
 
+import de.jeanlucmakiola.floret.components.pastelize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -21,20 +22,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-
-/**
- * Soften a raw provider colour toward a pastel that fits the active theme —
- * keeps the hue (lists stay recognisable), caps saturation so harsh sync
- * colours stop screaming, pins brightness to read on light and dark. Copied
- * from Calendula so the families' colours behave identically.
- */
-fun pastelize(rawArgb: Int, dark: Boolean): Color {
-    val hsv = FloatArray(3)
-    android.graphics.Color.colorToHSV(rawArgb, hsv)
-    hsv[1] = (hsv[1] * 0.6f).coerceIn(0.25f, 0.65f)
-    hsv[2] = if (dark) 0.82f else 0.72f
-    return Color(android.graphics.Color.HSVToColor(hsv))
-}
 
 /**
  * Leading avatar for a task list: a neutral round chip holding a checklist glyph

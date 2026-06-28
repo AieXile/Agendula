@@ -49,10 +49,10 @@ import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.ui.common.ActionShapes
-import de.jeanlucmakiola.agendula.ui.common.GroupedRow
+import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.agendula.ui.common.ListColorChip
 import de.jeanlucmakiola.agendula.ui.common.ShapedActionButton
-import de.jeanlucmakiola.agendula.ui.common.positionOf
+import de.jeanlucmakiola.floret.components.positionOf
 
 /**
  * Home: smart lists (Today / Overdue / Upcoming / All) as tonal cards with live
