@@ -1,10 +1,8 @@
 package de.jeanlucmakiola.agendula.ui.edit
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import de.jeanlucmakiola.floret.identity.collapseExit
+import de.jeanlucmakiola.floret.identity.expandEnter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -549,8 +547,8 @@ private fun EditContent(
 private fun OptionalFormSection(visible: Boolean, content: @Composable ColumnScope.() -> Unit) {
     AnimatedVisibility(
         visible = visible,
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut(),
+        enter = expandEnter(),
+        exit = collapseExit(),
     ) {
         Column(modifier = Modifier.fillMaxWidth(), content = content)
     }
