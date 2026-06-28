@@ -31,8 +31,10 @@ import androidx.graphics.shapes.RoundedPolygon
  * its own [shape] and [containerColor], so a row of them reads as a set of
  * distinct little tokens rather than identical grey glyphs.
  *
- * Pressing springs the icon down a touch and gives it a small turn — a light
- * expressive flourish, no library motion APIs needed.
+ * Pressing springs the whole shape down and gives it a turn — the scalloped
+ * container is what dips and spins, while the glyph inside stays upright (a
+ * spinning magnifier or list icon would just read as wrong). [spinIcon] opts a
+ * glyph into turning too, for icons that read well mid-spin like the gear.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -46,15 +48,25 @@ fun ShapedActionButton(
     contentColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
     size: Dp = 40.dp,
     iconSize: Dp = 22.dp,
+    spinIcon: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.88f else 1f, label = "actionScale")
-    val rotation by animateFloatAsState(if (pressed) 24f else 0f, label = "actionRotation")
+    // The shape (the scalloped cookie) turns and dips on press.
+    val shapeRotation by animateFloatAsState(if (pressed) 40f else 0f, label = "shapeRotation")
+    val scale by animateFloatAsState(if (pressed) 0.82f else 1f, label = "shapeScale")
+    // The glyph's *net* turn: 0 keeps it upright, spinIcon gives it a quarter turn.
+    val iconRotation by animateFloatAsState(
+        if (pressed && spinIcon) 90f else 0f,
+        label = "iconRotation",
+    )
 
     Surface(
         onClick = onClick,
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .scale(scale)
+            .rotate(shapeRotation),
         shape = shape.toShape(),
         color = containerColor,
         contentColor = contentColor,
@@ -64,10 +76,11 @@ fun ShapedActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
+                // Counter the container's turn so the glyph's net rotation is just
+                // [iconRotation] — upright by default, a quarter turn for the gear.
                 modifier = Modifier
                     .size(iconSize)
-                    .scale(scale)
-                    .rotate(rotation),
+                    .rotate(iconRotation - shapeRotation),
             )
         }
     }
