@@ -52,6 +52,7 @@ fun AgendulaNavHost(modifier: Modifier = Modifier) {
         composable(Dest.LISTS) {
             ListsScreen(
                 onOpenFilter = { filter -> nav.navigate(Dest.TaskList.build(filter)) },
+                onOpenTask = { taskId -> nav.navigate(Dest.TaskDetail.build(taskId)) },
                 onNewTask = { nav.navigate(Dest.TaskEdit.buildNew()) },
                 onOpenSettings = { nav.navigate(Dest.SETTINGS) },
             )

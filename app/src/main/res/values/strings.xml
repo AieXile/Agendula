@@ -129,6 +129,17 @@
     <string name="smart_all">All</string>
     <string name="open_count">%1$d open</string>
 
+    <!-- Home: Today progress hero -->
+    <string name="home_today_progress">%1$d of %2$d done</string>
+    <string name="home_today_remaining">%1$d left</string>
+    <string name="home_today_all_done">All done 🎉</string>
+    <string name="home_today_empty">Nothing due today 🎉</string>
+
+    <!-- Home: Upcoming preview -->
+    <string name="home_upcoming_view_all">View all</string>
+    <string name="home_due_today">Today</string>
+    <string name="home_due_tomorrow">Tomorrow</string>
+
     <!-- Reminders -->
     <string name="reminder_due_at">Due %1$s</string>
     <string name="reminder_channel_name">Task reminders</string>
