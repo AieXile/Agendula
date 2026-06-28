@@ -22,6 +22,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.jeanlucmakiola.agendula.R
+import de.jeanlucmakiola.floret.components.BenefitRow
+import de.jeanlucmakiola.floret.components.OnboardingScaffold
+import de.jeanlucmakiola.floret.components.OnboardingSpace
 
 /**
  * One-time onboarding step after the tasks-provider grant: explains that Agendula
