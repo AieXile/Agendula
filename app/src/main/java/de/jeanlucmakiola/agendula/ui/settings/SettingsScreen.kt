@@ -84,7 +84,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
-import de.jeanlucmakiola.agendula.data.prefs.ListReminderOverride
 import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.floret.components.CollapsingScaffold
@@ -94,6 +93,8 @@ import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
+import de.jeanlucmakiola.floret.locale.AppLanguage
+import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
 
 /** The settings sub-screens reached from the hub's category rows. */
@@ -202,7 +203,7 @@ private fun LanguageRow(position: Position) {
     var current by remember { mutableStateOf(AppLanguage.currentTag()) }
     var showDialog by remember { mutableStateOf(false) }
     // null = follow the system; the rest are BCP-47 tags from locales_config.xml.
-    val options = remember { listOf<String?>(null) + AppLanguage.supportedTags(context) }
+    val options = remember { listOf<String?>(null) + AppLanguage.supportedTags(context, R.xml.locales_config) }
 
     GroupedRow(
         title = stringResource(R.string.settings_language),
@@ -479,10 +480,10 @@ private fun RemindersScreen(
     if (showOffset) {
         ReminderLeadPicker(
             title = stringResource(R.string.settings_default_reminder),
-            selected = ListReminderOverride.Minutes(state.settings.reminderLeadMinutes),
+            selected = ReminderOverride.Minutes(state.settings.reminderLeadMinutes),
             allowInherit = false,
             allowNone = false,
-            onSelect = { if (it is ListReminderOverride.Minutes) viewModel.setReminderLeadMinutes(it.minutes) },
+            onSelect = { if (it is ReminderOverride.Minutes) viewModel.setReminderLeadMinutes(it.minutes) },
             onDismiss = { showOffset = false },
         )
     }
@@ -500,22 +501,22 @@ private fun RemindersScreen(
 }
 
 /** The stored override for [listId], as a picker choice (absent → inherit). */
-private fun listOverrideChoice(state: SettingsUiState, listId: Long): ListReminderOverride {
+private fun listOverrideChoice(state: SettingsUiState, listId: Long): ReminderOverride {
     val map = state.settings.perListReminderOverride
     return when {
-        !map.containsKey(listId) -> ListReminderOverride.Inherit
-        map[listId] == null -> ListReminderOverride.None
-        else -> ListReminderOverride.Minutes(map.getValue(listId)!!)
+        !map.containsKey(listId) -> ReminderOverride.Inherit
+        map[listId] == null -> ReminderOverride.None
+        else -> ReminderOverride.Minutes(map.getValue(listId)!!)
     }
 }
 
 /** Row summary for a list: its override, or the inherited global default. */
 @Composable
-private fun listOverrideSummary(choice: ListReminderOverride, globalDefault: Int): String = when (choice) {
-    ListReminderOverride.Inherit ->
+private fun listOverrideSummary(choice: ReminderOverride, globalDefault: Int): String = when (choice) {
+    ReminderOverride.Inherit ->
         stringResource(R.string.settings_list_reminder_inherits, reminderLeadTimeLabel(globalDefault))
-    ListReminderOverride.None -> stringResource(R.string.reminder_none)
-    is ListReminderOverride.Minutes -> reminderLeadTimeLabel(choice.minutes)
+    ReminderOverride.None -> stringResource(R.string.reminder_none)
+    is ReminderOverride.Minutes -> reminderLeadTimeLabel(choice.minutes)
 }
 
 // ---------------------------------------------------------------------------

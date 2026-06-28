@@ -5,6 +5,9 @@ import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.floret.components.InlineTextField
 import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.reminders.ReminderOverride
+import de.jeanlucmakiola.floret.reminders.ReminderUnit
+import de.jeanlucmakiola.floret.reminders.decomposeReminderMinutes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -36,37 +39,36 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.jeanlucmakiola.agendula.R
-import de.jeanlucmakiola.agendula.data.prefs.ListReminderOverride
 
 /**
  * Reminder lead-time picker, full-screen: the grouped list of preset lead times
  * plus a "Custom" row that expands an inline amount field + unit selector.
  * [allowInherit] adds a "Use default" row (per-list overrides); [allowNone] adds
- * a "None" row. Returns the choice as a [ListReminderOverride]. Ported from
+ * a "None" row. Returns the choice as a [ReminderOverride]. Ported from
  * Calendula's ReminderDefaultPicker.
  */
 @Composable
 fun ReminderLeadPicker(
     title: String,
-    selected: ListReminderOverride,
+    selected: ReminderOverride,
     allowInherit: Boolean,
     allowNone: Boolean,
-    onSelect: (ListReminderOverride) -> Unit,
+    onSelect: (ReminderOverride) -> Unit,
     onDismiss: () -> Unit,
     presets: List<Int> = REMINDER_PRESETS,
 ) {
-    val selectedMinutes = (selected as? ListReminderOverride.Minutes)?.minutes
+    val selectedMinutes = (selected as? ReminderOverride.Minutes)?.minutes
     val customSelected = selectedMinutes != null && selectedMinutes !in presets
-    val seed = decomposeReminder(selectedMinutes?.takeIf { customSelected })
+    val seed = decomposeReminderMinutes(selectedMinutes?.takeIf { customSelected })
 
     var customExpanded by rememberSaveable { mutableStateOf(false) }
-    var amountText by rememberSaveable { mutableStateOf(seed.first) }
-    var unit by rememberSaveable { mutableStateOf(seed.second) }
+    var amountText by rememberSaveable { mutableStateOf(seed.amount?.toString() ?: "") }
+    var unit by rememberSaveable { mutableStateOf(seed.unit) }
 
     val options = buildList {
-        if (allowInherit) add(ListReminderOverride.Inherit)
-        if (allowNone) add(ListReminderOverride.None)
-        presets.forEach { add(ListReminderOverride.Minutes(it)) }
+        if (allowInherit) add(ReminderOverride.Inherit)
+        if (allowNone) add(ReminderOverride.None)
+        presets.forEach { add(ReminderOverride.Minutes(it)) }
     }
     val rowCount = options.size + 1 // + the custom row
 
@@ -106,7 +108,7 @@ fun ReminderLeadPicker(
                 unit = unit,
                 onUnitChange = { unit = it },
                 onConfirm = { minutes ->
-                    onSelect(ListReminderOverride.Minutes(minutes))
+                    onSelect(ReminderOverride.Minutes(minutes))
                     onDismiss()
                 },
             )
@@ -178,17 +180,8 @@ private fun CustomReminderEditor(
 }
 
 @Composable
-private fun reminderOverrideLabel(override: ListReminderOverride): String = when (override) {
-    ListReminderOverride.Inherit -> stringResource(R.string.reminder_use_default)
-    ListReminderOverride.None -> stringResource(R.string.reminder_none)
-    is ListReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes)
-}
-
-/** Seed the custom editor: the largest exact unit for [minutes] (null → empty). */
-private fun decomposeReminder(minutes: Int?): Pair<String, ReminderUnit> = when {
-    minutes == null || minutes <= 0 -> "" to ReminderUnit.Minutes
-    minutes % 10_080 == 0 -> (minutes / 10_080).toString() to ReminderUnit.Weeks
-    minutes % 1_440 == 0 -> (minutes / 1_440).toString() to ReminderUnit.Days
-    minutes % 60 == 0 -> (minutes / 60).toString() to ReminderUnit.Hours
-    else -> minutes.toString() to ReminderUnit.Minutes
+private fun reminderOverrideLabel(override: ReminderOverride): String = when (override) {
+    ReminderOverride.Inherit -> stringResource(R.string.reminder_use_default)
+    ReminderOverride.None -> stringResource(R.string.reminder_none)
+    is ReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes)
 }

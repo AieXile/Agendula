@@ -9,22 +9,16 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import de.jeanlucmakiola.agendula.domain.TaskFormField
+import de.jeanlucmakiola.floret.reminders.ReminderOverride
+import de.jeanlucmakiola.floret.reminders.ReminderOverrideCodec
+import de.jeanlucmakiola.floret.reminders.applyReminderOverride
+import de.jeanlucmakiola.floret.reminders.reminderLeadFor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
-
-/** A list's override of the default reminder lead time (mirrors Calendula's per-calendar override). */
-sealed interface ListReminderOverride {
-    /** No override — the list uses the global default. */
-    data object Inherit : ListReminderOverride
-    /** Explicit "no reminder" for this list, regardless of the global default. */
-    data object None : ListReminderOverride
-    /** A specific lead time in minutes before due. */
-    data class Minutes(val minutes: Int) : ListReminderOverride
-}
 
 data class Settings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -47,11 +41,7 @@ data class Settings(
 ) {
     /** The lead time for a task in [listId]: its override if set, else the global default. */
     fun reminderLeadFor(listId: Long): Int? =
-        if (perListReminderOverride.containsKey(listId)) {
-            perListReminderOverride[listId] // null = explicitly no reminder
-        } else {
-            reminderLeadMinutes
-        }
+        perListReminderOverride.reminderLeadFor(listId, reminderLeadMinutes)
 }
 
 /** App preferences, backed by DataStore. Mirrors Calendula's prefs shape. */
@@ -68,7 +58,7 @@ class SettingsPrefs @Inject constructor(
             reminderLeadMinutes = p[REMINDER_LEAD] ?: 0,
             remindersEnabled = p[REMINDERS_ENABLED] ?: true,
             showAddSubtaskRow = p[SHOW_ADD_SUBTASK_ROW] ?: true,
-            perListReminderOverride = parseReminderOverrides(p[LIST_REMINDER_OVERRIDE]),
+            perListReminderOverride = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]),
             defaultEditFields = p[DEFAULT_EDIT_FIELDS].orEmpty()
                 .mapNotNull { name -> runCatching { TaskFormField.valueOf(name) }.getOrNull() }
                 .toSet(),
@@ -92,15 +82,11 @@ class SettingsPrefs @Inject constructor(
 
     suspend fun setShowAddSubtaskRow(show: Boolean) = dataStore.edit { it[SHOW_ADD_SUBTASK_ROW] = show }
 
-    /** Set (or clear, via [ListReminderOverride.Inherit]) a list's reminder override. */
-    suspend fun setListReminderOverride(listId: Long, override: ListReminderOverride) = dataStore.edit { p ->
-        val current = parseReminderOverrides(p[LIST_REMINDER_OVERRIDE]).toMutableMap()
-        when (override) {
-            ListReminderOverride.Inherit -> current.remove(listId)
-            ListReminderOverride.None -> current[listId] = null
-            is ListReminderOverride.Minutes -> current[listId] = override.minutes
-        }
-        p[LIST_REMINDER_OVERRIDE] = serializeReminderOverrides(current)
+    /** Set (or clear, via [ReminderOverride.Inherit]) a list's reminder override. */
+    suspend fun setListReminderOverride(listId: Long, override: ReminderOverride) = dataStore.edit { p ->
+        val current = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]).toMutableMap()
+        current.applyReminderOverride(listId, override)
+        p[LIST_REMINDER_OVERRIDE] = reminderCodec.serialize(current)
     }
 
     suspend fun setDefaultEditFields(fields: Set<TaskFormField>) = dataStore.edit {
@@ -120,20 +106,9 @@ class SettingsPrefs @Inject constructor(
     }
 }
 
-private const val OVERRIDE_ENTRY_SEP = ";"
-private const val OVERRIDE_KV_SEP = ":"
-private const val OVERRIDE_NONE = "none"
-
-/** Decode "id:minutes;id:none;…" into a map (value null = explicit no-reminder). */
-private fun parseReminderOverrides(stored: String?): Map<Long, Int?> {
-    if (stored.isNullOrBlank()) return emptyMap()
-    return stored.split(OVERRIDE_ENTRY_SEP).mapNotNull { entry ->
-        val parts = entry.split(OVERRIDE_KV_SEP).takeIf { it.size == 2 } ?: return@mapNotNull null
-        val id = parts[0].toLongOrNull() ?: return@mapNotNull null
-        val value = if (parts[1] == OVERRIDE_NONE) null else parts[1].toIntOrNull() ?: return@mapNotNull null
-        id to value
-    }.toMap()
-}
-
-private fun serializeReminderOverrides(map: Map<Long, Int?>): String =
-    map.entries.joinToString(OVERRIDE_ENTRY_SEP) { (id, minutes) -> "$id$OVERRIDE_KV_SEP${minutes ?: OVERRIDE_NONE}" }
+/**
+ * Agendula's stored dialect for the per-list override map: `id:minutes` entries
+ * joined by `;` (the family default). Fixed at release — don't change without a
+ * data migration.
+ */
+private val reminderCodec = ReminderOverrideCodec.DEFAULT

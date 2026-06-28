@@ -5,17 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.jeanlucmakiola.agendula.R
+import de.jeanlucmakiola.floret.reminders.ReminderUnit
 
 /** Common reminder lead times offered as quick picks in the reminder pickers. */
 val REMINDER_PRESETS = listOf(0, 5, 10, 30, 60, 1_440)
-
-/** The unit of a custom reminder lead time; [minutesFactor] converts to minutes. */
-enum class ReminderUnit(val minutesFactor: Int) {
-    Minutes(1),
-    Hours(60),
-    Days(1_440),
-    Weeks(10_080),
-}
 
 @StringRes
 fun reminderUnitLabel(unit: ReminderUnit): Int = when (unit) {

@@ -3,13 +3,13 @@ package de.jeanlucmakiola.agendula.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import de.jeanlucmakiola.agendula.data.prefs.ListReminderOverride
 import de.jeanlucmakiola.agendula.data.prefs.Settings
 import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -51,7 +51,7 @@ class SettingsViewModel @Inject constructor(
         prefs.setDefaultEditFields(if (enabled) current + field else current - field)
     }
 
-    /** Set (or clear, via [ListReminderOverride.Inherit]) a list's reminder override. */
-    fun setListReminderOverride(listId: Long, override: ListReminderOverride) =
+    /** Set (or clear, via [ReminderOverride.Inherit]) a list's reminder override. */
+    fun setListReminderOverride(listId: Long, override: ReminderOverride) =
         viewModelScope.launch { prefs.setListReminderOverride(listId, override) }
 }
