@@ -1,8 +1,5 @@
 package de.jeanlucmakiola.agendula.ui.edit
 
-import androidx.compose.animation.AnimatedVisibility
-import de.jeanlucmakiola.floret.identity.collapseExit
-import de.jeanlucmakiola.floret.identity.expandEnter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -93,6 +90,7 @@ import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.OptionalFormSection
 import de.jeanlucmakiola.floret.components.InlineTextField
 import de.jeanlucmakiola.floret.components.OptionCard
 import de.jeanlucmakiola.agendula.ui.common.priorityFill
@@ -543,17 +541,6 @@ private fun EditContent(
  * open instead of popping in. (Initially-visible sections render without
  * animating on the first frame they're added.)
  */
-@Composable
-private fun OptionalFormSection(visible: Boolean, content: @Composable ColumnScope.() -> Unit) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandEnter(),
-        exit = collapseExit(),
-    ) {
-        Column(modifier = Modifier.fillMaxWidth(), content = content)
-    }
-}
-
 /**
  * One info card mirroring the detail screen's card: tonal container, leading
  * icon in the gutter, value to the right. Optionally clickable as a whole.
