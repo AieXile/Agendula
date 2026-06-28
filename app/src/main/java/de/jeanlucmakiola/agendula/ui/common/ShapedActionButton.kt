@@ -82,4 +82,7 @@ fun ShapedActionButton(
 object ActionShapes {
     /** Settings — a 4-sided cookie (rounded, scalloped square). */
     val Settings: RoundedPolygon get() = MaterialShapes.Cookie4Sided
+
+    /** Search — a 6-sided cookie, the same family as [Settings] but distinct. */
+    val Search: RoundedPolygon get() = MaterialShapes.Cookie6Sided
 }
