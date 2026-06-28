@@ -1,9 +1,10 @@
 package de.jeanlucmakiola.agendula.ui.navigation
 
-import de.jeanlucmakiola.floret.identity.predictiveBack
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -40,14 +41,13 @@ fun AgendulaNavHost(modifier: Modifier = Modifier) {
         modifier = modifier,
         // Only the screen on top moves; the background is always held static.
         // Forward is a plain fade-in over the held screen — calm, not a slide.
-        // Back is the system predictive-back peek: each destination applies
-        // Modifier.predictiveBack, so the leaving screen scales/rounds with the
-        // gesture and the held screen is revealed unmoved. NavHost itself does no
-        // pop animation (the screen owns the motion).
+        // Back is the predictive-back peek: navigation-compose composes the
+        // screen being revealed underneath and seeks popExit with the gesture, so
+        // the leaving screen scales down to reveal the (unmoved) previous screen.
         enterTransition = { fadeIn() },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
-        popExitTransition = { ExitTransition.None },
+        popExitTransition = { scaleOut(targetScale = 0.9f) + fadeOut() },
     ) {
         composable(Dest.LISTS) {
             ListsScreen(
@@ -71,7 +71,6 @@ fun AgendulaNavHost(modifier: Modifier = Modifier) {
             LaunchedEffect(filter) { vm.bind(filter) }
 
             TaskListScreen(
-                modifier = Modifier.predictiveBack(onBack = { nav.popBackStack() }),
                 filter = filter,
                 viewModel = vm,
                 onOpenTask = { taskId -> nav.navigate(Dest.TaskDetail.build(taskId)) },
@@ -89,7 +88,6 @@ fun AgendulaNavHost(modifier: Modifier = Modifier) {
             LaunchedEffect(taskId) { vm.bind(taskId) }
 
             TaskDetailScreen(
-                modifier = Modifier.predictiveBack(onBack = { nav.popBackStack() }),
                 viewModel = vm,
                 onEdit = { nav.navigate(Dest.TaskEdit.buildEdit(taskId)) },
                 onDeleted = { nav.popBackStack() },
@@ -118,7 +116,6 @@ fun AgendulaNavHost(modifier: Modifier = Modifier) {
             }
 
             TaskEditScreen(
-                modifier = Modifier.predictiveBack(onBack = { nav.popBackStack() }),
                 viewModel = vm,
                 onSaved = { nav.popBackStack() },
                 onBack = { nav.popBackStack() },
