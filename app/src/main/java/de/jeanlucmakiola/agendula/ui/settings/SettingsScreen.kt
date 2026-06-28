@@ -20,7 +20,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,10 +49,8 @@ import androidx.compose.material.icons.rounded.Circle
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Percent
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -84,7 +81,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.domain.TaskFormField
+import de.jeanlucmakiola.floret.components.AboutCard
+import de.jeanlucmakiola.floret.components.AboutLink
 import de.jeanlucmakiola.floret.components.CollapsingScaffold
+import de.jeanlucmakiola.floret.components.LanguagePickerRow
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.OptionPicker
 import de.jeanlucmakiola.floret.components.Position
@@ -94,7 +94,6 @@ import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.floret.identity.collapseExit
 import de.jeanlucmakiola.floret.identity.expandEnter
 import de.jeanlucmakiola.floret.identity.predictiveBack
-import de.jeanlucmakiola.floret.locale.AppLanguage
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
 
@@ -168,7 +167,30 @@ private fun SettingsHub(
     onOpenSection: (SettingsSection) -> Unit,
 ) {
     CollapsingScaffold(title = stringResource(R.string.settings_title), onBack = onBack) {
-        Box(Modifier.padding(horizontal = 16.dp)) { AboutCard() }
+        Box(Modifier.padding(horizontal = 16.dp)) {
+            AboutCard(
+                logo = { AppLogo() },
+                appName = stringResource(R.string.app_name),
+                author = stringResource(R.string.settings_about_author),
+                primaryLinks = listOf(
+                    AboutLink(
+                        icon = Icons.Default.Code,
+                        label = stringResource(R.string.settings_about_source),
+                        url = stringResource(R.string.about_source_url),
+                    ),
+                    AboutLink(
+                        icon = Icons.Default.Gavel,
+                        label = stringResource(R.string.settings_license),
+                        url = stringResource(R.string.about_license_url),
+                    ),
+                ),
+                highlightLink = AboutLink(
+                    icon = Icons.Default.Favorite,
+                    label = stringResource(R.string.settings_about_support),
+                    url = stringResource(R.string.about_support_url),
+                ),
+            )
+        }
         Spacer(Modifier.height(16.dp))
 
         GroupedRow(
@@ -192,43 +214,16 @@ private fun SettingsHub(
             leading = { CategoryIcon(Icons.Default.Notifications, ChipAccent.Primary) },
             onClick = { onOpenSection(SettingsSection.Reminders) },
         )
-        LanguageRow(position = Position.Middle)
+        LanguagePickerRow(
+            position = Position.Middle,
+            title = stringResource(R.string.settings_language),
+            autoLabel = stringResource(R.string.settings_language_auto),
+            localesConfig = R.xml.locales_config,
+            leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Neutral) },
+        )
         ReportProblemRow(position = Position.Bottom)
 
         AppVersionText()
-    }
-}
-
-/** App-language picker row; setting a locale recreates the activity. */
-@Composable
-private fun LanguageRow(position: Position) {
-    val context = LocalContext.current
-    // Mirror the choice locally so the row updates instantly, before recreation.
-    var current by remember { mutableStateOf(AppLanguage.currentTag()) }
-    var showDialog by remember { mutableStateOf(false) }
-    // null = follow the system; the rest are BCP-47 tags from locales_config.xml.
-    val options = remember { listOf<String?>(null) + AppLanguage.supportedTags(context, R.xml.locales_config) }
-
-    GroupedRow(
-        title = stringResource(R.string.settings_language),
-        summary = languageLabel(current),
-        position = position,
-        leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Neutral) },
-        onClick = { showDialog = true },
-    )
-
-    if (showDialog) {
-        OptionPicker(
-            title = stringResource(R.string.settings_language),
-            options = options,
-            selected = current,
-            label = { languageLabel(it) },
-            onSelect = {
-                current = it
-                AppLanguage.apply(it)
-            },
-            onDismiss = { showDialog = false },
-        )
     }
 }
 
@@ -245,10 +240,6 @@ private fun ReportProblemRow(position: Position) {
         onClick = { openUrl(context, issueUrl) },
     )
 }
-
-@Composable
-private fun languageLabel(tag: String?): String =
-    if (tag == null) stringResource(R.string.settings_language_auto) else AppLanguage.displayName(tag)
 
 // ---------------------------------------------------------------------------
 // Sub-screens
@@ -526,62 +517,6 @@ private fun listOverrideSummary(choice: ReminderOverride, globalDefault: Int): S
 // ---------------------------------------------------------------------------
 // About + shared building blocks
 // ---------------------------------------------------------------------------
-
-@Composable
-private fun AboutCard() {
-    val context = LocalContext.current
-    val sourceUrl = stringResource(R.string.about_source_url)
-    val licenseUrl = stringResource(R.string.about_license_url)
-    val supportUrl = stringResource(R.string.about_support_url)
-
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AppLogo()
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = stringResource(R.string.settings_about_author),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { openUrl(context, sourceUrl) },
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_about_source))
-                }
-                OutlinedButton(
-                    onClick = { openUrl(context, licenseUrl) },
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.settings_license))
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            FilledTonalButton(onClick = { openUrl(context, supportUrl) }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.settings_about_support))
-            }
-        }
-    }
-}
 
 @Composable
 private fun AppLogo() {
