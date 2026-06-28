@@ -140,6 +140,12 @@
     <string name="home_due_today">Today</string>
     <string name="home_due_tomorrow">Tomorrow</string>
 
+    <!-- Home: search -->
+    <string name="home_search_hint">Search tasks</string>
+    <string name="home_search_clear">Clear search</string>
+    <string name="home_search_close">Close search</string>
+    <string name="home_search_empty">No tasks match “%1$s”</string>
+
     <!-- Reminders -->
     <string name="reminder_due_at">Due %1$s</string>
     <string name="reminder_channel_name">Task reminders</string>

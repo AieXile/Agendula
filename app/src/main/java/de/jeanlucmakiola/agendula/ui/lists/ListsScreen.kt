@@ -18,13 +18,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
@@ -33,15 +37,21 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -73,7 +83,8 @@ import java.time.ZoneId
  * Home: a Today progress hero (wavy ring over tasks due today), an Overdue + All
  * 2-up of tonal tiles, a live preview of the next upcoming tasks, then the user's
  * lists grouped by account. Tapping a tile opens that smart list, an upcoming row
- * opens that task, and the FAB starts a new task.
+ * opens that task, and the FAB starts a new task. A search bar at the top expands
+ * in place to filter every task by title.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +98,8 @@ fun ListsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var query by rememberSaveable { mutableStateOf("") }
+    var searchExpanded by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -108,33 +121,63 @@ fun ListsScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNewTask,
-                icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.new_task)) },
-            )
+            // The FAB would otherwise float over the expanded search results.
+            if (!searchExpanded) {
+                ExtendedFloatingActionButton(
+                    onClick = onNewTask,
+                    icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                    text = { Text(stringResource(R.string.new_task)) },
+                )
+            }
         },
     ) { inner ->
-        when (val s = state) {
-            ListsUiState.Loading -> Unit // brief; avoids a flash before first emission
-            ListsUiState.Failure -> CenteredMessage(stringResource(R.string.lists_failure), inner)
-            is ListsUiState.Content -> ListsContent(s, inner, onOpenFilter, onOpenTask)
+        // The search bar overlays the top of the content; when expanded it grows to
+        // cover the home content with live results. The content's own top padding
+        // clears the collapsed bar so the hero isn't hidden behind it.
+        Box(Modifier.fillMaxSize().padding(top = inner.calculateTopPadding())) {
+            when (val s = state) {
+                ListsUiState.Loading -> Unit // brief; avoids a flash before first emission
+                ListsUiState.Failure ->
+                    CenteredMessage(stringResource(R.string.lists_failure), PaddingValues(0.dp))
+                is ListsUiState.Content -> {
+                    ListsContent(
+                        state = s,
+                        onOpenFilter = onOpenFilter,
+                        onOpenTask = onOpenTask,
+                        topPadding = SEARCH_BAR_CLEARANCE,
+                        bottomPadding = inner.calculateBottomPadding() + 96.dp,
+                    )
+                    HomeSearchBar(
+                        query = query,
+                        onQueryChange = { query = it },
+                        expanded = searchExpanded,
+                        onExpandedChange = { searchExpanded = it },
+                        allTasks = s.allTasks,
+                        onOpenTask = onOpenTask,
+                        modifier = Modifier.align(Alignment.TopCenter),
+                    )
+                }
+            }
         }
     }
 }
 
+/** Top inset the home content reserves for the collapsed search bar. */
+private val SEARCH_BAR_CLEARANCE = 72.dp
+
 @Composable
 private fun ListsContent(
     state: ListsUiState.Content,
-    inner: PaddingValues,
     onOpenFilter: (TaskFilter) -> Unit,
     onOpenTask: (Long) -> Unit,
+    topPadding: androidx.compose.ui.unit.Dp,
+    bottomPadding: androidx.compose.ui.unit.Dp,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            top = inner.calculateTopPadding(),
-            bottom = inner.calculateBottomPadding() + 96.dp,
+            top = topPadding,
+            bottom = bottomPadding,
         ),
     ) {
         item {
@@ -188,6 +231,93 @@ private fun ListsContent(
                             }
                         },
                         onClick = { onOpenFilter(TaskFilter.OfList(overview.list.id)) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The home search: a Material 3 SearchBar that expands in place to show tasks whose
+ * title matches the query, across every list (completed included). The leading icon
+ * flips to a back arrow while expanded; collapsing clears the field.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    allTasks: List<Task>,
+    onOpenTask: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val results = remember(query, allTasks) {
+        val q = query.trim()
+        if (q.isBlank()) emptyList()
+        else allTasks
+            .filter { it.title.contains(q, ignoreCase = true) }
+            .sortedWith(compareBy({ it.isCompleted }, { it.title.lowercase() }))
+    }
+    val collapse = {
+        onQueryChange("")
+        onExpandedChange(false)
+    }
+    SearchBar(
+        modifier = modifier.fillMaxWidth().padding(horizontal = if (expanded) 0.dp else 16.dp),
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = {},
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                placeholder = { Text(stringResource(R.string.home_search_hint)) },
+                leadingIcon = {
+                    if (expanded) {
+                        IconButton(onClick = collapse) {
+                            Icon(
+                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.home_search_close),
+                            )
+                        }
+                    } else {
+                        Icon(Icons.Rounded.Search, contentDescription = null)
+                    }
+                },
+                trailingIcon = {
+                    if (expanded && query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = stringResource(R.string.home_search_clear),
+                            )
+                        }
+                    }
+                },
+            )
+        },
+    ) {
+        when {
+            query.isBlank() -> Unit
+            results.isEmpty() -> Text(
+                text = stringResource(R.string.home_search_empty, query.trim()),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
+            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(results, key = { it.id }) { task ->
+                    UpcomingRow(
+                        task = task,
+                        onClick = {
+                            collapse()
+                            onOpenTask(task.taskId)
+                        },
                     )
                 }
             }

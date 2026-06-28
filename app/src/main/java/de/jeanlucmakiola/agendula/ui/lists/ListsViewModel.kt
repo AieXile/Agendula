@@ -34,6 +34,8 @@ sealed interface ListsUiState {
         val todayTotal: Int,
         /** The next few open tasks (due tomorrow onward) for the inline preview. */
         val upcoming: List<Task>,
+        /** Every task (open and completed) — the corpus the home search filters. */
+        val allTasks: List<Task>,
     ) : ListsUiState
 }
 
@@ -107,6 +109,7 @@ class ListsViewModel @Inject constructor(
             todayDone = completedDueToday,
             todayTotal = todayTotal,
             upcoming = upcoming,
+            allTasks = openTasks + completedTasks,
         )
     }
 }
