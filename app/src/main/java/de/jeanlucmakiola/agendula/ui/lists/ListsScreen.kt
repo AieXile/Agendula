@@ -285,6 +285,7 @@ private fun HomeTopBar(
                 modifier = Modifier.padding(start = 8.dp),
                 size = 48.dp,
                 iconSize = 26.dp,
+                spinIcon = true,
             )
         }
     }
