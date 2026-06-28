@@ -1,7 +1,13 @@
 package de.jeanlucmakiola.agendula.ui.lists
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -14,16 +20,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -35,19 +44,14 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upcoming
 import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,9 +64,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,10 +93,9 @@ import java.time.ZoneId
  * Home: a Today progress hero (wavy ring over tasks due today), an Overdue + All
  * 2-up of tonal tiles, a live preview of the next upcoming tasks, then the user's
  * lists grouped by account. Tapping a tile opens that smart list, an upcoming row
- * opens that task, and the FAB starts a new task. A search bar at the top expands
- * in place to filter every task by title.
+ * opens that task, and the FAB starts a new task. The search action in the top bar
+ * slides open into a full-width field that filters every task by title.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListsScreen(
     onOpenFilter: (TaskFilter) -> Unit,
@@ -102,7 +106,6 @@ fun ListsScreen(
     viewModel: ListsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var query by rememberSaveable { mutableStateOf("") }
     var searchActive by rememberSaveable { mutableStateOf(false) }
     val closeSearch = {
@@ -113,34 +116,18 @@ fun ListsScreen(
     BackHandler(enabled = searchActive, onBack = closeSearch)
 
     Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
         topBar = {
-            MediumTopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    ShapedActionButton(
-                        shape = ActionShapes.Search,
-                        icon = Icons.Rounded.Search,
-                        contentDescription = stringResource(R.string.home_search_hint),
-                        onClick = { searchActive = true },
-                        size = 48.dp,
-                        iconSize = 26.dp,
-                    )
-                    ShapedActionButton(
-                        shape = ActionShapes.Settings,
-                        icon = Icons.Rounded.Settings,
-                        contentDescription = stringResource(R.string.settings_title),
-                        onClick = onOpenSettings,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        size = 48.dp,
-                        iconSize = 26.dp,
-                    )
-                },
-                scrollBehavior = scrollBehavior,
+            HomeTopBar(
+                searchActive = searchActive,
+                query = query,
+                onQueryChange = { query = it },
+                onToggleSearch = { if (searchActive) closeSearch() else searchActive = true },
+                onOpenSettings = onOpenSettings,
             )
         },
         floatingActionButton = {
-            // The FAB would otherwise float over the expanded search results.
+            // The FAB would otherwise float over the search results.
             if (!searchActive) {
                 ExtendedFloatingActionButton(
                     onClick = onNewTask,
@@ -163,16 +150,18 @@ fun ListsScreen(
                         topPadding = 0.dp,
                         bottomPadding = inner.calculateBottomPadding() + 96.dp,
                     )
-                    // Only present while searching — it expands to cover the home
-                    // content with live results, and is absent otherwise.
+                    // While searching with a non-blank query, results cover the home
+                    // content; an empty query leaves the home content visible behind
+                    // the open field.
                     if (searchActive) {
-                        HomeSearchBar(
+                        SearchResults(
                             query = query,
-                            onQueryChange = { query = it },
-                            onClose = closeSearch,
                             allTasks = s.allTasks,
-                            onOpenTask = onOpenTask,
-                            modifier = Modifier.align(Alignment.TopCenter),
+                            onOpenTask = { taskId ->
+                                closeSearch()
+                                onOpenTask(taskId)
+                            },
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
@@ -255,84 +244,182 @@ private fun ListsContent(
 }
 
 /**
- * The home search: a Material 3 SearchBar shown only while searching (triggered by
- * the top-bar search action). It opens expanded and focused, covering the home
- * content with tasks whose title matches the query, across every list (completed
- * included). The back arrow or system back closes it via [onClose].
+ * The home top bar. There is no title — the launcher icon already says which app
+ * this is. Settings is pinned at the right; the search action sits just left of it
+ * and stays put. Tapping search unfurls a pill to its left (the field grows out
+ * from the icon's side) while the search icon remains as the bar's fixed trailing
+ * icon, so neither action moves.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeSearchBar(
+private fun HomeTopBar(
+    searchActive: Boolean,
     query: String,
     onQueryChange: (String) -> Unit,
-    onClose: () -> Unit,
+    onToggleSearch: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .height(72.dp)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Search occupies the flexible space left of settings. Pulled into its
+            // own composable so AnimatedVisibility resolves to the plain overload —
+            // a RowScope receiver in here would make that call ambiguous.
+            SearchSlot(
+                searchActive = searchActive,
+                query = query,
+                onQueryChange = onQueryChange,
+                onToggleSearch = onToggleSearch,
+                modifier = Modifier.weight(1f),
+            )
+            ShapedActionButton(
+                shape = ActionShapes.Settings,
+                icon = Icons.Rounded.Settings,
+                contentDescription = stringResource(R.string.settings_title),
+                onClick = onOpenSettings,
+                modifier = Modifier.padding(start = 8.dp),
+                size = 48.dp,
+                iconSize = 26.dp,
+            )
+        }
+    }
+}
+
+/**
+ * The search action and the field it unfurls. The magnifier is pinned to the end
+ * (right) of this slot and never moves; tapping it toggles search. When active a
+ * pill expands leftward from it ([expandHorizontally] anchored at the end) holding
+ * the query field, so the icon reads as the bar's fixed trailing icon.
+ */
+@Composable
+private fun SearchSlot(
+    searchActive: Boolean,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onToggleSearch: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.CenterEnd) {
+        AnimatedVisibility(
+            visible = searchActive,
+            enter = expandHorizontally(tween(300), expandFrom = Alignment.End) + fadeIn(tween(280)),
+            exit = shrinkHorizontally(tween(220), shrinkTowards = Alignment.End) + fadeOut(tween(140)),
+        ) {
+            SearchPill(
+                query = query,
+                onQueryChange = onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        // Always on top, at the end — the bar's fixed search icon and toggle.
+        ShapedActionButton(
+            shape = ActionShapes.Search,
+            icon = Icons.Rounded.Search,
+            contentDescription = stringResource(R.string.home_search_hint),
+            onClick = onToggleSearch,
+            size = 48.dp,
+            iconSize = 26.dp,
+        )
+    }
+}
+
+/**
+ * The expanding search input pill: the query field (auto-focused on open) and a
+ * clear button once there is text. Its trailing 48dp is left empty for the search
+ * icon that [SearchSlot] overlays at the end.
+ */
+@Composable
+private fun SearchPill(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.height(52.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(),
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                decorationBox = { innerField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isEmpty()) {
+                            Text(
+                                stringResource(R.string.home_search_hint),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        innerField()
+                    }
+                },
+            )
+            if (query.isNotEmpty()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.home_search_clear),
+                    )
+                }
+            }
+            // Space reserved for the search icon SearchSlot overlays at the end.
+            Spacer(Modifier.width(48.dp))
+        }
+    }
+}
+
+/**
+ * Search results overlaying the home content: tasks whose title matches the query,
+ * across every list (completed included), open ones first. A blank query renders
+ * nothing so the home content shows through behind the open field.
+ */
+@Composable
+private fun SearchResults(
+    query: String,
     allTasks: List<Task>,
     onOpenTask: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (query.isBlank()) return
     val results = remember(query, allTasks) {
         val q = query.trim()
-        if (q.isBlank()) emptyList()
-        else allTasks
+        allTasks
             .filter { it.title.contains(q, ignoreCase = true) }
             .sortedWith(compareBy({ it.isCompleted }, { it.title.lowercase() }))
     }
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    SearchBar(
-        modifier = modifier.fillMaxWidth(),
-        expanded = true,
-        onExpandedChange = { if (!it) onClose() },
-        // The enclosing app bar already consumes the status-bar inset; without this
-        // the search bar would add it again and float with a large top gap.
-        windowInsets = WindowInsets(0),
-        inputField = {
-            SearchBarDefaults.InputField(
-                modifier = Modifier.focusRequester(focusRequester),
-                query = query,
-                onQueryChange = onQueryChange,
-                onSearch = {},
-                expanded = true,
-                onExpandedChange = { if (!it) onClose() },
-                placeholder = { Text(stringResource(R.string.home_search_hint)) },
-                leadingIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = stringResource(R.string.home_search_close),
-                        )
-                    }
-                },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { onQueryChange("") }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.home_search_clear),
-                            )
-                        }
-                    }
-                },
-            )
-        },
-    ) {
-        when {
-            query.isBlank() -> Unit
-            results.isEmpty() -> Text(
-                text = stringResource(R.string.home_search_empty, query.trim()),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
-            )
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+    Surface(modifier = modifier, color = MaterialTheme.colorScheme.surface) {
+        if (results.isEmpty()) {
+            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.TopCenter) {
+                Text(
+                    text = stringResource(R.string.home_search_empty, query.trim()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(results, key = { it.id }) { task ->
-                    UpcomingRow(
-                        task = task,
-                        onClick = {
-                            onClose()
-                            onOpenTask(task.taskId)
-                        },
-                    )
+                    UpcomingRow(task = task, onClick = { onOpenTask(task.taskId) })
                 }
             }
         }
