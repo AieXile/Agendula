@@ -11,9 +11,10 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
-}
+
+// No Gradle Java-toolchain auto-download resolver plugin: it can fetch a JDK at
+// build time, which an offline / reproducible F-Droid build scanner rejects.
+// Modules set jvmTarget directly, so no toolchain resolver is needed.
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
