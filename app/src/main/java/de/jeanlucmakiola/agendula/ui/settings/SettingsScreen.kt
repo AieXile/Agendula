@@ -94,6 +94,7 @@ import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.floret.identity.collapseExit
 import de.jeanlucmakiola.floret.identity.expandEnter
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
+import de.jeanlucmakiola.floret.reminders.reminderOverrideFor
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
 
 /** The settings sub-screens reached from the hub's category rows. */
@@ -483,10 +484,10 @@ private fun RemindersScreen(
     if (showOffset) {
         ReminderLeadPicker(
             title = stringResource(R.string.settings_default_reminder),
-            selected = ReminderOverride.Minutes(state.settings.reminderLeadMinutes),
+            selected = ReminderOverride.Minutes(listOf(state.settings.reminderLeadMinutes)),
             allowInherit = false,
             allowNone = false,
-            onSelect = { if (it is ReminderOverride.Minutes) viewModel.setReminderLeadMinutes(it.minutes) },
+            onSelect = { if (it is ReminderOverride.Minutes) viewModel.setReminderLeadMinutes(it.minutes.first()) },
             onDismiss = { showOffset = false },
         )
     }
@@ -504,14 +505,8 @@ private fun RemindersScreen(
 }
 
 /** The stored override for [listId], as a picker choice (absent → inherit). */
-private fun listOverrideChoice(state: SettingsUiState, listId: Long): ReminderOverride {
-    val map = state.settings.perListReminderOverride
-    return when {
-        !map.containsKey(listId) -> ReminderOverride.Inherit
-        map[listId] == null -> ReminderOverride.None
-        else -> ReminderOverride.Minutes(map.getValue(listId)!!)
-    }
-}
+private fun listOverrideChoice(state: SettingsUiState, listId: Long): ReminderOverride =
+    state.settings.perListReminderOverride.reminderOverrideFor(listId)
 
 /** Row summary for a list: its override, or the inherited global default. */
 @Composable
@@ -519,7 +514,7 @@ private fun listOverrideSummary(choice: ReminderOverride, globalDefault: Int): S
     ReminderOverride.Inherit ->
         stringResource(R.string.settings_list_reminder_inherits, reminderLeadTimeLabel(globalDefault))
     ReminderOverride.None -> stringResource(R.string.reminder_none)
-    is ReminderOverride.Minutes -> reminderLeadTimeLabel(choice.minutes)
+    is ReminderOverride.Minutes -> reminderLeadTimeLabel(choice.minutes.first())
 }
 
 // ---------------------------------------------------------------------------

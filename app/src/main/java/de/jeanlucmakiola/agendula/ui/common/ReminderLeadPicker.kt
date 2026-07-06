@@ -54,7 +54,9 @@ fun ReminderLeadPicker(
     onDismiss: () -> Unit,
     presets: List<Int> = REMINDER_PRESETS,
 ) {
-    val selectedMinutes = (selected as? ReminderOverride.Minutes)?.minutes
+    // Agendula is single-reminder: an override carries a one-element list, so
+    // take the single value for this single-select picker.
+    val selectedMinutes = (selected as? ReminderOverride.Minutes)?.minutes?.firstOrNull()
     val customSelected = selectedMinutes != null && selectedMinutes !in presets
     val seed = decomposeReminderMinutes(selectedMinutes?.takeIf { customSelected })
 
@@ -65,7 +67,7 @@ fun ReminderLeadPicker(
     val options = buildList {
         if (allowInherit) add(ReminderOverride.Inherit)
         if (allowNone) add(ReminderOverride.None)
-        presets.forEach { add(ReminderOverride.Minutes(it)) }
+        presets.forEach { add(ReminderOverride.Minutes(listOf(it))) }
     }
     val rowCount = options.size + 1 // + the custom row
 
@@ -105,7 +107,7 @@ fun ReminderLeadPicker(
                 unit = unit,
                 onUnitChange = { unit = it },
                 onConfirm = { minutes ->
-                    onSelect(ReminderOverride.Minutes(minutes))
+                    onSelect(ReminderOverride.Minutes(listOf(minutes)))
                     onDismiss()
                 },
             )
@@ -168,5 +170,5 @@ private fun CustomReminderEditor(
 private fun reminderOverrideLabel(override: ReminderOverride): String = when (override) {
     ReminderOverride.Inherit -> stringResource(R.string.reminder_use_default)
     ReminderOverride.None -> stringResource(R.string.reminder_none)
-    is ReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes)
+    is ReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes.first())
 }
