@@ -399,20 +399,29 @@ jobs:
             sed -i -e '/./,$!d' release-notes.md
           fi
           [ -s release-notes.md ] || echo "_See CHANGELOG.md for ${VERSION}._" > release-notes.md
-          python3 - "$TAG" "$SHA" "$PRERELEASE" <<'PY' > cb-payload.json
+          # The push mirror (sync_on_commit) usually syncs the tag to Codeberg
+          # before this step runs. Forgejo 500s on POST /releases with a
+          # target_commitish when the tag already exists — so only pass
+          # target_commitish when we actually need the API to create the tag.
+          TAG_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: token $TOKEN" "$API/git/refs/tags/$TAG")
+          python3 - "$TAG" "$SHA" "$PRERELEASE" "$TAG_CODE" <<'PY' > cb-payload.json
           import json, sys
-          print(json.dumps({
-              "tag_name": sys.argv[1],
-              "target_commitish": sys.argv[2],
-              "name": sys.argv[1],
+          tag, sha, pre, tag_code = sys.argv[1:5]
+          payload = {
+              "tag_name": tag,
+              "name": tag,
               "body": open("release-notes.md").read(),
               "draft": False,
               # Pre-1.0 releases are flagged as pre-releases (see detect job).
-              "prerelease": sys.argv[3] == "true",
-          }))
+              "prerelease": pre == "true",
+          }
+          # Only create the tag via the release when it isn't mirrored yet.
+          if tag_code != "200":
+              payload["target_commitish"] = sha
+          print(json.dumps(payload))
           PY
-          # Upsert (re-run safe). POST also creates the tag at target_commitish
-          # if the push mirror hasn't synced it yet.
+          # Upsert (re-run safe).
           ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
           if [ -n "$ID" ]; then
             curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
