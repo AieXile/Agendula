@@ -1,0 +1,14 @@
+### Added
+- Reminders: Agendula now delivers your due reminders itself. A one-time setup
+  step explains this and asks for notification access, and a master switch in
+  Settings turns the whole thing off again.
+- A Settings screen, from the gear on the overview: appearance and theme, which
+  fields the task form shows, your default list, and reminder defaults.
+- The overview leads with Today — a progress ring showing how much of today
+  you've finished — followed by a live preview of what's coming up next.
+- Search across every task, open or completed, from the top bar.
+- A proper app icon.
+
+### Changed
+- A tidier top bar: no app title, with search and settings pinned to the right.
+

@@ -7,23 +7,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-19
+
 ### Added
-- M5 reminders onboarding & polish: a one-time reminder onboarding step after the
-  provider grant explains that Agendula delivers due reminders itself and requests
-  `POST_NOTIFICATIONS` (API 33+). A new **Settings** screen (gear on the lists
-  overview), structured after Calendula as a category hub with sliding sub-screens
-  (`CollapsingScaffold` + grouped category rows + full-screen `OptionPicker`):
-  an About card, **Appearance** (theme, dynamic colour), **Task form** (which
-  optional edit-form fields show by default, default list, the add-a-subtask-row
-  opt-out), and **Reminders** (a master enable switch that re-requests the
-  notification permission, a "when to remind" default offset, and — on Android 12
-  only — an exact-alarm status row that deep-links to system settings).
-- The reminders master switch gates the whole engine: turning it off clears every
-  scheduled alarm and suppresses any that fire.
-- Expressive top-bar actions: a reusable `ShapedActionButton` wraps an action icon
-  in a tonal M3 Expressive `MaterialShapes` container (the settings entry uses the
-  faceted Gem shape, tertiary tones), with a small press scale/rotate flourish.
-  Future top-bar actions pick their own shape from the `ActionShapes` registry.
+- Reminders: Agendula now delivers your due reminders itself. A one-time setup
+  step explains this and asks for notification access, and a master switch in
+  Settings turns the whole thing off again.
+- A Settings screen, from the gear on the overview: appearance and theme, which
+  fields the task form shows, your default list, and reminder defaults.
+- The overview leads with Today — a progress ring showing how much of today
+  you've finished — followed by a live preview of what's coming up next.
+- Search across every task, open or completed, from the top bar.
+- A proper app icon.
+
+### Changed
+- A tidier top bar: no app title, with search and settings pinned to the right.
 
 ## [0.2.2] - 2026-07-19
 
