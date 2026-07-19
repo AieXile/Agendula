@@ -23,11 +23,12 @@ android {
         applicationId = "de.jeanlucmakiola.agendula"
         minSdk = 29
         targetSdk = 36
-        // The git tag is the single source of truth for released builds: at
-        // release time .gitea/workflows/release.yaml derives both fields from
-        // the tag, with versionCode = MAJOR*10000 + MINOR*100 + PATCH
-        // (e.g. v2.0.0 -> 20000). These committed values are the dev/local
-        // default; keep them matching the latest released tag. See docs/RELEASING.md.
+        // These committed values ARE the source of truth for a release: merging
+        // a bumped versionName into main triggers .gitea/workflows/release.yaml,
+        // which builds this version and then creates the matching vX.Y.Z tag +
+        // release itself (versionCode is pinned to MAJOR*10000 + MINOR*100 +
+        // PATCH from versionName, e.g. 0.2.0 -> 200). The Gitea release is marked
+        // as a pre-release while MAJOR is 0. See docs/RELEASING.md.
         versionCode = 200
         versionName = "0.2.0"
 
@@ -47,6 +48,11 @@ android {
 
     buildTypes {
         release {
+            // Keep release builds reproducible for F-Droid: don't let AGP embed
+            // build-environment git metadata (META-INF/version-control-info.textproto),
+            // whose `revision`/path content varies by build machine and is the only
+            // thing that otherwise differs from a clean from-source rebuild.
+            vcsInfo { include = false }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -61,6 +67,22 @@ android {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
         }
+        // A locally-installable twin of `release`: same R8 shrinking + obfuscation
+        // and resource shrinking, but debug-signed and given its own applicationId
+        // suffix so it installs alongside both the production app (signed with the
+        // real key) and the debug build. Used to smoke-test a release candidate on
+        // a real device before merging to main — R8-only breakage and first-run/
+        // permission states don't surface in the unminified debug build, nor on a
+        // device that already holds the permission. Never published. See
+        // docs/RELEASING.md.
+        create("releaseTest") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".releasetest"
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            matchingFallbacks += "release"
+        }
     }
 
     compileOptions {
@@ -71,6 +93,16 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // Don't embed AGP's dependency-metadata block in the APK signing block. It's
+    // a Play-oriented blob, and F-Droid's reproducible-build scanner rejects any
+    // "extra signing block" — so leaving it in blocks publishing to the official
+    // repo. It lives in the signing block, not the zip entries, so disabling it
+    // doesn't change the build output (reproducibility is unaffected).
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     packaging {

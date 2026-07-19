@@ -243,7 +243,7 @@ the `@IoDispatcher`). `AgendulaApp` is the `@HiltAndroidApp` entry point;
 | UI | Compose BOM 2026.05.01, Material3 `1.5.0-alpha21` (Expressive APIs), Glance 1.1.1 (widget, later) |
 | Other | DataStore, kotlinx-datetime, kotlinx-coroutines |
 | Tests | JUnit5 (Jupiter) + Truth + Turbine + coroutines-test; the data source is the JVM-testable seam |
-| Versioning | git tag is the source of truth; `versionCode = MAJOR*10000 + MINOR*100 + PATCH`, derived in CI at release. See [`RELEASING.md`](RELEASING.md). |
+| Versioning | committed `versionName` is the source of truth; a bump reaching `main` triggers the release and the pipeline mints the `vX.Y.Z` tag. `versionCode = MAJOR*10000 + MINOR*100 + PATCH`. See [`RELEASING.md`](RELEASING.md). |
 | CI | Gitea workflows (`.gitea/workflows/ci.yaml`, `release.yaml`) |
 | Distribution | F-Droid (`fdroid-metadata/`) |
 

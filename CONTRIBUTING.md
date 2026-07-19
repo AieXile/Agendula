@@ -30,11 +30,12 @@ would expose provider details to a ViewModel or the UI, it's in the wrong layer.
 ```sh
 ./gradlew :app:assembleDebug        # build the debug APK
 ./gradlew :app:testDebugUnitTest    # JVM unit tests (JUnit5 + Truth + Turbine)
-./gradlew lintDebug                 # Android lint (CI runs this on every push)
+./gradlew lintDebug                 # Android lint (CI runs this on every PR)
 ```
 
-CI (`.gitea/workflows/ci.yaml`) runs lint → unit tests → debug build on every
-push, so run these locally before opening a PR. Keep CI green.
+CI (`.gitea/workflows/ci.yaml`) runs a reproducible-release invariant check,
+then lint → unit tests → debug build on every pull request, so run these locally
+before opening a PR. Keep CI green.
 
 ## Where to put code
 
@@ -75,8 +76,10 @@ push, so run these locally before opening a PR. Keep CI green.
 - If your change shifts the architecture or completes a milestone, update
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / [`docs/ROADMAP.md`](docs/ROADMAP.md)
   in the same PR.
-- Don't bump `versionName` / `versionCode` by hand — the git tag drives those at
-  release time.
+- Don't bump `versionName` / `versionCode` in a regular PR — the committed
+  `versionName` is bumped only when **cutting a release** (that bump reaching
+  `main` is what triggers the release; the pipeline then mints the tag). See
+  [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Scope
 

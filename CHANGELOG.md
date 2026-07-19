@@ -1,8 +1,9 @@
 # Changelog
 
 All notable changes to this project are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/); the latest released git tag is
-the source of truth for version codes (see Calendula's `docs/RELEASING.md`).
+[Keep a Changelog](https://keepachangelog.com/); the `versionName` committed in
+`app/build.gradle.kts` is the source of truth for a release (see
+`docs/RELEASING.md`), and the `vX.Y.Z` tag is minted by the pipeline.
 
 ## [Unreleased]
 
