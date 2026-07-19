@@ -25,6 +25,13 @@ All notable changes to this project are documented here. The format follows
   faceted Gem shape, tertiary tones), with a small press scale/rotate flourish.
   Future top-bar actions pick their own shape from the `ActionShapes` registry.
 
+## [0.2.2] - 2026-07-19
+
+### Fixed
+- Release automation now reliably mirrors each release to the Codeberg mirror
+  (signed APK + SHA-256 checksum). The 0.2.1 attempt failed when the release tag
+  had already been synced to Codeberg.
+
 ## [0.2.1] - 2026-07-19
 
 ### Added
