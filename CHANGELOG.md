@@ -25,6 +25,13 @@ All notable changes to this project are documented here. The format follows
   faceted Gem shape, tertiary tones), with a small press scale/rotate flourish.
   Future top-bar actions pick their own shape from the `ActionShapes` registry.
 
+## [0.2.1] - 2026-07-19
+
+### Added
+- Releases are now also published to the Codeberg mirror as a direct download:
+  each release carries the signed APK plus a SHA-256 checksum, for users who
+  don't use F-Droid.
+
 ## [0.2.0] - 2026-06-27
 
 ### Added

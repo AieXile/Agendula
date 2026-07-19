@@ -1,0 +1,5 @@
+### Added
+- Releases are now also published to the Codeberg mirror as a direct download:
+  each release carries the signed APK plus a SHA-256 checksum, for users who
+  don't use F-Droid.
+
