@@ -399,21 +399,29 @@ jobs:
             sed -i -e '/./,$!d' release-notes.md
           fi
           [ -s release-notes.md ] || echo "_See CHANGELOG.md for ${VERSION}._" > release-notes.md
-          # The pipeline creates the tag via the Gitea API, which the push mirror
-          # (sync_on_commit only fires on real git pushes) doesn't propagate
-          # promptly — so a release POST that carries a target_commitish can
-          # outrun the mirror and 500 on a commit/tag Codeberg hasn't received.
-          # Push the tag straight to Codeberg so it's guaranteed present, then
-          # attach the release to that existing tag with NO target_commitish
-          # (which is what triggered the 500).
-          git tag -f "$TAG" "$SHA"
-          git push -f "https://jlmakiola:${TOKEN}@codeberg.org/jlmakiola/agendula.git" \
-            "refs/tags/$TAG"
-          python3 - "$TAG" "$PRERELEASE" <<'PY' > cb-payload.json
+          # Forgejo 500s on POST /releases when the tag ALREADY exists, and a
+          # bare tag is not a release — so GET /releases/tags then 404s and the
+          # upsert has no id to fall back on ("Could not resolve Codeberg
+          # release id", the 0.3.1 failure). Pushing the tag first therefore
+          # guarantees the 500 rather than avoiding it; 0.3.0 published because
+          # it POSTed while the tag was still absent. So: POST with the tag
+          # ABSENT and let the API mint tag + release together from
+          # target_commitish. Branches mirror reliably, so the commit is already
+          # on Codeberg — only a tag the mirror raced in ahead of us is in the
+          # way, and clearing it is safe precisely because no release owns it.
+          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
+          if [ -z "$ID" ]; then
+            curl -s -o /dev/null -w "codeberg tag DELETE HTTP %{http_code}\n" -X DELETE \
+              -H "Authorization: token $TOKEN" "$API/tags/$TAG"
+          fi
+          python3 - "$TAG" "$SHA" "$PRERELEASE" <<'PY' > cb-payload.json
           import json, sys
-          tag, pre = sys.argv[1:3]
+          tag, sha, pre = sys.argv[1:4]
           print(json.dumps({
               "tag_name": tag,
+              # Recreate the tag as part of the release; the commit is on
+              # Codeberg already via the branch mirror.
+              "target_commitish": sha,
               "name": tag,
               "body": open("release-notes.md").read(),
               "draft": False,
@@ -421,8 +429,9 @@ jobs:
               "prerelease": pre == "true",
           }))
           PY
-          # Upsert (re-run safe).
-          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
+          # Upsert (re-run safe): a release that already exists is PATCHed in
+          # place — the delete above is skipped in that case, so re-running
+          # never disturbs a published release.
           if [ -n "$ID" ]; then
             curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
               -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
