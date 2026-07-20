@@ -1,1 +1,0 @@
-{"tag_name": "v0.3.1", "name": "v0.3.1", "body": "### Fixed\n- Agendula no longer crashes on launch. Every 0.3.0 install was affected: the\n  release build stripped a constructor that the background-work scheduler needs\n  to open its database, and that happens before the app draws anything.\n\n", "draft": true, "prerelease": true}
