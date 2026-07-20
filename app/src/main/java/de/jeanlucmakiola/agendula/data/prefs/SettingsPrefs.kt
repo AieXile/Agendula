@@ -12,7 +12,7 @@ import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.ReminderOverrideCodec
 import de.jeanlucmakiola.floret.reminders.applyReminderOverride
-import de.jeanlucmakiola.floret.reminders.reminderLeadFor
+import de.jeanlucmakiola.floret.reminders.reminderLeadsFor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -39,15 +39,17 @@ data class Settings(
     val bottomAddBar: Boolean = false,
     /**
      * Per-list overrides of [reminderLeadMinutes]: a list present in the map
-     * overrides the global default (a null value = no reminder); absent = inherit.
+     * overrides the global default (an empty list = no reminder); absent =
+     * inherit. Agendula offers a single reminder, so each override is a
+     * one-element (or empty) list.
      */
-    val perListReminderOverride: Map<Long, Int?> = emptyMap(),
+    val perListReminderOverride: Map<Long, List<Int>> = emptyMap(),
     /** Optional edit-form fields shown by default; the rest sit behind "More fields". */
     val defaultEditFields: Set<TaskFormField> = emptySet(),
 ) {
     /** The lead time for a task in [listId]: its override if set, else the global default. */
     fun reminderLeadFor(listId: Long): Int? =
-        perListReminderOverride.reminderLeadFor(listId, reminderLeadMinutes)
+        perListReminderOverride.reminderLeadsFor(listId, listOf(reminderLeadMinutes)).firstOrNull()
 }
 
 /** App preferences, backed by DataStore. Mirrors Calendula's prefs shape. */
