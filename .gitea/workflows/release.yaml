@@ -370,11 +370,13 @@ jobs:
       # release. Needs the CODEBERG_RELEASE_TOKEN secret; skips cleanly if unset.
       - name: Publish release to Codeberg
         if: env.IS_RELEASE == 'true'
-        continue-on-error: true
+        # NOT continue-on-error: this step reported green through 0.2.1, 0.2.2,
+        # 0.3.0, 0.3.1 and 0.3.2 while never once publishing, which is how a
+        # crash-fix release reached F-Droid but not the Codeberg/Obtainium
+        # users who needed it. A broken mirror must fail the release loudly.
         env:
           TOKEN: ${{ secrets.CODEBERG_RELEASE_TOKEN }}
           API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
-          SHA: ${{ github.sha }}
         run: |
           set -e
           if [ -z "${TOKEN:-}" ]; then
@@ -399,29 +401,39 @@ jobs:
             sed -i -e '/./,$!d' release-notes.md
           fi
           [ -s release-notes.md ] || echo "_See CHANGELOG.md for ${VERSION}._" > release-notes.md
-          # Forgejo 500s on POST /releases when the tag ALREADY exists, and a
-          # bare tag is not a release — so GET /releases/tags then 404s and the
-          # upsert has no id to fall back on ("Could not resolve Codeberg
-          # release id", the 0.3.1 failure). Pushing the tag first therefore
-          # guarantees the 500 rather than avoiding it; 0.3.0 published because
-          # it POSTed while the tag was still absent. So: POST with the tag
-          # ABSENT and let the API mint tag + release together from
-          # target_commitish. Branches mirror reliably, so the commit is already
-          # on Codeberg — only a tag the mirror raced in ahead of us is in the
-          # way, and clearing it is safe precisely because no release owns it.
-          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
-          if [ -z "$ID" ]; then
-            curl -s -o /dev/null -w "codeberg tag DELETE HTTP %{http_code}\n" -X DELETE \
-              -H "Authorization: token $TOKEN" "$API/tags/$TAG"
+          # Never mint the tag here. Gitea's push mirror owns getting it to
+          # Codeberg; this step's only job is to attach a release to a tag that
+          # has already landed. That split matters because every way of creating
+          # a tag from here — git push, or a release POST carrying
+          # target_commitish for a tag Codeberg lacks — is a ref WRITE, and ref
+          # writes are what fail on this repo ("cannot lock references" on push,
+          # an empty-bodied 500 on the API). Attaching to a tag that is already
+          # present needs no ref write and succeeds.
+          #
+          # So: wait for the mirror, verify, then attach. If the tag never shows
+          # up, fail — do NOT fall back to creating it, which is what produced
+          # the silent breakage across 0.2.1 through 0.3.2.
+          TAG_OK=""
+          for i in $(seq 1 30); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' \
+                    -H "Authorization: token $TOKEN" "$API/tags/$TAG")" = "200" ]; then
+              TAG_OK=1; echo "Codeberg has $TAG (after ~$((i*10))s)"; break
+            fi
+            sleep 10
+          done
+          if [ -z "$TAG_OK" ]; then
+            echo "Codeberg never received $TAG from the push mirror (waited 300s)." >&2
+            echo "Not creating it here: ref writes to this repo fail, so that" >&2
+            echo "would 500. Check the mirror, then re-run once the tag is there." >&2
+            exit 1
           fi
-          python3 - "$TAG" "$SHA" "$PRERELEASE" <<'PY' > cb-payload.json
+          # No target_commitish: the tag exists, so the API must attach to it
+          # rather than resolve a commit and mint one.
+          python3 - "$TAG" "$PRERELEASE" <<'PY' > cb-payload.json
           import json, sys
-          tag, sha, pre = sys.argv[1:4]
+          tag, pre = sys.argv[1:3]
           print(json.dumps({
               "tag_name": tag,
-              # Recreate the tag as part of the release; the commit is on
-              # Codeberg already via the branch mirror.
-              "target_commitish": sha,
               "name": tag,
               "body": open("release-notes.md").read(),
               "draft": False,
@@ -429,9 +441,9 @@ jobs:
               "prerelease": pre == "true",
           }))
           PY
-          # Upsert (re-run safe): a release that already exists is PATCHed in
-          # place — the delete above is skipped in that case, so re-running
-          # never disturbs a published release.
+          # Upsert (re-run safe): a release already attached to this tag is
+          # PATCHed in place, so re-running never disturbs a published release.
+          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
           if [ -n "$ID" ]; then
             curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
               -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
