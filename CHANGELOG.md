@@ -7,6 +7,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-20
+
+### Fixed
+- Agendula no longer crashes on launch. Every 0.3.0 install was affected: the
+  release build stripped a constructor that the background-work scheduler needs
+  to open its database, and that happens before the app draws anything.
+
 ## [0.3.0] - 2026-07-19
 
 ### Added
