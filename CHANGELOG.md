@@ -7,6 +7,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-07-20
+
+### Fixed
+- Releases reach the Codeberg download channel again. 0.3.1 published to
+  F-Droid but never appeared on Codeberg, so if you install from there — or
+  through Obtainium — this is the release that finally carries 0.3.0's
+  launch-crash fix. The app itself is unchanged from 0.3.1.
+
 ## [0.3.1] - 2026-07-20
 
 ### Fixed
