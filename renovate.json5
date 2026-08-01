@@ -1,0 +1,122 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  extends: [
+    "config:recommended",
+    // chore(deps): … — match the repo's conventional-commit style.
+    ":semanticCommits",
+  ],
+
+  // `config:recommended` brings in mergeConfidence:age-confidence-badges, whose
+  // Age column is a Mend badge. Mend's Merge Confidence index only covers Maven
+  // Central: org.jetbrains.kotlin, junit, truth, turbine et al resolve, but
+  // every androidx/compose artifact lives on Google's Maven repo and comes back
+  // as a grey UNKNOWN — i.e. most of this project. Renovate already knows the
+  // real answer, since it derives release timestamps itself for the
+  // minimumReleaseAge rules below (Google Maven serves `last-modified` on its
+  // POMs), so take the age from there and leave Mend to the Confidence column,
+  // which still carries signal for the Maven Central half.
+  prBodyDefinitions: {
+    Age: "{{#if releaseTimestamp}}{{{newVersionAgeInDays}}} d{{else}}unknown{{/if}}",
+  },
+  // Default heading links to the Merge Confidence docs; this column is ours now.
+  prBodyHeadingDefinitions: {
+    Age: "Age",
+  },
+
+  // No automerge: a dependency bump goes through the same review (and, for
+  // anything touching the build, the same on-device check) as a feature
+  // before it can ride a release — see docs/RELEASING.md and the mandatory
+  // `scripts/verify-release.sh` gate.
+  automerge: false,
+
+  // One reviewable surface; the dashboard issue lists everything pending.
+  dependencyDashboard: true,
+
+  // The cooling-off periods below are advisory, not a gate. "flexible" still
+  // prefers a version that has cleared its window, but when every candidate is
+  // too young it opens the PR at the newest one anyway, so merging early stays
+  // a judgement call. (The default, "strict", would suppress the PR entirely
+  // until a release aged in.) A still-young branch carries a yellow
+  // `renovate/stability-days` check so it's visible which side of the line
+  // it's on; with automerge off, nothing acts on that check by itself.
+  //
+  // NOT "none": that short-circuits the candidate loop in filter-checks.ts, and
+  // that loop is what calls postprocessRelease — the only thing that fetches a
+  // Maven artifact's Last-Modified header. Skipping it leaves releaseTimestamp
+  // unset, which empties the Age column and quietly makes minimumReleaseAge and
+  // the stability check no-ops, since both need that timestamp to compare.
+  internalChecksFilter: "flexible",
+
+  labels: ["dependencies"],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 0,
+
+  // Cadence is owned by the Gitea Actions cron (.gitea/workflows/renovate.yml,
+  // Mondays) — no internal `schedule` here, so the two don't double-gate and
+  // silently skip a run.
+
+  // Workflows are split by forge and neither directory is .github: CI lives in
+  // .forgejo/workflows (Codeberg) and the release/renovate jobs in
+  // .gitea/workflows (Gitea). Extend the github-actions manager (same syntax)
+  // to watch both — otherwise the pinned Renovate image tag and the action
+  // versions in either file would never get bumped. See docs/RELEASING.md.
+  // `fileMatch` is deprecated; the replacement takes the regex delimited, and
+  // Renovate's config migration was already rewriting this on every run.
+  "github-actions": {
+    managerFilePatterns: ["/^\\.(gitea|forgejo)/workflows/[^/]+\\.ya?ml$/"],
+  },
+
+  packageRules: [
+    // Cooling-off period, scaled by blast radius: how long a release should
+    // have been out (and un-yanked, un-hotfixed) before it's considered
+    // settled. Advisory only — see `internalChecksFilter` above.
+    {
+      matchUpdateTypes: ["major"],
+      minimumReleaseAge: "30 days",
+    },
+    {
+      matchUpdateTypes: ["minor"],
+      minimumReleaseAge: "20 days",
+    },
+    {
+      matchUpdateTypes: ["patch", "digest", "pin", "rollback"],
+      minimumReleaseAge: "10 days",
+    },
+    // material3 is deliberately pinned to the 1.5 *alpha* line for the
+    // Expressive APIs (see gradle/libs.versions.toml). Follow the alpha train
+    // but keep it in its own PR, reviewed in isolation; revisit the pin when
+    // 1.5.0 stable lands.
+    {
+      matchPackageNames: ["androidx.compose.material3:material3"],
+      ignoreUnstable: false,
+      groupName: "material3 (alpha)",
+    },
+    // Test-only deps: group into one low-noise PR.
+    {
+      matchPackageNames: [
+        "org.junit.jupiter:**",
+        "org.junit.platform:**",
+        "com.google.truth:**",
+        "app.cash.turbine:**",
+        "androidx.test:**",
+        "androidx.test.espresso:**",
+        "androidx.test.ext:**",
+      ],
+      groupName: "test dependencies",
+    },
+    // Last word on the PR table. The merge-confidence preset sets prBodyColumns
+    // from inside a packageRule of its own, and only for the datasources Mend
+    // supports — so a plain top-level prBodyColumns would lose to it for maven
+    // deps, and the Gradle wrapper / Actions / container bumps would keep the
+    // default columns and show no age at all. A rule declared after it wins,
+    // and gives every PR the same table.
+    // "Pending" earns its place under a flexible filter: when the bump lands on
+    // a version that has cleared its window but a newer one hasn't, that newer
+    // version is named here rather than silently withheld.
+    {
+      matchPackageNames: ["*"],
+      prBodyColumns: ["Package", "Type", "Change", "Age", "Pending", "Confidence"],
+    },
+  ],
+}

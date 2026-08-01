@@ -3,7 +3,7 @@
 Agendula is a Material 3 Expressive **task** app for Android: a pure front-end over
 the OpenTasks `TaskContract` provider (synced by DAVx5 / SmoothSync / DecSync
 over CalDAV), with no own database or sync stack. Sibling to
-[Calendula](https://gitea.jeanlucmakiola.de/makiolaj/calendula). See the
+[Calendula](https://codeberg.org/jlmakiola/calendula). See the
 top-level [`../README.md`](../README.md) for the project pitch.
 
 ## Index

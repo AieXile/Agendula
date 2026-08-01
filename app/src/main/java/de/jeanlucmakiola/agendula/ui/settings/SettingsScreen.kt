@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Circle
@@ -84,7 +85,6 @@ import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.floret.components.AboutCard
 import de.jeanlucmakiola.floret.components.AboutLink
 import de.jeanlucmakiola.floret.components.CollapsingScaffold
-import de.jeanlucmakiola.floret.components.LanguagePickerRow
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.OptionPicker
 import de.jeanlucmakiola.floret.components.Position
@@ -92,6 +92,7 @@ import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.floret.identity.collapseExit
+import de.jeanlucmakiola.floret.locale.AppLanguage
 import de.jeanlucmakiola.floret.identity.expandEnter
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.reminderOverrideFor
@@ -211,18 +212,69 @@ private fun SettingsHub(
             leading = { CategoryIcon(Icons.Default.Notifications, ChipAccent.Primary) },
             onClick = { onOpenSection(SettingsSection.Reminders) },
         )
-        LanguagePickerRow(
-            position = Position.Middle,
-            title = stringResource(R.string.settings_language),
-            autoLabel = stringResource(R.string.settings_language_auto),
-            localesConfig = R.xml.locales_config,
-            leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Neutral) },
-        )
+        LanguageRow(position = Position.Middle)
         ReportProblemRow(position = Position.Bottom)
 
         AppVersionText()
     }
 }
+
+/**
+ * The app-language row. Deliberately not floret-kit's `LanguagePickerRow`: the
+ * picker it opens carries a "Help translate" header, and inviting contributions
+ * right where a user goes looking for their language is app-specific framing,
+ * not a family primitive. Everything else matches that recipe.
+ */
+@Composable
+private fun LanguageRow(position: Position) {
+    val context = LocalContext.current
+    // Setting a locale recreates the activity; mirror the choice locally so the
+    // row updates instantly even before the recreation lands.
+    var current by remember { mutableStateOf(AppLanguage.currentTag()) }
+    var showDialog by remember { mutableStateOf(false) }
+
+    // null = follow the system; the rest are BCP-47 tags from locales_config.xml.
+    val options = remember { listOf<String?>(null) + AppLanguage.supportedTags(context, R.xml.locales_config) }
+
+    GroupedRow(
+        title = stringResource(R.string.settings_language),
+        summary = languageLabel(current),
+        position = position,
+        leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Neutral) },
+        onClick = { showDialog = true },
+    )
+
+    if (showDialog) {
+        OptionPicker(
+            title = stringResource(R.string.settings_language),
+            predictiveBack = true,
+            options = options,
+            selected = current,
+            label = { languageLabel(it) },
+            onSelect = {
+                current = it
+                AppLanguage.apply(it)
+            },
+            onDismiss = { showDialog = false },
+            // Invite contributions right where users pick their language.
+            header = {
+                val translateUrl = stringResource(R.string.about_translate_url)
+                GroupedRow(
+                    title = stringResource(R.string.settings_translate),
+                    summary = stringResource(R.string.settings_translate_hint),
+                    position = Position.Alone,
+                    leading = { CategoryIcon(Icons.Default.Translate, ChipAccent.Neutral) },
+                    onClick = { openUrl(context, translateUrl) },
+                )
+                Spacer(Modifier.height(16.dp))
+            },
+        )
+    }
+}
+
+@Composable
+private fun languageLabel(tag: String?): String =
+    if (tag == null) stringResource(R.string.settings_language_auto) else AppLanguage.displayName(tag)
 
 /** Opens the project's issue tracker; no data leaves the device until submitted. */
 @Composable

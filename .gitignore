@@ -53,5 +53,15 @@ Thumbs.db
 # F-Droid local artifacts (the pipeline generates them in CI)
 /fdroid/
 
+# Release-pipeline scratch files. release.yaml writes these into the workspace
+# while cutting a release; a self-hosted runner reuses that workspace, so they
+# must never end up committed (release-notes.md did, through 0.3.2).
+/release-notes.md
+/payload.json
+/existing.json
+/response.json
+/cb-payload.json
+/cb-response.json
+
 # KSP
 .ksp/

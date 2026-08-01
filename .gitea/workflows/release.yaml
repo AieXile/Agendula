@@ -3,11 +3,17 @@ name: Release — F-Droid repo + Gitea/Codeberg release
 # A release is cut by merging a release branch into main with a bumped
 # versionName (see docs/RELEASING.md). This workflow reads that versionName and,
 # if no matching tag exists yet, runs tests, builds + signs the APK, publishes
-# it to the F-Droid repo, creates the vX.Y.Z tag + Gitea release, and mirrors
-# that release to Codeberg with the signed APK + a SHA-256 checksum as a
+# it to the F-Droid repo, creates the vX.Y.Z tag + Gitea release, and publishes
+# the release on Codeberg with the signed APK + a SHA-256 checksum as a
 # direct-download channel — the tag is an output of the pipeline, not its
 # trigger. Ordinary merges (no version bump) fall through `detect` and do
 # nothing.
+#
+# This file lives in .gitea/workflows on purpose: Codeberg is canonical for git,
+# issues, PRs and releases, but every secret (app key, F-Droid repo key, Hetzner
+# credentials) lives on the self-hosted Gitea instance, and this is the only
+# directory Codeberg cannot see. Contributor-triggerable work lives in
+# .forgejo/workflows and references no secret. See docs/RELEASING.md.
 #
 # A manual workflow_dispatch (from a branch) runs the re-sign-only recovery
 # path: it re-signs the existing F-Droid index with the repo key and re-uploads,
@@ -27,6 +33,14 @@ jobs:
   # whether this push actually cuts a new release (no tag for it yet). Keeps the
   # heavy job from running on every merge to main.
   detect:
+    # Gitea only. The workflow directory split already keeps this file invisible
+    # to Codeberg — Forgejo's lookup is first-match-wins, and .forgejo/workflows
+    # exists — but that only holds while .forgejo/ is non-empty. Move the last
+    # file out of it and Codeberg would fall back to .gitea/workflows and start
+    # running the release pipeline on the contributor-facing runner, with no
+    # secrets. repository_owner differs between the two forges regardless of
+    # URL, proxy or instance rename, so this closes it permanently.
+    if: github.repository_owner == 'makiolaj'
     runs-on: docker
     outputs:
       is_release: ${{ steps.v.outputs.is_release }}
@@ -42,8 +56,16 @@ jobs:
       - name: Resolve version and whether it is a new release
         id: v
         env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          # Tags are read from Codeberg, which is canonical — deliberately NOT
+          # from the Gitea API this workflow runs on. The Codeberg -> Gitea sync
+          # is a push mirror, i.e. `git push --mirror`, which deletes refs the
+          # source does not have. A tag minted here on Gitea is therefore wiped
+          # by the next sync (Codeberg does not have it yet) and only reappears
+          # once the tag push at the end of this workflow propagates back.
+          # Asking Gitea inside that window would report "no tag" for a release
+          # that already shipped, and cut it a second time.
+          # Public repo, so this read needs no token.
+          TAG_API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
         run: |
           set -e
           VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
@@ -65,15 +87,28 @@ jobs:
           fi
           # A tag for this version already existing means the release shipped on
           # an earlier push; do nothing. Absent => this merge cuts the release.
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "Authorization: token $TOKEN" "$API/git/refs/tags/v$VERSION")
-          if [ "$STATUS" = "200" ]; then
-            echo "Tag v$VERSION already exists — nothing to release."
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "No tag for v$VERSION yet — cutting the release."
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-          fi
+          #
+          # Anything other than a clean 200/404 is treated as fatal rather than
+          # as "no tag". A Codeberg outage or a network blip would otherwise
+          # read as absent and re-cut a release that has already shipped —
+          # republishing to F-Droid. Failing here is recoverable; a duplicate
+          # release is not.
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$TAG_API/git/refs/tags/v$VERSION" || echo 000)
+          case "$STATUS" in
+            200)
+              echo "Tag v$VERSION already exists on Codeberg — nothing to release."
+              echo "is_release=false" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "No tag for v$VERSION on Codeberg yet — cutting the release."
+              echo "is_release=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Codeberg tag lookup for v$VERSION returned HTTP $STATUS." >&2
+              echo "Refusing to guess: treating this as 'no tag' could re-cut a shipped release." >&2
+              exit 1
+              ;;
+          esac
 
   # Releases: build + sign + publish, then mint the tag and Gitea release.
   # Also runs on manual dispatch, where it skips the build and just re-signs and
@@ -360,14 +395,15 @@ jobs:
             -F "attachment=@/tmp/$ASSET" \
             "$API/releases/$ID/assets?name=$ASSET" -o /dev/null -w "asset upload HTTP %{http_code}\n"
 
-      # Mirror the release to the Codeberg mirror as a direct-download channel
-      # for users who don't want F-Droid. Gitea already push-mirrors branches +
-      # tags to Codeberg, but releases aren't git objects so they don't sync —
-      # we create the release there over the API and attach the signed APK plus
-      # a SHA-256 checksum. The APK is identical to the F-Droid one (same app
-      # key), so this adds no trust surface. Best-effort: a Codeberg outage
-      # (it 504s under load) must never fail an already-published F-Droid
-      # release. Needs the CODEBERG_RELEASE_TOKEN secret; skips cleanly if unset.
+      # Publish the release on Codeberg, which is canonical for tags and
+      # releases (see docs/RELEASING.md). Codeberg push-mirrors branches + tags
+      # to Gitea, but releases aren't git objects and don't sync in either
+      # direction — so this step pushes the tag straight to Codeberg and creates
+      # the release there over the API, attaching the signed APK plus a SHA-256
+      # checksum as the direct-download channel for users who don't want
+      # F-Droid. The APK is identical to the F-Droid one (same app key), so this
+      # adds no trust surface. Needs the CODEBERG_RELEASE_TOKEN secret; skips
+      # cleanly if unset.
       - name: Publish release to Codeberg
         if: env.IS_RELEASE == 'true'
         # NOT continue-on-error: this step reported green through 0.2.1, 0.2.2,
@@ -377,6 +413,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.CODEBERG_RELEASE_TOKEN }}
           API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
+          SHA: ${{ github.sha }}
         run: |
           set -e
           if [ -z "${TOKEN:-}" ]; then
@@ -401,34 +438,21 @@ jobs:
             sed -i -e '/./,$!d' release-notes.md
           fi
           [ -s release-notes.md ] || echo "_See CHANGELOG.md for ${VERSION}._" > release-notes.md
-          # Never mint the tag here. Gitea's push mirror owns getting it to
-          # Codeberg; this step's only job is to attach a release to a tag that
-          # has already landed. That split matters because every way of creating
-          # a tag from here — git push, or a release POST carrying
-          # target_commitish for a tag Codeberg lacks — is a ref WRITE, and ref
-          # writes are what fail on this repo ("cannot lock references" on push,
-          # an empty-bodied 500 on the API). Attaching to a tag that is already
-          # present needs no ref write and succeeds.
+          # Push the tag to Codeberg ourselves. Under Codeberg-canonical the
+          # mirror runs Codeberg -> Gitea, so waiting for a tag to arrive here
+          # from Gitea (what 0.3.2 did) would wait forever. The tag this
+          # pipeline minted on Gitea is in fact *deleted* by the next mirror
+          # sync until Codeberg has it — so pushing it here is what makes it
+          # durable on both forges.
           #
-          # So: wait for the mirror, verify, then attach. If the tag never shows
-          # up, fail — do NOT fall back to creating it, which is what produced
-          # the silent breakage across 0.2.1 through 0.3.2.
-          TAG_OK=""
-          for i in $(seq 1 30); do
-            if [ "$(curl -s -o /dev/null -w '%{http_code}' \
-                    -H "Authorization: token $TOKEN" "$API/tags/$TAG")" = "200" ]; then
-              TAG_OK=1; echo "Codeberg has $TAG (after ~$((i*10))s)"; break
-            fi
-            sleep 10
-          done
-          if [ -z "$TAG_OK" ]; then
-            echo "Codeberg never received $TAG from the push mirror (waited 300s)." >&2
-            echo "Not creating it here: ref writes to this repo fail, so that" >&2
-            echo "would 500. Check the mirror, then re-run once the tag is there." >&2
-            exit 1
-          fi
-          # No target_commitish: the tag exists, so the API must attach to it
-          # rather than resolve a commit and mint one.
+          # Pushing the ref first and attaching with NO target_commitish is
+          # deliberate: a release POST carrying a target_commitish for a commit
+          # or tag Codeberg hasn't received yet is what produced the
+          # empty-bodied 500s. Attaching to a ref that already exists doesn't
+          # need the API to write one.
+          git tag -f "$TAG" "$SHA"
+          git push -f "https://jlmakiola:${TOKEN}@codeberg.org/jlmakiola/agendula.git" \
+            "refs/tags/$TAG"
           python3 - "$TAG" "$PRERELEASE" <<'PY' > cb-payload.json
           import json, sys
           tag, pre = sys.argv[1:3]
@@ -441,20 +465,31 @@ jobs:
               "prerelease": pre == "true",
           }))
           PY
-          # Upsert (re-run safe): a release already attached to this tag is
-          # PATCHed in place, so re-running never disturbs a published release.
-          ID=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty')
-          if [ -n "$ID" ]; then
-            curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
+          # Create (or update) the release. Codeberg 500s on a POST/GET against a
+          # tag it has only just received — the release request outruns the
+          # indexing of the ref we pushed a moment ago — so a single attempt can
+          # fail even though the very same call succeeds seconds later. Retry
+          # with backoff, and PATCH in place if a release already exists (re-run
+          # safe, so re-running never disturbs a published release). A 5xx body
+          # still exits curl 0, so the loop, not `set -e`, controls the flow.
+          ID=""
+          for attempt in 1 2 3 4 5 6; do
+            EXIST=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty' 2>/dev/null || true)
+            if [ -n "$EXIST" ]; then
+              curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
+                -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+                -d @cb-payload.json "$API/releases/$EXIST"
+              ID="$EXIST"; break
+            fi
+            CODE=$(curl -s -o cb-response.json -w "%{http_code}" -X POST \
               -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
-              -d @cb-payload.json "$API/releases/$ID"
-          else
-            curl -s -o cb-response.json -w "release POST HTTP %{http_code}\n" -X POST \
-              -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
-              -d @cb-payload.json "$API/releases"
+              -d @cb-payload.json "$API/releases")
+            echo "release POST attempt $attempt HTTP $CODE"
             ID=$(jq -r '.id // empty' cb-response.json 2>/dev/null || true)
-          fi
-          if [ -z "$ID" ]; then echo "Could not resolve Codeberg release id." >&2; exit 1; fi
+            [ -n "$ID" ] && break
+            sleep $((attempt * 10))
+          done
+          if [ -z "$ID" ]; then echo "Could not resolve Codeberg release id after retries." >&2; exit 1; fi
 
           # Attach APK + checksum, replacing any prior asset of the same name.
           for A in "$ASSET_APK" "$ASSET_SUM"; do

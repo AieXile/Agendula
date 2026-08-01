@@ -190,13 +190,16 @@
     <string name="settings_about_logo_desc">Agendula app icon</string>
     <string name="settings_language">App language</string>
     <string name="settings_language_auto">System default</string>
+    <string name="settings_translate">Help translate</string>
+    <string name="settings_translate_hint">Add or improve a language on Weblate</string>
     <string name="settings_report_problem">Report a problem</string>
     <string name="settings_report_problem_hint">Open the issue tracker</string>
-    <string name="about_source_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula</string>
+    <string name="about_source_url" translatable="false">https://codeberg.org/jlmakiola/agendula</string>
     <string name="crash_report_issue_title">Crash report</string>
-    <string name="report_issue_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/issues/new</string>
-    <string name="about_license_url" translatable="false">https://gitea.jeanlucmakiola.de/makiolaj/agendula/src/branch/main/LICENSE</string>
+    <string name="report_issue_url" translatable="false">https://codeberg.org/jlmakiola/agendula/issues/new</string>
+    <string name="about_license_url" translatable="false">https://codeberg.org/jlmakiola/agendula/src/branch/main/LICENSE</string>
     <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>
+    <string name="about_translate_url" translatable="false">https://weblate.dev.jeanlucmakiola.de/engage/agendula/</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">Follow system</string>
     <string name="settings_theme_light">Light</string>

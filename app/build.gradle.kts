@@ -111,6 +111,18 @@ android {
         }
     }
 
+    lint {
+        // Community translations are expected to be partial — a missing string
+        // falls back to the English base at runtime — so don't fail the build on
+        // it. Likewise a translated <plurals> may not fill every CLDR quantity
+        // form its locale defines (e.g. Arabic needs "zero"); the missing form
+        // falls back to "other" at runtime, so MissingQuantity is informational
+        // too. Stale/extra keys (ExtraTranslation) stay fatal; scripts/
+        // check_translations.py guards the same invariants with clearer,
+        // translator-facing messages.
+        informational += listOf("MissingTranslation", "MissingQuantity")
+    }
+
     testOptions {
         unitTests {
             all { it.useJUnitPlatform() }

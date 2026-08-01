@@ -12,7 +12,7 @@ Agendula is a Material 3 Expressive **front-end** over the OpenTasks
 `TaskContract` provider — it reads, writes, and reminds on top of a tasks store
 that some other app (DAVx5, SmoothSync, DecSync CC, tasks.org, …) syncs over
 CalDAV. **Agendula owns no database and no sync stack.** It is the task-list
-sibling to [Calendula](https://gitea.jeanlucmakiola.de/makiolaj/calendula),
+sibling to [Calendula](https://codeberg.org/jlmakiola/calendula),
 which does the same thing for `CalendarContract`.
 
 The whole design hangs off one rule:
@@ -244,8 +244,8 @@ the `@IoDispatcher`). `AgendulaApp` is the `@HiltAndroidApp` entry point;
 | Other | DataStore, kotlinx-datetime, kotlinx-coroutines |
 | Tests | JUnit5 (Jupiter) + Truth + Turbine + coroutines-test; the data source is the JVM-testable seam |
 | Versioning | committed `versionName` is the source of truth; a bump reaching `main` triggers the release and the pipeline mints the `vX.Y.Z` tag. `versionCode = MAJOR*10000 + MINOR*100 + PATCH`. See [`RELEASING.md`](RELEASING.md). |
-| CI | Gitea workflows (`.gitea/workflows/ci.yaml`, `release.yaml`) |
-| Distribution | F-Droid (`fdroid-metadata/`) |
+| CI | Split by forge: `.forgejo/workflows/ci.yaml` on Codeberg (canonical, no secrets), `.gitea/workflows/release.yaml` on Gitea (all secrets). See [`RELEASING.md`](RELEASING.md). |
+| Distribution | F-Droid (`fdroid-metadata/`) + Codeberg release APKs |
 
 ---
 

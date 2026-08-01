@@ -6,6 +6,7 @@
 Reads, writes, and reminds — on top of an existing tasks provider, with no own
 sync stack.</p>
 
+<a href="https://codeberg.org/jlmakiola/agendula/actions"><img src="https://codeberg.org/jlmakiola/agendula/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI"></a>
 <img src="https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white" alt="Android 10+">
 <img src="https://img.shields.io/badge/Kotlin-Compose-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin + Compose">
 <img src="https://img.shields.io/badge/Material%203-Expressive-4285F4" alt="Material 3 Expressive">
@@ -13,7 +14,7 @@ sync stack.</p>
 
 </div>
 
-Agendula is the task-list sibling to [Calendula](https://gitea.jeanlucmakiola.de/makiolaj/calendula).
+Agendula is the task-list sibling to [Calendula](https://codeberg.org/jlmakiola/calendula).
 Where Calendula is a pure front-end over Android's `CalendarContract`, Agendula is
 a pure front-end over the **OpenTasks `TaskContract` provider** — the store that
 DAVx5 (and SmoothSync, DecSync, …) syncs your CalDAV `VTODO` tasks into. No own
@@ -39,6 +40,18 @@ Agendula works with anything that writes to the tasks provider — **DAVx5**
 adapter — because it builds on the provider, not on any one sync app. Google
 Tasks / Microsoft To Do are out of scope by design (proprietary; they would mean
 owning a sync stack). Open standards — CalDAV / iCalendar / DecSync — are the lane.
+
+## Translations
+
+Agendula ships in English so far, and would like not to. Translations are
+managed on a self-hosted **Weblate**, and partial ones are fine — an
+untranslated string simply falls back to English.
+
+**→ [Help translate Agendula](https://weblate.dev.jeanlucmakiola.de/engage/agendula/)**
+
+No coding needed: register on the Weblate server, pick (or request) a language,
+and translate the strings in your browser. You can also reach this link in the
+app from the top of **Settings → App language**.
 
 ## License
 

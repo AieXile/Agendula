@@ -1,0 +1,24 @@
+# Kept enabled so anything that doesn't fit the four templates still has a way
+# in.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Translate Agendula
+    url: https://weblate.dev.jeanlucmakiola.de/engage/agendula/
+    about: >-
+      Translations are managed on Weblate, not here — it owns every values-*
+      file, so a hand-edited translation gets overwritten on the next sync.
+      No coding needed: pick or request a language and translate in the browser.
+
+  - name: Contributing guide
+    url: https://codeberg.org/jlmakiola/agendula/src/branch/main/CONTRIBUTING.md
+    about: >-
+      Before opening a pull request: how to build (there's a submodule), where
+      code goes, and the one architectural rule a change is reviewed against.
+
+  - name: Sync sources and scope
+    url: https://codeberg.org/jlmakiola/agendula/src/branch/main/README.md
+    about: >-
+      Agendula is a front-end over the OpenTasks provider, so it works with
+      DAVx5, SmoothSync, DecSync and friends. Google Tasks and Microsoft To Do
+      are out of scope by design — check here before requesting a backend.

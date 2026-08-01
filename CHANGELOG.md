@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Agendula can now be translated. Pick or request a language on Weblate and
+  translate in the browser — the link sits at the top of the language picker in
+  **Settings → App language**. Partial translations are fine; anything
+  untranslated falls back to English.
+
+### Changed
+- Agendula's home is now **Codeberg** (`jlmakiola/agendula`) — that's where the
+  source, issues, pull requests and releases live. The Source and License links
+  in Settings, the issue-reporting link and the F-Droid metadata all point there
+  now. The self-hosted Gitea instance stays as build infrastructure.
+
 ## [0.3.2] - 2026-07-20
 
 ### Fixed

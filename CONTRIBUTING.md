@@ -33,9 +33,32 @@ would expose provider details to a ViewModel or the UI, it's in the wrong layer.
 ./gradlew lintDebug                 # Android lint (CI runs this on every PR)
 ```
 
-CI (`.gitea/workflows/ci.yaml`) runs a reproducible-release invariant check,
+CI (`.forgejo/workflows/ci.yaml`, on Codeberg) runs a reproducible-release invariant check,
 then lint → unit tests → debug build on every pull request, so run these locally
 before opening a PR. Keep CI green.
+
+## Translations
+
+**Never edit a `values-*/strings.xml` file in a pull request.** Translations are
+owned by a self-hosted Weblate that writes to this repository directly, and a
+hand-edit is overwritten on the next sync.
+
+→ **[Translate Agendula on Weblate](https://weblate.dev.jeanlucmakiola.de/engage/agendula/)**
+
+Adding a *new* English string to `values/strings.xml` is normal PR work; Weblate
+picks it up and offers it to translators. Partial translations are expected and
+fine — missing keys are informational. Stale and orphaned keys are not, so run
+
+```sh
+python3 scripts/check_translations.py
+```
+
+before pushing. It reports those more clearly than lint's `MissingTranslation`
+does, and it's what the `Translations` check runs on every PR.
+
+A new language also needs one `<locale>` line in
+`app/src/main/res/xml/locales_config.xml` — that file is the single source of
+truth for both the in-app picker and the Android 13+ per-app language setting.
 
 ## Where to put code
 
