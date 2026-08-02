@@ -98,6 +98,9 @@ import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.agendula.ui.common.priorityAccent
 import de.jeanlucmakiola.floret.components.Position
+import de.jeanlucmakiola.floret.components.SnackChip
+import de.jeanlucmakiola.floret.components.SnackChipHeight
+import de.jeanlucmakiola.floret.components.SnackChipMargin
 import de.jeanlucmakiola.floret.time.formatDateTimeCompact
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
@@ -189,58 +192,22 @@ fun TaskListScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = inner.calculateBottomPadding() + 16.dp)
-                    .height(56.dp),
+                    .padding(
+                        start = SnackChipMargin,
+                        bottom = inner.calculateBottomPadding() + SnackChipMargin,
+                    )
+                    .height(SnackChipHeight),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                UndoChip(
+                SnackChip(
                     visible = undoTarget != null,
-                    onUndo = {
+                    message = stringResource(R.string.task_deleted),
+                    actionLabel = stringResource(R.string.undo),
+                    onAction = {
                         undoTarget?.let { viewModel.undoDelete(it.taskId) }
                         undoTarget = null
                     },
                 )
-            }
-        }
-    }
-}
-
-/**
- * A compact floating "snackchip" for an undoable delete — a rounded pill (not a
- * full-width snackbar) sized to its content, sliding up from the bottom centre.
- */
-@Composable
-private fun UndoChip(visible: Boolean, onUndo: () -> Unit, modifier: Modifier = Modifier) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically { it } + fadeIn(),
-        exit = slideOutVertically { it } + fadeOut(),
-        modifier = modifier,
-    ) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerHighest,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shape = RoundedCornerShape(50),
-            shadowElevation = 6.dp,
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.task_deleted),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                TextButton(
-                    onClick = onUndo,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.undo),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                }
             }
         }
     }
