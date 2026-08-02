@@ -653,7 +653,7 @@ private fun ScheduleRow(
             )
         } else {
             Text(
-                text = value.formatDate(),
+                text = value.formatDate(allDay),
                 style = MaterialTheme.typography.titleMedium,
                 color = valueColor,
                 modifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp),
@@ -865,7 +865,7 @@ private fun ParentPickerSheet(
                     GroupedRow(
                         title = task.title.ifBlank { stringResource(R.string.task_untitled) },
                         position = positionOf(index, section.tasks.size),
-                        summary = task.due?.formatDate(),
+                        summary = task.due?.formatDate(task.isAllDay),
                         selected = task.taskId == selectedId,
                         minHeight = 56.dp,
                         onClick = { choose(task.taskId) },

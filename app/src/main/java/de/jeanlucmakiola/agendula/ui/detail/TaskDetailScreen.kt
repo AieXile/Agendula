@@ -501,13 +501,17 @@ private fun taskWhenLines(task: Task): Pair<String, String?>? {
     val due = task.due
     return when {
         start != null && due != null -> {
-            val sameDay = start.formatDate() == due.formatDate()
-            val primary = if (sameDay) due.formatDate() else "${start.formatDate()} – ${due.formatDate()}"
-            val secondary = if (task.isAllDay) null else "${start.formatTime()} – ${due.formatTime()}"
+            val allDay = task.isAllDay
+            val sameDay = start.formatDate(allDay) == due.formatDate(allDay)
+            val primary =
+                if (sameDay) due.formatDate(allDay)
+                else "${start.formatDate(allDay)} – ${due.formatDate(allDay)}"
+            val secondary = if (allDay) null else "${start.formatTime()} – ${due.formatTime()}"
             primary to secondary
         }
-        due != null -> due.formatDate() to if (task.isAllDay) null else due.formatTime()
-        start != null -> start.formatDate() to if (task.isAllDay) null else start.formatTime()
+        due != null -> due.formatDate(task.isAllDay) to if (task.isAllDay) null else due.formatTime()
+        start != null ->
+            start.formatDate(task.isAllDay) to if (task.isAllDay) null else start.formatTime()
         else -> null
     }
 }
