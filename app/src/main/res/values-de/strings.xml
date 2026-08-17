@@ -165,7 +165,7 @@
     <string name="settings_section_tasks">Aufgaben</string>
     <string name="settings_default_list">Standard-Liste</string>
     <string name="settings_default_list_first">Erste verfügbare Felder</string>
-    <string name="settings_add_subtask_row">Zeile „Unteraufgaben hinzufügen“ anzeigen</string>
+    <string name="settings_add_subtask_row">Zeile \"Unteraufgaben hinzufügen\" anzeigen</string>
     <string name="settings_add_subtask_row_hint">Ein Eingabefeld am Ende der Unteraufgaben einer aufgeklappten Aufgabe</string>
     <string name="settings_bottom_add_bar">Untere Schnellhinzufüge-Leiste</string>
     <string name="settings_bottom_add_bar_hint">Füge Aufgaben hinzu, über eine Leiste, die unten an einer Liste angepinnt ist, statt über die schwebende Schaltfläche</string>
