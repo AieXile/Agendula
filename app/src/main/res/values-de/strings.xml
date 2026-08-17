@@ -56,7 +56,7 @@
     <string name="edit_parent_none">Keine (Hauptebene)</string>
     <string name="edit_parent_search">Aufgaben suchen</string>
     <string name="edit_parent_empty">Keine passenden Aufgaben in der Liste gefunden.</string>
-    <string name="edit_reminder_label">Erinnerung</string>
+    <string name="edit_reminder_label">Erinnerungen</string>
     <string name="edit_set">Übernehmen</string>
     <string name="edit_clear">Leeren</string>
     <string name="edit_title_hint">Aufgaben-Titel</string>
@@ -185,4 +185,6 @@
         <item quantity="one">%1$d Woche vorher</item>
         <item quantity="other">%1$d Wochen vorher</item>
     </plurals>
+    <string name="settings_translate">Hilf beim Übersetzen</string>
+    <string name="settings_translate_hint">Füge eine Sprache auf Weblate hinzu oder verbessere sie</string>
 </resources>
