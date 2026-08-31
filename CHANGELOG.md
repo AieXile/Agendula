@@ -7,7 +7,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-31
+
 ### Added
+- Agendula now speaks **German** and **Brazilian Portuguese**, the first
+  community translations. Pick one under **Settings → App language**, or in
+  Android's own per-app language settings; leave it on *System default* and
+  Agendula follows your phone. Anything not yet translated falls back to
+  English.
 - Agendula can now be translated. Pick or request a language on Weblate and
   translate in the browser — the link sits at the top of the language picker in
   **Settings → App language**. Partial translations are fine; anything

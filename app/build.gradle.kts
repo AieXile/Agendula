@@ -29,8 +29,8 @@ android {
         // release itself (versionCode is pinned to MAJOR*10000 + MINOR*100 +
         // PATCH from versionName, e.g. 0.2.0 -> 200). The Gitea release is marked
         // as a pre-release while MAJOR is 0. See docs/RELEASING.md.
-        versionCode = 302
-        versionName = "0.3.2"
+        versionCode = 400
+        versionName = "0.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
