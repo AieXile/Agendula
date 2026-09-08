@@ -1,3 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_tagline">تطبيق مهام Material 3 Expressive عصري.\nيأتي لتفتح</string>
+    <string name="task_untitled">مهمة بدون عنوان</string>
+    <string name="back">رجوع</string>
+    <string name="save">حفظ</string>
+    <string name="delete">حذف</string>
+    <string name="tasks_title">المهام</string>
+    <string name="task_list_empty">لا مهام هنا بعد.</string>
+    <string name="task_list_failure">تعذَّر تحميل هذه المهام.</string>
 </resources>
