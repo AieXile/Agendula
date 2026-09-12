@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_tagline">تطبيق مهام Material 3 Expressive عصري.\nيأتي لتفتح</string>
-    <string name="task_untitled">مهمة بدون عنوان</string>
+    <string name="task_untitled">مهمة بلا عنوان</string>
     <string name="back">رجوع</string>
     <string name="save">حفظ</string>
     <string name="delete">حذف</string>
     <string name="tasks_title">المهام</string>
     <string name="task_list_empty">لا مهام هنا بعد.</string>
     <string name="task_list_failure">تعذَّر تحميل هذه المهام.</string>
+    <string name="smart_no_date">لا تاريخ</string>
+    <string name="smart_completed">مكتمل</string>
+    <string name="task_detail_title">المهمة</string>
+    <string name="task_detail_not_found">لم تعد هذه المهمة موجودة.</string>
+    <string name="edit">تعديل</string>
+    <string name="edit_task_title">تعديل المهمة</string>
+    <string name="new_task_title">مهمة جديدة</string>
+    <string name="field_title">العنوان</string>
+    <string name="field_description">الوصف</string>
+    <string name="edit_save_failed">تعذّر الحفظ. حاول مرة أخرى.</string>
+    <string name="add_task_hint">أضف مهمة</string>
+    <string name="add_subtask_hint">أضف مهمة فرعية</string>
+    <string name="cd_add_task">إضافة مهمة</string>
+    <string name="cd_complete">اكتمل</string>
+    <string name="cd_reopen">إعادة الفتح</string>
+    <string name="task_deleted">تم الحذف</string>
+    <string name="undo">تراجع</string>
+    <string name="cd_expand_subtasks">إظهار المهام الفرعية</string>
+    <string name="cd_collapse_subtasks">إخفاء المهام الفرعية</string>
+    <string name="section_overdue">متأخر</string>
+    <string name="section_today">اليوم</string>
+    <string name="section_upcoming">القادم</string>
+    <string name="section_no_date">لا تاريخ</string>
+    <string name="section_completed">مكتمل</string>
+    <string name="priority_none">لا شئ</string>
+    <string name="priority_low">منخفض</string>
+    <string name="priority_medium">متوسط</string>
+    <string name="priority_high">مرتفع</string>
+    <string name="detail_mark_complete">وضع علامة الاكتمال</string>
+    <string name="detail_mark_incomplete">وضع علامة عدم الاكتمال</string>
+    <string name="detail_list">القائمة</string>
 </resources>
