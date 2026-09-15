@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy — Agendula
 description: What Agendula does with your data. No servers, no account, no analytics — your tasks stay on your device unless you add a CalDAV server yourself.
-updated: 2026-09-09
+updated: 2026-09-15
 ---
 
 <!--
@@ -37,7 +37,7 @@ nothing and no one else. Nothing is ever sent to the developer.
 IT-Dienstleister | Jean-Luc Makiola  
 Mahlerstraße 10  
 14772 Brandenburg an der Havel  
-Email: [business@jeanlucmakiola.de](mailto:business@jeanlucmakiola.de)
+Email: [support@jeanlucmakiola.de](mailto:support@jeanlucmakiola.de)
 
 ## 2. No data collection by the developer
 
