@@ -1,3 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="edit">Modifier</string>
+    <string name="edit_start_label">Début</string>
+    <string name="edit_reminder_label">Rappels</string>
+    <string name="edit_clear">Effacer</string>
+    <string name="edit_more_fields">Plus de champs</string>
+    <string name="close">Fermer</string>
+    <string name="dialog_cancel">Abandonner</string>
+    <string name="reminder_none">Aucun</string>
+    <string name="reminder_custom">Personnalisé</string>
+    <string name="reminder_use_default">Valeur par défaut du système</string>
+    <string name="reminder_unit_days">Jours</string>
+    <string name="settings_list_reminder_inherits">Par défaut (%1$s)</string>
+    <string name="smart_today">Aujourd\'hui</string>
+    <string name="smart_upcoming">À venir</string>
+    <string name="home_due_today">Aujourd\'hui</string>
+    <string name="home_due_tomorrow">Demain</string>
+    <string name="reminder_onboarding_skip_button">Pas pour l\'instant</string>
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_section_appearance">Apparence</string>
+    <string name="settings_about_author">par Jean-Luc Makiola</string>
+    <string name="settings_about_source">Source</string>
+    <string name="settings_license">Licence</string>
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_language_auto">Valeur par défaut du système</string>
+    <string name="settings_translate_hint">Ajouter ou améliorer une langue sur Weblate</string>
+    <string name="settings_report_problem">Rapporter un problème</string>
+    <string name="settings_theme">Thème</string>
+    <string name="settings_theme_light">Clair</string>
+    <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_dynamic_color">Couleurs dynamiques</string>
+    <string name="settings_section_reminders">Rappels</string>
+    <plurals name="reminder_days">
+        <item quantity="one">%d jour avant</item>
+        <item quantity="other">%d jour avant</item>
+    </plurals>
 </resources>
