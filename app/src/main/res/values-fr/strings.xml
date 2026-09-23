@@ -35,4 +35,8 @@
         <item quantity="one">%d jour avant</item>
         <item quantity="other">%d jour avant</item>
     </plurals>
+    <plurals name="reminder_weeks">
+        <item quantity="one">%d semaine avant</item>
+        <item quantity="other">%d semaine avant</item>
+    </plurals>
 </resources>
