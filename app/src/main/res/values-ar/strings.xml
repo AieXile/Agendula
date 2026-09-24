@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_tagline">تطبيق مهام Material 3 Expressive عصري.\nيأتي لتفتح</string>
     <string name="task_untitled">مهمة بلا عنوان</string>
     <string name="back">رجوع</string>
     <string name="save">حفظ</string>
@@ -13,9 +12,6 @@
     <string name="task_detail_title">المهمة</string>
     <string name="task_detail_not_found">لم تعد هذه المهمة موجودة.</string>
     <string name="edit">تعديل</string>
-    <string name="edit_task_title">تعديل المهمة</string>
-    <string name="new_task_title">مهمة جديدة</string>
-    <string name="field_title">العنوان</string>
     <string name="field_description">الوصف</string>
     <string name="edit_save_failed">تعذّر الحفظ. حاول مرة أخرى.</string>
     <string name="add_task_hint">أضف مهمة</string>
@@ -36,7 +32,5 @@
     <string name="priority_low">منخفض</string>
     <string name="priority_medium">متوسط</string>
     <string name="priority_high">مرتفع</string>
-    <string name="detail_mark_complete">وضع علامة الاكتمال</string>
-    <string name="detail_mark_incomplete">وضع علامة عدم الاكتمال</string>
     <string name="detail_list">القائمة</string>
 </resources>

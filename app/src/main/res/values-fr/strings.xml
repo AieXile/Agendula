@@ -42,7 +42,6 @@
         <item quantity="other">%1$d semaines avant</item>
     </plurals>
     <string name="app_name">Agendula</string>
-    <string name="app_tagline">Une application de tâches moderne sous Material 3 Expressive.\nEn train de prendre son envol.</string>
     <string name="task_untitled">Tâche sans titre</string>
     <string name="back">Retour</string>
     <string name="save">Enregistrer</string>
@@ -54,9 +53,6 @@
     <string name="smart_completed">Terminé</string>
     <string name="task_detail_title">Tâche</string>
     <string name="task_detail_not_found">Cette tâche n\'existe plus.</string>
-    <string name="edit_task_title">Modifier la tâche</string>
-    <string name="new_task_title">Nouvelle tâche</string>
-    <string name="field_title">Titre</string>
     <string name="field_description">Description</string>
     <string name="edit_save_failed">Impossible d\'enregistrer. Réessayez.</string>
     <string name="add_task_hint">Ajouter une tâche</string>
@@ -77,11 +73,8 @@
     <string name="priority_low">Faible</string>
     <string name="priority_medium">Moyenne</string>
     <string name="priority_high">Haute</string>
-    <string name="detail_mark_complete">Marquer comme terminé</string>
-    <string name="detail_mark_incomplete">Marquer comme non terminé</string>
     <string name="detail_list">Liste</string>
     <string name="detail_due">À faire</string>
-    <string name="detail_start">Commence</string>
     <string name="detail_priority">Priorité</string>
     <string name="detail_progress">Progrès</string>
     <string name="detail_subtasks">Sous-tâches</string>
@@ -104,11 +97,6 @@
     <string name="edit_conflict_body">Cette tâche a été mise à jour ailleurs (lors d\'une synchronisation ou via une autre application) depuis que vous l\'avez ouverte. Voulez-vous remplacer ces modifications par vos modifications ?</string>
     <string name="edit_conflict_overwrite">Remplacer</string>
     <string name="reminder_at_due">Au moment de la tâche</string>
-    <string name="reminder_5_min">5 minutes avant</string>
-    <string name="reminder_10_min">10 minutes avant</string>
-    <string name="reminder_30_min">30 minutes avant</string>
-    <string name="reminder_1_hour">1 heure avant</string>
-    <string name="reminder_1_day">1 jour avant</string>
     <string name="reminder_custom_with_value">Personnalisé (%1$s)</string>
     <string name="reminder_custom_set">Appliquer</string>
     <string name="reminder_custom_amount">Saisissez une quantité</string>
@@ -127,15 +115,11 @@
     <string name="lists_empty">Il n\'y a pas encore de listes de tâches. Ajoutez-en une dans votre application de gestion des tâches ou à l\'aide du bouton « + ».</string>
     <string name="smart_overdue">En retard</string>
     <string name="smart_all">Toutes</string>
-    <string name="open_count">%1$d ouvert</string>
-    <string name="home_today_progress">%1$d sur %2$d terminé</string>
-    <string name="home_today_remaining">%1$d restant</string>
     <string name="home_today_all_done">C\'est fini 🎉</string>
     <string name="home_today_empty">Rien à faire aujourd\'hui 🎉</string>
     <string name="home_upcoming_view_all">Tout afficher</string>
     <string name="home_search_hint">Rechercher une tâche</string>
     <string name="home_search_clear">Effacer la recherche</string>
-    <string name="home_search_close">Fermer la recherche</string>
     <string name="home_search_empty">Aucune tâche ne correspond à « %1$s »</string>
     <string name="reminder_due_at">Due %1$s</string>
     <string name="reminder_channel_name">Rappels de tâches</string>
@@ -145,8 +129,6 @@
     <string name="onboarding_permission_title">Autoriser l\'accès à vos tâches</string>
     <string name="onboarding_permission_body">Agendula a besoin d\'une autorisation pour lire et modifier vos tâches. C\'est la seule chose que l\'application vous demandera.</string>
     <string name="onboarding_permission_button">Accorder l\'accès</string>
-    <string name="onboarding_install_opentasks">Installer OpenTasks</string>
-    <string name="onboarding_install_tasksorg">Installer tasks.org</string>
     <string name="reminder_onboarding_title">Ne manquez jamais une échéance</string>
     <string name="reminder_onboarding_body">Les applications de gestion des tâches n\'envoient pas de rappels elles-mêmes ; c\'est donc Agendula qui s\'en charge pour vous. Activez-les pour recevoir une notification lorsque la date d\'échéance d\'une tâche approche.</string>
     <string name="reminder_onboarding_enable_button">Activer les rappels</string>
@@ -176,7 +158,6 @@
     <string name="settings_exact_alarms">Horaires précis</string>
     <string name="settings_exact_alarms_allowed">Les rappels sont envoyés à l\'heure exacte</string>
     <string name="settings_exact_alarms_blocked">Bloqué — appuyez pour autoriser les rappels à heure fixe</string>
-    <string name="settings_section_tasks">Tâches</string>
     <string name="settings_default_list">Liste par défaut</string>
     <string name="settings_default_list_first">Première liste disponible</string>
     <string name="settings_add_subtask_row">Afficher la ligne « Ajouter une sous-tâche »</string>
