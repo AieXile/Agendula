@@ -34,17 +34,17 @@ Nothing listing-related goes in the recipe. F-Droid harvests
 is fed from: title, descriptions, icon, feature graphic, screenshots and
 `changelogs/<versionCode>.txt`. `title.txt` becomes the app name per locale.
 
-## Submitting
+## Status
 
-After `v1.0.0` is tagged and `agendula_v1.0.0.apk` is live on the self-hosted
-repo:
+Submitted as [fdroiddata!49998](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/49998)
+on 2026-09-24. Its CI rebuilt v1.0.0 and verified it against our published APK
+("compared built binary to supplied reference binary successfully").
 
-1. Fork `https://gitlab.com/fdroid/fdroiddata`, copy the recipe to
-   `metadata/de.jeanlucmakiola.agendula.yml`.
-2. `fdroid readmeta && fdroid lint de.jeanlucmakiola.agendula`, then
-   `fdroid build -v -l de.jeanlucmakiola.agendula` to rebuild and verify.
-3. Open the merge request. Later versions are picked up from new `vX.Y.Z` tags
-   (`AutoUpdateMode`), so there is no per-release work in fdroiddata.
+The file here is a copy of the submitted recipe. fdroiddata's copy is the one
+that counts; after the merge F-Droid picks up new `vX.Y.Z` tags on its own
+(`AutoUpdateMode`), so there is no per-release work there. Only a change to the
+recipe itself (a new submodule, a build flag) needs an MR, pinned to a full
+commit hash, never a tag.
 
 The recipe says `License: MIT`; `:dav` is vendored MPL-2.0 (`dav/PROVENANCE.md`).
 If the reviewer asks, change it to `MIT AND MPL-2.0`.
