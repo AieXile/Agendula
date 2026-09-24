@@ -1,0 +1,4 @@
+# fastlane is only the Play Developer API client here (see Fastfile).
+json_key_file(ENV["SUPPLY_JSON_KEY"] || "play-service-account.json")
+
+package_name("de.jeanlucmakiola.agendula")

@@ -36,7 +36,6 @@ class TaskMapperTest {
 
         val task = TaskMapper.task(reader)
 
-        assertThat(task.id).isEqualTo(42L)
         assertThat(task.taskId).isEqualTo(7L)
         assertThat(task.listId).isEqualTo(3L)
         assertThat(task.title).isEqualTo("Buy milk")
@@ -48,6 +47,65 @@ class TaskMapperTest {
         assertThat(task.isRecurring).isTrue()
         assertThat(task.effectiveColor).isEqualTo(0xABCDEF)
         assertThat(task.isSubtask).isTrue()
+    }
+
+    @Test
+    fun `an occurrence is identified by its recurrence-id anchor`() {
+        fun occurrence(columns: Map<String, Any?>) =
+            TaskMapper.task(MapColumnReader(columns + (Tasks.RRULE to "FREQ=DAILY")))
+
+        // instance_original_time is the provider's own RECURRENCE-ID and wins.
+        val anchored = occurrence(
+            mapOf(
+                Instances.TASK_ID to 7L,
+                Instances.INSTANCE_ORIGINAL_TIME to 500L,
+                Instances.INSTANCE_START to 900L,
+            ),
+        )
+        assertThat(anchored.occurrenceStart?.toEpochMilliseconds()).isEqualTo(500L)
+        assertThat(anchored.occurrenceKey).isEqualTo("7@500")
+
+        // Older provider schemas omit it; the occurrence's start reconstructs it.
+        val byStart = occurrence(mapOf(Instances.TASK_ID to 7L, Instances.INSTANCE_START to 900L))
+        assertThat(byStart.occurrenceStart?.toEpochMilliseconds()).isEqualTo(900L)
+
+        // A series carrying only DUE anchors on the due date instead.
+        val byDue = occurrence(mapOf(Instances.TASK_ID to 7L, Instances.INSTANCE_DUE to 1_200L))
+        assertThat(byDue.occurrenceStart?.toEpochMilliseconds()).isEqualTo(1_200L)
+    }
+
+    @Test
+    fun `a non-recurring task has no occurrence anchor and keys by task id`() {
+        val task = TaskMapper.task(
+            MapColumnReader(mapOf(Tasks.ID to 4L, Instances.INSTANCE_START to 500L)),
+        )
+        assertThat(task.occurrenceStart).isNull()
+        assertThat(task.occurrenceKey).isEqualTo("4")
+    }
+
+    @Test
+    fun `recurrence is detected from rrule when is_recurring is absent`() {
+        // tasks.org's bundled provider is DB 22 and has no `is_recurring` column;
+        // reading it alone would report the series as one-off and send its edits
+        // to the master row, re-anchoring the whole thing.
+        val task = TaskMapper.task(
+            MapColumnReader(mapOf(Tasks.ID to 1L, Tasks.RRULE to "FREQ=WEEKLY;BYDAY=MO")),
+        )
+        assertThat(task.isRecurring).isTrue()
+    }
+
+    @Test
+    fun `recurrence is detected from rdate alone`() {
+        val task = TaskMapper.task(
+            MapColumnReader(mapOf(Tasks.ID to 1L, Tasks.RDATE to "20260720T090000Z")),
+        )
+        assertThat(task.isRecurring).isTrue()
+    }
+
+    @Test
+    fun `a plain task is not recurring`() {
+        val task = TaskMapper.task(MapColumnReader(mapOf(Tasks.ID to 1L, Tasks.TITLE to "One-off")))
+        assertThat(task.isRecurring).isFalse()
     }
 
     @Test

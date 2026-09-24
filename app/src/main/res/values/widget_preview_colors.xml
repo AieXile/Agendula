@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colours for the static widget-picker preview. Base = brand light fallback;
+     values-v31 maps them to the dynamic palette, -night holds the dark variants. -->
+<resources>
+    <color name="widget_preview_surface">#FEFBFC</color>
+    <color name="widget_preview_on_surface">#1F1A1C</color>
+    <color name="widget_preview_variant">#6F6468</color>
+    <color name="widget_preview_primary">#6A4E5B</color>
+    <color name="widget_preview_primary_container">#F6D9E5</color>
+    <color name="widget_preview_on_primary_container">#2A101C</color>
+</resources>

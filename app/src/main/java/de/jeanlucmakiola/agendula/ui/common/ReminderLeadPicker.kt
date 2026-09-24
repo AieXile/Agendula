@@ -5,6 +5,11 @@ import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.positionOf
 import de.jeanlucmakiola.floret.components.DialogAmountField
 import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.SelectedCheck
+import de.jeanlucmakiola.floret.reminders.reminderOverrideForMinutes
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.ReminderUnit
 import de.jeanlucmakiola.floret.reminders.decomposeReminderMinutes
@@ -41,8 +46,8 @@ import de.jeanlucmakiola.agendula.R
  * Reminder lead-time picker, full-screen: the grouped list of preset lead times
  * plus a "Custom" row that expands an inline amount field + unit selector.
  * [allowInherit] adds a "Use default" row (per-list overrides); [allowNone] adds
- * a "None" row. Returns the choice as a [ReminderOverride]. Ported from
- * Calendula's ReminderDefaultPicker.
+ * a "None" row; [allDay] switches to day-scale presets and wording. Returns the
+ * choice as a [ReminderOverride]. Ported from Calendula's ReminderDefaultPicker.
  */
 @Composable
 fun ReminderLeadPicker(
@@ -52,7 +57,8 @@ fun ReminderLeadPicker(
     allowNone: Boolean,
     onSelect: (ReminderOverride) -> Unit,
     onDismiss: () -> Unit,
-    presets: List<Int> = REMINDER_PRESETS,
+    allDay: Boolean = false,
+    presets: List<Int> = if (allDay) ALLDAY_REMINDER_PRESETS else REMINDER_PRESETS,
 ) {
     // Agendula is single-reminder: an override carries a one-element list, so
     // take the single value for this single-select picker.
@@ -75,7 +81,7 @@ fun ReminderLeadPicker(
         options.forEachIndexed { index, option ->
             val isSelected = option == selected
             GroupedRow(
-                title = reminderOverrideLabel(option),
+                title = reminderOverrideLabel(option, allDay),
                 position = positionOf(index, rowCount),
                 selected = isSelected,
                 onClick = {
@@ -88,7 +94,7 @@ fun ReminderLeadPicker(
         // two read as one grouped container.
         GroupedRow(
             title = if (customSelected) {
-                stringResource(R.string.reminder_custom_with_value, reminderLeadTimeLabel(selectedMinutes!!))
+                stringResource(R.string.reminder_custom_with_value, reminderLeadTimeLabel(selectedMinutes!!, allDay))
             } else {
                 stringResource(R.string.reminder_custom)
             },
@@ -109,6 +115,108 @@ fun ReminderLeadPicker(
                 onConfirm = { minutes ->
                     onSelect(ReminderOverride.Minutes(listOf(minutes)))
                     onDismiss()
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Default-reminder picker, full-screen and **multi-select**: each preset lead
+ * time (plus any custom one chosen) toggles on its own, so a default can carry
+ * several reminders — 30 minutes before *and* at due time. "No reminder" and, for
+ * a per-list picker ([allowInherit]), "Use default" sit above as exclusive rows.
+ * Clearing the last time falls back to "Use default" on a per-list picker and to
+ * "No reminder" on the global one. Changes apply live; the user leaves via back.
+ * [allDay] switches to day-scale presets, and [leadTimeSummary] adds a second
+ * line to each lead-time row. Ported from Calendula's ReminderDefaultPicker.
+ */
+@Composable
+fun ReminderDefaultPicker(
+    title: String,
+    selected: ReminderOverride,
+    allowInherit: Boolean,
+    onSelect: (ReminderOverride) -> Unit,
+    onDismiss: () -> Unit,
+    allDay: Boolean = false,
+    presets: List<Int> = if (allDay) ALLDAY_REMINDER_PRESETS else REMINDER_PRESETS,
+    leadTimeSummary: String? = null,
+) {
+    // Local state is authoritative once edited, so quick toggles compose on each
+    // other instead of racing the round-trip through the settings flow.
+    var current by remember { mutableStateOf(selected) }
+    var userEdited by remember { mutableStateOf(false) }
+    LaunchedEffect(selected) { if (!userEdited) current = selected }
+    val inherits = current is ReminderOverride.Inherit
+    val isNone = current is ReminderOverride.None
+    val selectedMinutes = (current as? ReminderOverride.Minutes)?.minutes.orEmpty()
+    // Custom values seen this session keep their row once unchecked.
+    val seenCustom = remember { mutableSetOf<Int>() }
+    seenCustom += selectedMinutes.filter { it !in presets }
+    val rows = presets + seenCustom.sorted()
+
+    var customExpanded by rememberSaveable { mutableStateOf(false) }
+    var amountText by rememberSaveable { mutableStateOf("") }
+    var unit by rememberSaveable { mutableStateOf(ReminderUnit.Minutes) }
+
+    fun apply(override: ReminderOverride) {
+        userEdited = true
+        current = override
+        onSelect(override)
+    }
+    fun emit(minutes: List<Int>) = apply(reminderOverrideForMinutes(minutes, allowInherit))
+    fun toggle(minute: Int) =
+        emit(if (minute in selectedMinutes) selectedMinutes - minute else selectedMinutes + minute)
+
+    FullScreenPicker(title = title, onDismiss = onDismiss) {
+        if (allowInherit) {
+            GroupedRow(
+                title = stringResource(R.string.reminder_use_default),
+                position = Position.Top,
+                selected = inherits,
+                trailing = if (inherits) ({ SelectedCheck() }) else null,
+                onClick = { apply(ReminderOverride.Inherit) },
+            )
+        }
+        GroupedRow(
+            title = stringResource(R.string.reminder_none),
+            position = if (allowInherit) Position.Bottom else Position.Alone,
+            selected = isNone,
+            trailing = if (isNone) ({ SelectedCheck() }) else null,
+            onClick = { apply(ReminderOverride.None) },
+        )
+        Spacer(Modifier.height(24.dp))
+        val rowCount = rows.size + 1 // + the custom row
+        rows.forEachIndexed { index, minute ->
+            val checked = minute in selectedMinutes
+            GroupedRow(
+                title = reminderLeadTimeLabel(minute, allDay),
+                summary = leadTimeSummary,
+                position = positionOf(index, rowCount),
+                selected = checked,
+                trailing = if (checked) ({ SelectedCheck() }) else null,
+                onClick = { toggle(minute) },
+            )
+        }
+        GroupedRow(
+            title = stringResource(R.string.reminder_custom),
+            position = if (customExpanded) Position.Top else positionOf(rows.size, rowCount),
+            onClick = { customExpanded = !customExpanded },
+        )
+        AnimatedVisibility(
+            visible = customExpanded,
+            enter = expandEnter(),
+            exit = collapseExit(),
+        ) {
+            CustomReminderEditor(
+                amountText = amountText,
+                onAmountChange = { amountText = it },
+                unit = unit,
+                onUnitChange = { unit = it },
+                onConfirm = { minutes ->
+                    emit(selectedMinutes + minutes)
+                    amountText = ""
+                    customExpanded = false
                 },
             )
         }
@@ -167,8 +275,8 @@ private fun CustomReminderEditor(
 }
 
 @Composable
-private fun reminderOverrideLabel(override: ReminderOverride): String = when (override) {
+private fun reminderOverrideLabel(override: ReminderOverride, allDay: Boolean): String = when (override) {
     ReminderOverride.Inherit -> stringResource(R.string.reminder_use_default)
     ReminderOverride.None -> stringResource(R.string.reminder_none)
-    is ReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes.first())
+    is ReminderOverride.Minutes -> reminderLeadTimeLabel(override.minutes.first(), allDay)
 }

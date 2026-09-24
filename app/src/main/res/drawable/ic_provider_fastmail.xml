@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Fastmail mark, from their own media kit (FM-Icon-CMYK.eps, converted).
+
+  ⚠️ Full colour and **not** tinted, unlike the monochrome marks: this one is a
+  badge in its own right — the ring is part of the logo — so it fills the avatar
+  edge to edge instead of sitting on a disc. A disc behind it would be a ring
+  inside a circle, and flattening it to white loses the ring entirely.
+
+  The hexes are read off FM-Icon-RGB.png in the same kit rather than converted
+  from the CMYK art, because CMYK→RGB drifts and the kit ships the screen
+  values: #0067BA / #69B3E8 ring, #334553 envelope, #FCBF08 flap.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path
+        android:pathData="M 839.199219 296.488281 C 880.015625 358.324219 903.835938 432.363281 903.835938 512 C 903.835938 728.40625 728.402344 903.835938 512 903.835938 C 376.792969 903.835938 257.582031 835.351562 187.15625 731.183594 L 100.378906 789.035156 C 189.507812 921.199219 340.597656 1008.128906 512 1008.128906 C 786.003906 1008.128906 1008.128906 786.003906 1008.128906 512 C 1008.128906 410.960938 977.847656 317.03125 925.976562 238.636719 L 839.199219 296.488281"
+        android:fillColor="#69B3E8" />
+    <path
+        android:pathData="M 120.164062 512 C 120.164062 295.597656 295.59375 120.164062 512 120.164062 C 648.769531 120.164062 769.109375 190.285156 839.199219 296.488281 L 925.976562 238.636719 C 837.179688 104.4375 684.964844 15.871094 512 15.871094 C 237.996094 15.871094 15.875 237.996094 15.875 512 C 15.875 614.601562 47.027344 709.921875 100.378906 789.035156 L 187.15625 731.183594 C 144.863281 668.625 120.164062 593.199219 120.164062 512"
+        android:fillColor="#0067BA" />
+    <path
+        android:pathData="M 276.148438 669.234375 L 731.269531 669.234375 C 740.429688 669.234375 747.855469 661.808594 747.855469 652.648438 L 747.851562 354.765625 L 276.148438 669.234375"
+        android:fillColor="#334553" />
+    <path
+        android:pathData="M 512 512 L 276.148438 354.765625 L 276.148438 669.234375 C 278.558594 667.628906 280.390625 666.402344 276.148438 669.234375 L 512 512"
+        android:fillColor="#FCBF08" />
+</vector>

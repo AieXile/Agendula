@@ -2,20 +2,48 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Tasks provider access. Both permission sets are declared; the active one
+    <!-- External tasks-provider access, for StorageMode.EXTERNAL only. Both
+         permission sets are declared, since the manifest is static; the active one
          (org.tasks.* for tasks.org, org.dmfs.* for OpenTasks) is requested at
-         runtime by the permission flow. Both are dangerous-level. -->
+         runtime by the permission flow, and only once the user has actually
+         selected External mode. Both are dangerous-level.
+
+         StorageMode.OWN needs nothing here: it is a Room database in our own data
+         directory. Agendula publishes no ContentProvider and declares no
+         permissions of its own. -->
     <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
     <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
     <uses-permission android:name="org.tasks.permission.READ_TASKS" />
     <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
 
+    <!-- CalDAV sync. ACCESS_NETWORK_STATE is merged in by work-runtime anyway,
+         but it shows in F-Droid's permission diff, so declare it deliberately
+         rather than letting it appear from nowhere.
+
+         READ_SYNC_SETTINGS / WRITE_SYNC_SETTINGS are what the ContentResolver
+         sync APIs need. No FOREGROUND_SERVICE: sync is a plain worker, and the
+         dataSync FGS type would bring the Android 15 six-hours-per-24 budget
+         (whose failure mode is a fatal RemoteServiceException) and a Play
+         requirement for a video demo.
+
+         Two more permissions appear in the merged manifest without being
+         declared here, and both come from work-runtime: WAKE_LOCK, and
+         FOREGROUND_SERVICE. The latter is not us taking the FGS route — below
+         API 31 WorkManager implements expedited work with a foreground service,
+         and minSdk is 29, so it is load-bearing for the "Sync now" button.
+         Removing it with tools:node="remove" would break expedited work on
+         exactly the older devices that need it most. Noted because it shows in
+         F-Droid's permission diff and would otherwise look unexplained. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Exact due-time reminders: USE_EXACT_ALARM on 33+, SCHEDULE on 31-32. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Exact due-time reminders. User-granted: USE_EXACT_ALARM is reserved for
+         alarm-clock and calendar apps on Play. Without it reminders go inexact. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Package visibility (Android 11+): see the tasks providers so
          resolveContentProvider works, and launchable apps so we can open the
@@ -27,6 +55,12 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Custom Tabs provider detection. Without this entry it silently finds
+             nothing on API 30+, and the Nextcloud login flow falls back to an
+             external browser for no visible reason. -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
     </queries>
 
     <application
@@ -37,6 +71,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Agendula"
@@ -50,7 +85,38 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Shared text becomes a new task's title. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- An .ics opened or shared from another app goes to the import screen. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="text/calendar" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/calendar" />
+            </intent-filter>
         </activity>
+
+        <!-- Quick Settings "New task" tile. Only the system QS host can bind it. -->
+        <service
+            android:name=".qs.NewTaskTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_qs_new_task"
+            android:label="@string/qs_tile_new_task"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <!-- Standalone crash-report surface; MainActivity routes here on a
              startup crash-loop. Not exported, kept out of recents. -->
@@ -65,26 +131,147 @@
             android:name=".data.reminders.DueReminderReceiver"
             android:exported="false" />
 
-        <!-- Re-arm alarms after reboot. -->
+        <!-- Done / Snooze on a reminder, and the snooze re-show (internal). -->
+        <receiver
+            android:name=".data.reminders.ReminderActionReceiver"
+            android:exported="false" />
+
+        <!-- Re-arm alarms after reboot, an update, a clock/zone change, or an exact-alarm grant. -->
         <receiver
             android:name=".data.reminders.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 
-        <!-- Re-sync reminders when the provider changes (external DAVx5 sync).
-             Targets both known authorities; the host must be static. -->
+        <!-- Re-sync reminders when an external provider changes — DAVx5 pulling
+             tasks while Agendula is backgrounded. External mode only: in OWN mode
+             nothing outside the app can change our data, and Room's
+             InvalidationTracker covers our own writes.
+
+             An intent-filter host must be a literal, so both external authorities
+             are listed — one filter each. Two <data> tags in a single filter would
+             mean the same thing (Android takes the cross product of every data
+             attribute in a filter), but reads as if it might not, which is what
+             lint's IntentFilterUniqueDataAttributes warns about. -->
         <receiver
             android:name=".data.reminders.ProviderChangeReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PROVIDER_CHANGED" />
-                <data android:scheme="content" android:host="org.tasks.opentasks" />
                 <data android:scheme="content" android:host="org.dmfs.tasks" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROVIDER_CHANGED" />
+                <data android:scheme="content" android:host="org.tasks.opentasks" />
+            </intent-filter>
         </receiver>
+
+        <!-- Home-screen task widget (Glance). Exported: the launcher binds it. -->
+        <receiver
+            android:name=".widget.TaskWidgetReceiver"
+            android:label="@string/widget_tasks_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_tasks" />
+        </receiver>
+
+        <!-- Per-widget list picker, launched by the host on placement / reconfigure. -->
+        <activity
+            android:name=".widget.TaskWidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Redraws the widget on the day boundary (the app's own ROLLOVER alarm,
+             sent by explicit PendingIntent) and on a language change; the rest
+             re-arm that alarm. Task changes are handled in-process instead. -->
+        <receiver
+            android:name=".widget.WidgetUpdateReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Sync plumbing. The stub provider exists only to give the sync
+             adapter an authority to register against: Agendula publishes no real
+             ContentProvider since :provider was deleted, and without an authority
+             ContentService.hasAuthorityAccess() makes every ContentResolver sync
+             call a silent no-op at targetSdk >= 34. -->
+        <provider
+            android:name=".data.sync.SyncStubProvider"
+            android:authorities="${applicationId}.sync"
+            android:exported="false"
+            android:syncable="true" />
+
+        <!-- Exported and guarded by ACCOUNT_MANAGER. Note that
+             android.permission.ACCOUNT_AUTHENTICATOR does not exist. -->
+        <service
+            android:name=".data.sync.AuthenticatorService"
+            android:exported="true"
+            android:permission="android.permission.ACCOUNT_MANAGER">
+            <intent-filter>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/authenticator" />
+        </service>
+
+        <service
+            android:name=".data.sync.SyncAdapterService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SYNC_ADAPTER">
+            <intent-filter>
+                <action android:name="android.content.SyncAdapter" />
+            </intent-filter>
+            <meta-data
+                android:name="android.content.SyncAdapter"
+                android:resource="@xml/sync_adapter" />
+        </service>
+
+        <!-- UnifiedPush: the connector binds this to deliver endpoints and
+             WebDAV-Push messages. Not exported; the connector's own receiver is
+             what distributors talk to. -->
+        <service
+            android:name=".data.sync.push.AgendulaPushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- WorkManager's on-demand initialisation. Removing the default
+             initializer is what lets AgendulaApp supply a HiltWorkerFactory, so
+             @HiltWorker workers can take injected dependencies. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <!-- Persists the per-app language on API < 33, where the platform
              per-app-languages API is unavailable. On 33+ this is a no-op. -->

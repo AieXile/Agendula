@@ -37,7 +37,33 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Percent
 import androidx.compose.material.icons.rounded.Schedule
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.pluralStringResource
+import androidx.core.net.toUri
+import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskStatus
+import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
+import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
+import de.jeanlucmakiola.agendula.ui.common.RecurringScopeDialog
+import de.jeanlucmakiola.agendula.ui.common.linkified
+import de.jeanlucmakiola.agendula.ui.common.recurrenceText
+import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.floret.locale.currentLocale
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,9 +91,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
+import de.jeanlucmakiola.agendula.domain.readableDescription
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
 import de.jeanlucmakiola.floret.components.GroupedSurface
@@ -86,14 +113,16 @@ import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskDetailScreen(
-    onEdit: () -> Unit,
+    onEdit: (Task) -> Unit,
     onDeleted: () -> Unit,
     onBack: () -> Unit,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
+    onDuplicated: (Long) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: TaskDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -110,19 +139,47 @@ fun TaskDetailScreen(
                 },
                 actions = {
                     val content = state as? TaskDetailUiState.Content
-                    IconButton(onClick = onEdit, enabled = content != null) {
+                    // A read-only share: an edit would never reach the server.
+                    val writable = content != null && !content.detail.task.isReadOnly
+                    IconButton(onClick = { content?.let { onEdit(it.detail.task) } }, enabled = writable) {
                         Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.edit))
                     }
                     IconButton(
-                        onClick = {
-                            content?.let {
-                                viewModel.delete(it.detail.task)
-                                onDeleted()
-                            }
-                        },
-                        enabled = content != null,
+                        onClick = { confirmDelete = true },
+                        enabled = writable,
                     ) {
                         Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.delete))
+                    }
+                    // On an occurrence of a series, cancelling reaches only that occurrence.
+                    val task = content?.detail?.task
+                    if (task != null) {
+                        var menuOpen by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                val cancelled = task.status == TaskStatus.CANCELLED
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(if (cancelled) R.string.detail_restore else R.string.detail_cancel_task))
+                                    },
+                                    onClick = {
+                                        menuOpen = false
+                                        viewModel.setCancelled(task, !cancelled)
+                                    },
+                                )
+                                if (writable) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.detail_duplicate)) },
+                                        onClick = {
+                                            menuOpen = false
+                                            viewModel.duplicate(task, onDuplicated)
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
             )
@@ -135,10 +192,49 @@ fun TaskDetailScreen(
             is TaskDetailUiState.Content -> DetailBody(
                 detail = s.detail,
                 inner = inner,
+                reminders = s.reminders,
                 onToggle = { viewModel.toggleComplete(s.detail.task) },
                 onToggleSubtask = { viewModel.toggleComplete(it) },
                 onAddSubtask = { viewModel.addSubtask(it) },
                 onOpenTask = onOpenTask,
+            )
+        }
+    }
+
+    val content = state as? TaskDetailUiState.Content
+    if (confirmDelete && content != null) {
+        val task = content.detail.task
+        val delete = { scope: RecurringScope ->
+            confirmDelete = false
+            viewModel.delete(task, scope)
+            onDeleted()
+        }
+        if (task.isOccurrence) {
+            RecurringScopeDialog(
+                title = stringResource(R.string.detail_delete_recurring_title),
+                onSelect = delete,
+                onDismiss = { confirmDelete = false },
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { confirmDelete = false },
+                title = { Text(stringResource(R.string.detail_delete_title)) },
+                text = {
+                    Text(
+                        if (content.detail.subtasks.isEmpty()) stringResource(R.string.detail_delete_body)
+                        else pluralStringResource(
+                            R.plurals.detail_delete_body_subtasks,
+                            content.detail.subtasks.size,
+                            content.detail.subtasks.size,
+                        ),
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { delete(RecurringScope.AllOccurrences) }) { Text(stringResource(R.string.delete)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.dialog_cancel)) }
+                },
             )
         }
     }
@@ -148,10 +244,11 @@ fun TaskDetailScreen(
 private fun DetailBody(
     detail: TaskDetail,
     inner: androidx.compose.foundation.layout.PaddingValues,
+    reminders: List<TaskReminder>,
     onToggle: () -> Unit,
     onToggleSubtask: (Task) -> Unit,
     onAddSubtask: (String) -> Unit,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
 ) {
     val task = detail.task
     val dark = isSystemInDarkTheme()
@@ -171,7 +268,11 @@ private fun DetailBody(
     ) {
         // Title + complete toggle, with a short list-coloured accent beneath.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Checkbox(checked = task.isCompleted, onCheckedChange = { onToggle() })
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { onToggle() },
+                enabled = !task.isReadOnly,
+            )
             Text(
                 text = task.title.ifBlank { stringResource(R.string.task_untitled) },
                 style = MaterialTheme.typography.headlineMedium,
@@ -199,7 +300,7 @@ private fun DetailBody(
                     DetailCard(
                         icon = Icons.Rounded.AccountTree,
                         iconContentDescription = stringResource(R.string.detail_parent),
-                        onClick = { onOpenTask(parent.taskId) },
+                        onClick = { onOpenTask(parent) },
                     ) {
                         Text(
                             text = stringResource(R.string.detail_part_of),
@@ -227,6 +328,43 @@ private fun DetailBody(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                    }
+                }
+            }
+
+            task.recurrenceRule?.let { rule ->
+                add {
+                    val locale = currentLocale()
+                    DetailCard(icon = Icons.Rounded.Repeat, iconContentDescription = stringResource(R.string.edit_recurrence_label)) {
+                        Text(recurrenceText(rule, locale), style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+
+            if (reminders.isNotEmpty() && (task.due != null || task.start != null)) {
+                add {
+                    DetailCard(icon = Icons.Rounded.Notifications, iconContentDescription = stringResource(R.string.edit_reminder_label)) {
+                        reminders.forEach { reminder ->
+                            Text(
+                                if (reminder.fromStart) stringResource(R.string.detail_reminder_before_start, reminderLeadTimeLabel(reminder.minutesBefore))
+                                else reminderLeadTimeLabel(reminder.minutesBefore, task.isAllDay),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (task.status == TaskStatus.CANCELLED || task.status == TaskStatus.IN_PROCESS) {
+                add {
+                    DetailCard(icon = Icons.Rounded.Info, iconContentDescription = null) {
+                        Text(
+                            stringResource(
+                                if (task.status == TaskStatus.CANCELLED) R.string.detail_status_cancelled
+                                else R.string.detail_status_in_process,
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                     }
                 }
             }
@@ -283,11 +421,48 @@ private fun DetailBody(
                 }
             }
 
-            // Description.
-            task.description?.takeIf { it.isNotBlank() }?.let { description ->
+            task.location?.takeIf { it.isNotBlank() }?.let { location ->
                 add {
-                    DetailCard(icon = Icons.AutoMirrored.Rounded.Notes, iconContentDescription = null) {
-                        Text(description, style = MaterialTheme.typography.bodyMedium)
+                    val context = LocalContext.current
+                    DetailCard(
+                        icon = Icons.Rounded.LocationOn,
+                        iconContentDescription = stringResource(R.string.edit_location_label),
+                        onClick = {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, "geo:0,0?q=${Uri.encode(location)}".toUri()),
+                                )
+                            }
+                        },
+                    ) {
+                        Text(location, style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+            }
+
+            task.url?.takeIf { it.isNotBlank() }?.let { url ->
+                add {
+                    val uriHandler = LocalUriHandler.current
+                    DetailCard(
+                        icon = Icons.Rounded.Link,
+                        iconContentDescription = stringResource(R.string.edit_url_label),
+                        onClick = { runCatching { uriHandler.openUri(if ("://" in url) url else "https://$url") } },
+                    ) {
+                        Text(url, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+
+            // Description — selectable, with its links tappable.
+            task.description?.readableDescription()?.takeIf { it.isNotBlank() }?.let { description ->
+                add {
+                    DetailCard(
+                        icon = Icons.AutoMirrored.Rounded.Notes,
+                        iconContentDescription = stringResource(R.string.field_description),
+                    ) {
+                        SelectionContainer {
+                            Text(linkified(description), style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
             }
@@ -303,6 +478,7 @@ private fun DetailBody(
                     onToggleSubtask = onToggleSubtask,
                     onAddSubtask = onAddSubtask,
                     onOpenSubtask = onOpenTask,
+                    readOnly = task.isReadOnly,
                 )
             }
         }
@@ -325,14 +501,16 @@ private fun SubtasksGroup(
     onToggle: () -> Unit,
     onToggleSubtask: (Task) -> Unit,
     onAddSubtask: (String) -> Unit,
-    onOpenSubtask: (Long) -> Unit,
+    onOpenSubtask: (Task) -> Unit,
+    readOnly: Boolean = false,
 ) {
     val done = subtasks.count { it.isCompleted }
     // Completed subtasks sink to the bottom; stable, so order is otherwise kept.
     val ordered = remember(subtasks) { subtasks.sortedBy { it.isCompleted } }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "subtasksChevron")
     // Segments when expanded: header + the always-present add row + each subtask.
-    val count = if (expanded) subtasks.size + 2 else 1
+    val addRow = if (readOnly) 0 else 1
+    val count = if (expanded) subtasks.size + 1 + addRow else 1
 
     // First segment: the toggle header.
     GroupedSurface(position = positionOf(0, count), onClick = onToggle) {
@@ -355,7 +533,7 @@ private fun SubtasksGroup(
             // No count until there's something to count.
             if (subtasks.isNotEmpty()) {
                 Text(
-                    text = "$done / ${subtasks.size}",
+                    text = stringResource(R.string.subtask_progress, done, subtasks.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -372,22 +550,28 @@ private fun SubtasksGroup(
 
     if (expanded) {
         // Always-present add row at the top of the list, in an accent tone.
-        GroupedSurface(
-            position = positionOf(1, count),
-            color = MaterialTheme.colorScheme.primaryContainer,
-        ) {
-            AddSubtaskField(onAdd = onAddSubtask)
+        if (!readOnly) {
+            GroupedSurface(
+                position = positionOf(1, count),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                AddSubtaskField(onAdd = onAddSubtask)
+            }
         }
         ordered.forEachIndexed { index, sub ->
             GroupedSurface(
-                position = positionOf(index + 2, count),
-                onClick = { onOpenSubtask(sub.taskId) },
+                position = positionOf(index + 1 + addRow, count),
+                onClick = { onOpenSubtask(sub) },
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 8.dp, end = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(checked = sub.isCompleted, onCheckedChange = { onToggleSubtask(sub) })
+                    Checkbox(
+                        checked = sub.isCompleted,
+                        onCheckedChange = { onToggleSubtask(sub) },
+                        enabled = !sub.isReadOnly,
+                    )
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = sub.title.ifBlank { stringResource(R.string.task_untitled) },
@@ -497,6 +681,7 @@ private fun DetailCard(
  */
 @Composable
 private fun taskWhenLines(task: Task): Pair<String, String?>? {
+    val use24 = LocalUse24HourFormat.current
     val start = task.start
     val due = task.due
     return when {
@@ -506,12 +691,12 @@ private fun taskWhenLines(task: Task): Pair<String, String?>? {
             val primary =
                 if (sameDay) due.formatDate(allDay)
                 else "${start.formatDate(allDay)} – ${due.formatDate(allDay)}"
-            val secondary = if (allDay) null else "${start.formatTime()} – ${due.formatTime()}"
+            val secondary = if (allDay) null else "${start.formatTime(use24)} – ${due.formatTime(use24)}"
             primary to secondary
         }
-        due != null -> due.formatDate(task.isAllDay) to if (task.isAllDay) null else due.formatTime()
+        due != null -> due.formatDate(task.isAllDay) to if (task.isAllDay) null else due.formatTime(use24)
         start != null ->
-            start.formatDate(task.isAllDay) to if (task.isAllDay) null else start.formatTime()
+            start.formatDate(task.isAllDay) to if (task.isAllDay) null else start.formatTime(use24)
         else -> null
     }
 }

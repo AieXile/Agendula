@@ -5,7 +5,9 @@ import de.jeanlucmakiola.agendula.domain.TaskDetail
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlin.time.Instant
 
 /** Whether Agendula can use the tasks provider right now. Drives onboarding. */
@@ -18,6 +20,13 @@ enum class ProviderStatus { READY, NEEDS_PERMISSION, NO_PROVIDER }
  */
 interface TasksRepository {
     fun taskLists(): Flow<List<TaskList>>
+
+    /**
+     * The lists a task may be saved into — [taskLists] without read-only shares.
+     * What a list picker for creating or moving a task should offer.
+     */
+    fun writableTaskLists(): Flow<List<TaskList>> =
+        taskLists().map { lists -> lists.filter { it.acceptsWrites } }
     fun tasks(filter: TaskFilter): Flow<List<Task>>
 
     /**
@@ -26,9 +35,16 @@ interface TasksRepository {
      * children are usually filtered out of the list's own (date-based) query.
      */
     fun subtasks(parentId: Long): Flow<List<Task>>
-    fun taskDetail(taskId: Long): Flow<TaskDetail?>
+    /** [occurrenceStart] picks one occurrence of a series; `null` means the current one. */
+    fun taskDetail(taskId: Long, occurrenceStart: Instant? = null): Flow<TaskDetail?>
 
     suspend fun createTask(form: TaskForm): Long
+
+    /**
+     * Copy a task into its own list as a fresh, open, non-repeating task — this
+     * occurrence's dates, its reminders and its open subtasks. Returns the copy's id.
+     */
+    suspend fun duplicateTask(taskId: Long, occurrenceStart: Instant? = null): Long
 
     /**
      * Overwrite [taskId] with [form]. When [expectedLastModified] is non-null, the
@@ -36,10 +52,49 @@ interface TasksRepository {
      * [TaskConflictException] is thrown if it differs — i.e. something changed it
      * since the form loaded. Pass `null` to force the write (overwrite-anyway).
      */
-    suspend fun updateTask(taskId: Long, form: TaskForm, expectedLastModified: Instant? = null)
-    suspend fun setCompleted(taskId: Long, completed: Boolean)
-    suspend fun deleteTask(taskId: Long)
+    suspend fun updateTask(
+        taskId: Long,
+        form: TaskForm,
+        expectedLastModified: Instant? = null,
+        occurrenceStart: Instant? = null,
+        scope: RecurringScope = RecurringScope.ThisOccurrence,
+    )
+    /**
+     * Complete or reopen a task. Pass the occurrence's [Task.occurrenceStart] so a
+     * recurring series forks a `RECURRENCE-ID` override for that one occurrence
+     * instead of closing the whole series; `null` completes the row itself.
+     */
+    suspend fun setCompleted(taskId: Long, occurrenceStart: Instant?, completed: Boolean)
+
+    /** Cancel or restore a task; with [occurrenceStart], only that occurrence of a series. */
+    suspend fun setCancelled(taskId: Long, occurrenceStart: Instant?, cancelled: Boolean)
+    /** Delete a task, or — for an occurrence of a series — as much of the series as [scope] says. */
+    suspend fun deleteTask(
+        taskId: Long,
+        occurrenceStart: Instant? = null,
+        scope: RecurringScope = RecurringScope.AllOccurrences,
+    )
+
+    /**
+     * The per-task reminder lead in minutes before due, or `null` if the task has
+     * none (in which case the list's / global setting applies). Read when the edit
+     * form loads so saving can't silently drop it.
+     */
+    suspend fun reminderFor(taskId: Long): Int?
+
+    /** Every reminder stored on the task, in order — including start-relative ones. */
+    suspend fun remindersFor(taskId: Long): List<TaskReminder>
+
+    /** Replace every reminder on the task; an empty list leaves the list's / global setting in charge. */
+    suspend fun setReminders(taskId: Long, reminders: List<TaskReminder>)
+
     suspend fun createLocalList(name: String, color: Int): Long
+    suspend fun updateList(listId: Long, name: String, color: Int)
+
+    /** Deletes the list **and its tasks**. Local lists only — see [TasksDataSource.deleteList]. */
+    suspend fun deleteList(listId: Long)
+
+    suspend fun reorderLists(listIds: List<Long>)
 
     /** Synchronous snapshot for the permission/onboarding gate. */
     fun providerStatus(): ProviderStatus

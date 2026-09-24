@@ -65,3 +65,23 @@ Thumbs.db
 
 # KSP
 .ksp/
+
+# Local agent notes: machine-specific build setup and on-device rules, not
+# anything the project itself depends on.
+/CLAUDE.md
+
+# Scratch backlog. Says so in its own header — dumped items get turned into
+# real work, not committed as a list.
+/req_changes.md
+
+# Google Play service-account key (fastlane/Appfile). Never committed.
+/play-service-account.json
+# fastlane run output
+/fastlane/report.xml
+/fastlane/README.md
+/vendor/bundle/
+/.bundle/
+
+# Emulator captures (scripts/emulator_screenshot.sh); regenerate from design/store/sample.
+/design/store/raw/
+/design/store/framed/

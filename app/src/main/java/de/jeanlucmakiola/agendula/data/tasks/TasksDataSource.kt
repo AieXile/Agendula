@@ -3,6 +3,25 @@ package de.jeanlucmakiola.agendula.data.tasks
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskList
+import kotlin.time.Instant
+
+/**
+ * A stored reminder: how long before, and what it counts back from.
+ *
+ * [fromStart] matters because both stores can hold a `START`-referenced alarm —
+ * the dmfs import preserves one, and an external provider's other clients write
+ * them — while Agendula's own UI only ever sets a before-due lead. Collapsing it
+ * to a number here is what silently fired those reminders off the wrong anchor.
+ */
+data class TaskReminder(val minutesBefore: Int, val fromStart: Boolean = false)
+
+/**
+ * The one reminder Agendula's single-reminder editor shows and writes: the last
+ * before-due one, which is where a write lands, so it stays the same one across
+ * saves. Anything else a task carries — a start-relative alarm, or the extra ones
+ * another client or the dmfs import brought — is left to ride along.
+ */
+fun List<TaskReminder>.editable(): TaskReminder? = lastOrNull { !it.fromStart }
 
 /** What to fetch from the provider. Smart-list date logic is applied above this. */
 data class TaskQuery(
@@ -19,13 +38,111 @@ interface TasksDataSource {
     fun taskLists(): List<TaskList>
     fun tasks(query: TaskQuery): List<Task>
     fun task(taskId: Long): Task?
+
+    /**
+     * The occurrence of [taskId] that starts at [occurrenceStart], or [task] when
+     * that is null or names no occurrence — so a stale anchor still lands on the task.
+     */
+    fun task(taskId: Long, occurrenceStart: Instant?): Task? = task(taskId)
     fun subtasks(parentTaskId: Long): List<Task>
 
     fun insertTask(form: TaskForm): Long
     fun updateTask(taskId: Long, form: TaskForm)
+
+    /**
+     * Update a single occurrence of a recurring task, addressed by the task row and
+     * the occurrence's `RECURRENCE-ID` anchor ([Task.occurrenceStart]). The store
+     * forks an override rather than moving the series anchor — which is what
+     * [updateTask] would do, since a recurring task's start/due are the
+     * occurrence's resolved times.
+     *
+     * Addressing by `(taskId, occurrenceStart)` rather than by a materialised
+     * instance row id keeps this seam independent of any one store's row
+     * numbering; External mode maps it back to an instance row itself.
+     */
+    fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm)
+    /**
+     * Set (or clear, with `null`) the task's [editable] reminder lead, stored as an
+     * Alarm property row. Every other reminder on the task is left untouched. The
+     * provider never fires it — [de.jeanlucmakiola.agendula.data.reminders
+     * .ReminderScheduler] does — but persisting it here is what syncs the lead and
+     * shares it with other OpenTasks clients.
+     */
+    fun setAlarm(taskId: Long, minutesBeforeDue: Int?)
+
+    /**
+     * Edit the whole series [seriesId] through its occurrence at [occurrenceStart]:
+     * content from [form], and the series moved by however far that occurrence moved.
+     */
+    fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm)
+
+    /**
+     * "This and following": end [seriesId] before [occurrenceStart] and continue
+     * from there as a new series built from [form]. Returns the new series' id.
+     */
+    fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm): Long
+
+    /** Delete one generated occurrence of [seriesId] (an `EXDATE`). */
+    fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant)
+
+    /** Delete [occurrenceStart] and every later occurrence of [seriesId]. */
+    fun deleteFollowing(seriesId: Long, occurrenceStart: Instant)
+
+
+    /** Replace every reminder on [taskId] with [reminders], in order. */
+    fun setReminders(taskId: Long, reminders: List<TaskReminder>)
+
+    /** Every task's reminders, by task id, in stored order. One query, for the scheduler. */
+    fun reminders(): Map<Long, List<TaskReminder>> = alarms().mapValues { listOf(it.value) }
+
+    /** Every task's [editable] reminder, by task id. */
+    fun alarms(): Map<Long, TaskReminder>
+
+    /**
+     * Every task in [listId] read from the **`tasks` table**, for export. Masters,
+     * not occurrences — see [TaskMapper.exportTask] for why that distinction
+     * matters. Excludes rows the provider has flagged deleted-but-unsynced.
+     */
+    fun exportTasks(listId: Long): List<de.jeanlucmakiola.agendula.domain.export.ExportTask>
+
     fun setCompleted(taskId: Long, completed: Boolean)
+
+    /** Cancel [taskId] (`STATUS:CANCELLED`) or put it back to needs-action. */
+    fun setCancelled(taskId: Long, cancelled: Boolean)
+
+    /**
+     * Complete (or reopen) **one occurrence** of a recurring task, addressed the
+     * same way [updateInstance] is. Ticking a series through [setCompleted] would
+     * close the master row, which takes every past and future occurrence out of
+     * every list at once.
+     *
+     * Implementations fall back to [setCompleted] when the row turns out not to
+     * be a series master — an override, or a plain task the caller happened to
+     * hand an anchor for — so the routing above cannot get this wrong.
+     */
+    fun setCompletedInstance(taskId: Long, occurrenceStart: Instant, completed: Boolean)
+
+    /** Cancel (or restore) one occurrence of a series; the counterpart of [setCompletedInstance]. */
+    fun setCancelledInstance(taskId: Long, occurrenceStart: Instant, cancelled: Boolean)
     fun deleteTask(taskId: Long)
     fun createLocalList(name: String, color: Int): Long
+
+    /** Rename and recolour [listId]. */
+    fun updateList(listId: Long, name: String, color: Int)
+
+    /**
+     * Delete [listId] **and the tasks in it** — `tasks.list_id` cascades on the
+     * Room path, and the provider does the same on the External one.
+     *
+     * Only ever called for a local, device-only list: a collection that belongs
+     * to an account is the server's to remove, and neither store expresses a
+     * collection tombstone yet. The UI gates on [TaskList.isLocal]; this seam
+     * does not re-check it.
+     */
+    fun deleteList(listId: Long)
+
+    /** Store [listIds] as the lists' display order. A store without one ignores it. */
+    fun reorderLists(listIds: List<Long>) = Unit
 
     /** Observe any change to tasks/lists; [onChange] fires on a background thread. */
     fun registerObserver(onChange: () -> Unit): AutoCloseable

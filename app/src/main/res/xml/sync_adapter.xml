@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    userVisible="false" keeps our authority out of the per-item sync list in
+    system Settings — there is only one thing to sync and a switch for it adds
+    nothing. The cost is that Settings' "Sync now" stays greyed out, because
+    enabledSyncNowMenu() needs at least one checked authority switch, which is
+    why the app ships its own sync button.
+
+    supportsUploading="true": this is a two-way sync, and declaring otherwise
+    stops the framework requesting a sync on local changes.
+-->
+<sync-adapter xmlns:android="http://schemas.android.com/apk/res/android"
+    android:contentAuthority="@string/sync_authority"
+    android:accountType="@string/account_type"
+    android:userVisible="false"
+    android:supportsUploading="true"
+    android:allowParallelSyncs="false"
+    android:isAlwaysSyncable="true" />

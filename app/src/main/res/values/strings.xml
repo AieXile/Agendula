@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Agendula</string>
-    <string name="app_tagline">A modern Material 3 Expressive task app.\nComing into bloom.</string>
 
     <!-- Generic -->
     <string name="task_untitled">Untitled task</string>
@@ -21,9 +20,6 @@
     <string name="edit">Edit</string>
 
     <!-- Task edit -->
-    <string name="edit_task_title">Edit task</string>
-    <string name="new_task_title">New task</string>
-    <string name="field_title">Title</string>
     <string name="field_description">Description</string>
     <string name="edit_save_failed">Could not save. Try again.</string>
 
@@ -34,6 +30,26 @@
     <string name="cd_complete">Complete</string>
     <string name="cd_reopen">Reopen</string>
     <string name="task_deleted">Deleted</string>
+    <string name="task_completed">Completed</string>
+    <string name="cd_repeats">Repeats</string>
+    <string name="shortcut_new_task">New task</string>
+    <string name="shortcut_today">Today</string>
+    <string name="qs_tile_new_task">New task</string>
+    <string name="lists_reorder">Reorder lists</string>
+    <string name="lists_reorder_done">Done reordering</string>
+    <string name="lists_reorder_handle">Drag to reorder</string>
+    <string name="sort_title">Sort by</string>
+    <string name="sort_due">Due date</string>
+    <string name="sort_priority">Priority</string>
+    <string name="sort_title_alpha">Title</string>
+    <string name="sort_created">Recently added</string>
+    <string name="clear_completed_action">Clear</string>
+    <string name="clear_completed_title">Clear completed tasks?</string>
+    <plurals name="clear_completed_body">
+        <item quantity="one">%1$d completed task in this list will be deleted.</item>
+        <item quantity="other">%1$d completed tasks in this list will be deleted.</item>
+    </plurals>
+    <string name="clear_completed_confirm">Delete</string>
     <string name="undo">Undo</string>
     <string name="cd_expand_subtasks">Show subtasks</string>
     <string name="cd_collapse_subtasks">Hide subtasks</string>
@@ -52,11 +68,8 @@
     <string name="priority_high">High</string>
 
     <!-- Task detail -->
-    <string name="detail_mark_complete">Mark complete</string>
-    <string name="detail_mark_incomplete">Mark not complete</string>
     <string name="detail_list">List</string>
     <string name="detail_due">Due</string>
-    <string name="detail_start">Starts</string>
     <string name="detail_priority">Priority</string>
     <string name="detail_progress">Progress</string>
     <string name="detail_subtasks">Subtasks</string>
@@ -92,11 +105,8 @@
     <!-- Reminder offsets -->
     <string name="reminder_none">None</string>
     <string name="reminder_at_due">At time of task</string>
-    <string name="reminder_5_min">5 minutes before</string>
-    <string name="reminder_10_min">10 minutes before</string>
-    <string name="reminder_30_min">30 minutes before</string>
-    <string name="reminder_1_hour">1 hour before</string>
-    <string name="reminder_1_day">1 day before</string>
+    <string name="reminder_on_the_day">On the day</string>
+    <string name="detail_pane_empty">Pick a task to see it here</string>
 
     <!-- Reminder custom lead time + per-list overrides -->
     <string name="reminder_custom">Custom</string>
@@ -110,28 +120,150 @@
     <string name="reminder_unit_weeks">Weeks</string>
     <string name="settings_list_reminders_title">Per-list reminders</string>
     <string name="settings_list_reminders_hint">Override the default reminder for individual lists</string>
+    <string name="settings_list_notifications">Notifications</string>
+    <string name="settings_list_notifications_hint">Sound, vibration and importance for this list’s reminders</string>
     <string name="settings_list_reminder_inherits">Default (%1$s)</string>
+
+    <!-- Recurrence: read-out and picker -->
+    <string name="recurrence_title">Repeat</string>
+    <string name="recurrence_generic">Repeating task</string>
+    <string name="recurrence_daily">Every day</string>
+    <string name="recurrence_weekly">Every week</string>
+    <string name="recurrence_monthly">Every month</string>
+    <string name="recurrence_yearly">Every year</string>
+    <plurals name="recurrence_every_n_days">
+        <item quantity="one">Every %1$d day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
+    <plurals name="recurrence_every_n_weeks">
+        <item quantity="one">Every %1$d week</item>
+        <item quantity="other">Every %1$d weeks</item>
+    </plurals>
+    <plurals name="recurrence_every_n_months">
+        <item quantity="one">Every %1$d month</item>
+        <item quantity="other">Every %1$d months</item>
+    </plurals>
+    <plurals name="recurrence_every_n_years">
+        <item quantity="one">Every %1$d year</item>
+        <item quantity="other">Every %1$d years</item>
+    </plurals>
+    <!-- %1$s is the rule ("Every week"), %2$s the weekdays ("Mon and Fri"). -->
+    <string name="recurrence_on_days">%1$s on %2$s</string>
+    <string name="recurrence_with_until">%1$s until %2$s</string>
+    <plurals name="recurrence_with_count">
+        <item quantity="one">%1$s, %2$d time</item>
+        <item quantity="other">%1$s, %2$d times</item>
+    </plurals>
+    <string name="recurrence_none">Does not repeat</string>
+    <string name="recurrence_custom">Custom</string>
+    <string name="recurrence_every">Every</string>
+    <string name="recurrence_unit_days">days</string>
+    <string name="recurrence_unit_weeks">weeks</string>
+    <string name="recurrence_unit_months">months</string>
+    <string name="recurrence_unit_years">years</string>
+    <string name="recurrence_incomplete">Enter a number from 1 to 999</string>
+    <!-- %1$s is a list of the next few dates, e.g. "30 Jul, 6 Aug and 13 Aug". -->
+    <string name="recurrence_next">Next: %1$s</string>
+    <string name="recurrence_next_none">This rule never repeats</string>
+    <string name="recurrence_ends">Ends</string>
+    <string name="recurrence_end_never">Never</string>
+    <string name="recurrence_end_until">On a date</string>
+    <string name="recurrence_end_count">After a number of times</string>
+    <string name="recurrence_times">times</string>
+    <string name="recurring_scope_occurrence">Only this task</string>
+    <string name="recurring_scope_following">This and following tasks</string>
+    <string name="recurring_scope_series">All tasks in the series</string>
 
     <!-- Form validation -->
     <string name="error_blank_title">Enter a title.</string>
     <string name="error_no_list">Choose a list.</string>
     <string name="error_due_before_start">Due can\'t be before the start.</string>
     <string name="error_reminder_without_due">Set a due date to use a reminder.</string>
+    <string name="error_recurrence_without_date">A repeating task needs a start or due date.</string>
+    <string name="edit_recurrence_label">Repeat</string>
+    <string name="edit_recurrence_none">Does not repeat</string>
+    <string name="edit_location_label">Location</string>
+    <string name="edit_url_label">Link</string>
+    <string name="edit_url_hint">https://…</string>
+    <string name="edit_discard_title">Discard changes?</string>
+    <string name="edit_discard_body">Your changes to this task haven’t been saved.</string>
+    <string name="edit_discard_confirm">Discard</string>
+    <string name="edit_keep_editing">Keep editing</string>
+    <string name="edit_scope_title">Save changes to a repeating task</string>
+    <string name="edit_reminder_add">Add reminder</string>
+    <string name="edit_reminder_add_first">Add a reminder (otherwise the default applies)</string>
+    <string name="edit_reminder_remove">Remove reminder</string>
+    <string name="detail_reminder_before_start">%1$s (before start)</string>
+    <string name="subtask_progress">%1$d / %2$d</string>
+    <string name="progress_fraction_compact">%1$d/%2$d</string>
+    <string name="detail_delete_title">Delete task?</string>
+    <string name="detail_delete_body">This task will be deleted.</string>
+    <plurals name="detail_delete_body_subtasks">
+        <item quantity="one">This task and its subtask will be deleted.</item>
+        <item quantity="other">This task and its %1$d subtasks will be deleted.</item>
+    </plurals>
+    <string name="detail_delete_recurring_title">Delete repeating task</string>
+    <string name="detail_status_cancelled">Cancelled</string>
+    <string name="detail_status_in_process">In progress</string>
+    <string name="more_options">More options</string>
+    <string name="detail_cancel_task">Cancel task</string>
+    <string name="detail_restore">Restore task</string>
+    <string name="detail_duplicate">Duplicate</string>
 
     <!-- Lists overview -->
     <string name="lists_header">Lists</string>
     <string name="new_task">New task</string>
     <string name="lists_failure">Could not read your tasks.</string>
-    <string name="lists_empty">No task lists yet. Add one in your tasks app or with the + button.</string>
+    <string name="lists_empty">No task lists yet.</string>
+    <string name="lists_empty_action">Create a list</string>
+
+    <!-- Task lists: create, edit, delete -->
+    <string name="list_add">New list</string>
+    <string name="list_new_title">New list</string>
+    <string name="list_edit_title">Edit list</string>
+    <string name="list_name_hint">List name</string>
+    <string name="list_in_smart_lists">Show in smart lists</string>
+    <string name="list_in_smart_lists_hint">Include this list\u2019s tasks in Today, Upcoming, All and the other smart lists</string>
+    <string name="list_color">Colour</string>
+    <string name="list_delete">Delete list</string>
+    <string name="list_save_failed">Could not save the list.</string>
+    <string name="list_delete_failed">Could not delete the list.</string>
+    <string name="list_delete_confirm_title">Delete list?</string>
+    <string name="list_where">Where</string>
+    <string name="list_where_device">On this device only</string>
+    <string name="list_read_only">This list is shared with you read-only, so its name and colour are the owner\u2019s to change.</string>
+    <string name="list_delete_confirm_message_synced">\u201c%1$s\u201d and all of its tasks will be deleted from the server, and from every other device signed in to this account. This can\u2019t be undone.</string>
+    <string name="list_save_failed_server">The server would not accept that change.</string>
+    <string name="list_save_failed_offline">Couldn\u2019t reach the server. Try again when you\u2019re back online.</string>
+    <string name="list_save_failed_read_only">That list is shared with you read-only.</string>
+    <string name="list_save_failed_unsupported">That account doesn\u2019t let apps create task lists.</string>
+    <string name="list_delete_confirm_message">“%1$s” and all of its tasks will be deleted. This can\'t be undone.</string>
+    <string name="list_color_mauve">Mauve</string>
+    <string name="list_color_red">Red</string>
+    <string name="list_color_orange">Orange</string>
+    <string name="list_color_amber">Amber</string>
+    <string name="list_color_olive">Olive</string>
+    <string name="list_color_green">Green</string>
+    <string name="list_color_teal">Teal</string>
+    <string name="list_color_cyan">Cyan</string>
+    <string name="list_color_blue">Blue</string>
+    <string name="list_color_indigo">Indigo</string>
+    <string name="list_color_purple">Purple</string>
+    <string name="list_color_pink">Pink</string>
     <string name="smart_today">Today</string>
     <string name="smart_overdue">Overdue</string>
     <string name="smart_upcoming">Upcoming</string>
     <string name="smart_all">All</string>
-    <string name="open_count">%1$d open</string>
 
     <!-- Home: Today progress hero -->
-    <string name="home_today_progress">%1$d of %2$d done</string>
-    <string name="home_today_remaining">%1$d left</string>
+    <plurals name="home_today_progress_count">
+        <item quantity="one">%1$d of %2$d done</item>
+        <item quantity="other">%1$d of %2$d done</item>
+    </plurals>
+    <plurals name="home_today_remaining_count">
+        <item quantity="one">%1$d left</item>
+        <item quantity="other">%1$d left</item>
+    </plurals>
     <string name="home_today_all_done">All done 🎉</string>
     <string name="home_today_empty">Nothing due today 🎉</string>
 
@@ -143,49 +275,119 @@
     <!-- Home: search -->
     <string name="home_search_hint">Search tasks</string>
     <string name="home_search_clear">Clear search</string>
-    <string name="home_search_close">Close search</string>
     <string name="home_search_empty">No tasks match “%1$s”</string>
 
     <!-- Reminders -->
     <string name="reminder_due_at">Due %1$s</string>
+    <!-- Fill reminder_due_at, before an optional time: "Due today, 9:00" -->
+    <string name="reminder_day_today">today</string>
+    <string name="reminder_day_tomorrow">tomorrow</string>
+    <string name="reminder_day_yesterday">yesterday</string>
+    <string name="reminder_action_done">Done</string>
+    <string name="reminder_action_snooze">Snooze %1$d min</string>
     <string name="reminder_channel_name">Task reminders</string>
     <string name="reminder_channel_desc">Notifications for tasks that are due.</string>
 
     <!-- Provider / permission onboarding -->
     <string name="onboarding_no_provider_title">A tasks app is needed</string>
-    <string name="onboarding_no_provider_body">Agendula shows and edits the tasks stored by OpenTasks or tasks.org, synced by DAVx5. Install one of them to get started.</string>
+    <string name="onboarding_no_provider_body">You chose to keep tasks in another app, but no compatible one is installed. Install OpenTasks or tasks.org, or switch back to Agendula\'s own storage.</string>
     <string name="onboarding_permission_title">Allow access to your tasks</string>
     <string name="onboarding_permission_body">Agendula needs permission to read and write your tasks. That\'s the only thing it ever asks for.</string>
     <string name="onboarding_permission_button">Grant task access</string>
-    <string name="onboarding_install_opentasks">Install OpenTasks</string>
-    <string name="onboarding_install_tasksorg">Install tasks.org</string>
+
+    <!-- First run: welcome -->
+    <string name="onboarding_welcome_title">Everything you meant to do</string>
+    <string name="onboarding_welcome_body">A calm place for your tasks, on a phone that stays yours. Let\'s set it up — it takes a minute.</string>
+    <string name="onboarding_welcome_button">Get started</string>
+    <string name="onboarding_welcome_lists_title">Lists and subtasks</string>
+    <string name="onboarding_welcome_lists_body">Keep work, home and a project apart, and break the big ones down.</string>
+    <string name="onboarding_welcome_reminders_title">Reminders that arrive</string>
+    <string name="onboarding_welcome_reminders_body">A notification when something is due, on your schedule.</string>
+    <string name="onboarding_welcome_sync_title">Your server, or none at all</string>
+    <string name="onboarding_welcome_sync_body">Sync over CalDAV with a server you choose, or keep everything on this device.</string>
+
+    <!-- First run: sync offer -->
+    <string name="onboarding_sync_title">Sync with your own server?</string>
+    <string name="onboarding_sync_body">Agendula talks CalDAV — Nextcloud, Radicale, Posteo, Fastmail and anything else that speaks it. No account of ours, ever.</string>
+    <string name="onboarding_sync_connect">Connect an account</string>
+    <string name="onboarding_sync_skip">Not now</string>
+    <string name="onboarding_sync_devices_title">Every device at once</string>
+    <string name="onboarding_sync_devices_body">Tick something off here and it is ticked off everywhere.</string>
+    <string name="onboarding_sync_copy_title">A copy that survives the phone</string>
+    <string name="onboarding_sync_copy_body">Your tasks live on the server too, so a lost device is not lost work.</string>
+    <string name="onboarding_sync_yours_title">Yours to choose</string>
+    <string name="onboarding_sync_yours_body">Self-hosted or a provider you already pay — Agendula only stores the password.</string>
+
+    <!-- First run: the first list -->
+    <string name="onboarding_list_title">Your first list</string>
+    <string name="onboarding_list_body">Lists keep things apart. Start with one — you can add more, and rename this one, any time.</string>
+    <string name="onboarding_list_default_name">Personal</string>
+    <string name="onboarding_list_create">Create list</string>
+
+    <!-- First run: backup -->
+    <string name="onboarding_backup_title">Keep a copy</string>
+    <string name="onboarding_backup_body_later">Without an account, your lists live only on this device. Save them as iCalendar files any other task or calendar app can read, any time from Settings → Storage → Export.</string>
+    <string name="onboarding_backup_continue">Continue</string>
+
+    <!-- First run: quick add bar -->
+    <string name="onboarding_quick_add_title">How would you like to add tasks?</string>
+    <string name="onboarding_quick_add_bar">Quick add bar</string>
+    <string name="onboarding_quick_add_bar_hint">A field at the bottom of every list: type, hit enter, on to the next one.</string>
+    <string name="onboarding_quick_add_button">New task button</string>
+    <string name="onboarding_quick_add_button_hint">A floating button that opens the full form.</string>
+    <string name="onboarding_quick_add_done">Finish</string>
 
     <!-- Reminder onboarding (one-time, after the provider grant) -->
-    <string name="reminder_onboarding_title">Never miss what\'s due</string>
-    <string name="reminder_onboarding_body">Tasks apps don\'t send reminders themselves, so Agendula delivers them for you. Turn them on to get a notification when a task is due.</string>
+    <string name="reminder_onboarding_title">Stay on top of your tasks</string>
+    <string name="reminder_onboarding_body">Agendula notifies you when something is due, so nothing has to live in your head.</string>
     <string name="reminder_onboarding_enable_button">Enable reminders</string>
     <string name="reminder_onboarding_skip_button">Not now</string>
-    <string name="reminder_benefit_delivery_title">Agendula reminds you</string>
-    <string name="reminder_benefit_delivery_body">It schedules a notification for each task with a due date.</string>
+    <string name="reminder_benefit_delivery_title">A nudge when it matters</string>
+    <string name="reminder_benefit_delivery_body">Every task with a due date gets its own notification.</string>
     <string name="reminder_benefit_timing_title">On your schedule</string>
-    <string name="reminder_benefit_timing_body">Choose how far ahead to be reminded in Settings.</string>
+    <string name="reminder_benefit_timing_body">Choose how far ahead to be reminded — for everything, or per list.</string>
     <string name="reminder_benefit_reversible_title">Change it anytime</string>
     <string name="reminder_benefit_reversible_body">Turn reminders off whenever you like — it\'s just a switch.</string>
+    <string name="onboarding_exact_alarms_title">Right on time</string>
+    <string name="onboarding_exact_alarms_body">Android asks before an app may notify you at an exact minute. Allow it and reminders arrive when they\'re due — without it they can be a few minutes late.</string>
+    <string name="onboarding_exact_alarms_allow">Allow exact timing</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <!-- Hub group headers -->
+    <string name="settings_group_look">Look &amp; behaviour</string>
+    <string name="settings_group_data">Data</string>
+    <string name="settings_group_app">App</string>
+    <!-- Group of reference links at the foot of the settings hub. -->
+    <string name="settings_group_about">About</string>
     <string name="settings_section_appearance">Appearance</string>
-    <string name="settings_appearance_subtitle">Theme and colour</string>
+    <string name="settings_appearance_subtitle">Theme, colour and time format</string>
     <string name="settings_section_task_form">Task form</string>
     <string name="settings_task_form_subtitle">Default fields, list and subtasks</string>
     <string name="settings_reminders_subtitle">Notifications for due tasks</string>
     <string name="settings_form_fields_hint">Fields shown by default on a new task. The rest sit behind \"More fields\".</string>
     <string name="settings_dynamic_color_unavailable">Available on Android 12 and later</string>
+    <string name="settings_autofocus_title">Focus title on new task</string>
+    <string name="settings_autofocus_title_hint">When you start a new task, place the cursor in the title and open the keyboard right away.</string>
+    <string name="settings_time_format">Time format</string>
+    <string name="settings_time_format_auto">Automatic</string>
+    <string name="settings_time_format_12h">12-hour (2:00 PM)</string>
+    <string name="settings_time_format_24h">24-hour (14:00)</string>
+    <string name="settings_time_format_auto_summary">Following the system: %1$s</string>
+    <string name="settings_week_start">Week starts on</string>
+    <string name="settings_week_start_auto">Automatic</string>
+    <string name="settings_week_start_auto_summary">Currently %1$s</string>
     <!-- About -->
     <string name="settings_about_author">by Jean-Luc Makiola</string>
     <string name="settings_about_source">Source</string>
     <string name="settings_license">License</string>
     <string name="settings_about_support">Support development</string>
+    <string name="settings_licences">Open source licenses</string>
+    <string name="settings_licences_subtitle">The projects Agendula is built on</string>
+    <string name="licences_title">Open source licenses</string>
+    <string name="licences_intro">Agendula includes the work below. Tap any entry to get its source code.</string>
+    <string name="licences_footer">Some of this code is included in modified form. Where that\u2019s the case, every change is listed in the source repository linked above.</string>
+    <string name="settings_privacy">Privacy policy</string>
     <string name="settings_about_version">Version %1$s</string>
     <string name="settings_about_logo_desc">Agendula app icon</string>
     <string name="settings_language">App language</string>
@@ -198,6 +400,7 @@
     <string name="crash_report_issue_title">Crash report</string>
     <string name="report_issue_url" translatable="false">https://codeberg.org/jlmakiola/agendula/issues/new</string>
     <string name="about_license_url" translatable="false">https://codeberg.org/jlmakiola/agendula/src/branch/main/LICENSE</string>
+    <string name="about_privacy_url" translatable="false">https://jeanlucmakiola.de/agendula/privacy</string>
     <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>
     <string name="about_translate_url" translatable="false">https://weblate.dev.jeanlucmakiola.de/engage/agendula/</string>
     <string name="settings_theme">Theme</string>
@@ -209,11 +412,20 @@
     <string name="settings_section_reminders">Reminders</string>
     <string name="settings_reminders">Due reminders</string>
     <string name="settings_reminders_hint">Notify me when a task is due</string>
+    <string name="settings_notifications_blocked">Notifications are off</string>
+    <string name="settings_notifications_blocked_hint">Reminders can\u2019t reach you. Tap to allow notifications for Agendula.</string>
     <string name="settings_default_reminder">When to remind</string>
+    <string name="settings_allday_reminder_time">Time for all-day reminders</string>
+    <string name="settings_allday_reminder_time_summary">All-day tasks count back from %1$s</string>
+    <string name="settings_default_reminder_allday">All-day tasks</string>
+    <string name="settings_allday_reminder_fires_at">Notifies at %1$s</string>
     <string name="settings_exact_alarms">Exact timing</string>
     <string name="settings_exact_alarms_allowed">Reminders fire at the exact time</string>
     <string name="settings_exact_alarms_blocked">Blocked — tap to allow exact reminders</string>
-    <string name="settings_section_tasks">Tasks</string>
+    <string name="settings_reliable_delivery">Reliable delivery</string>
+    <string name="settings_snooze_duration">Snooze duration</string>
+    <string name="settings_reliable_delivery_hint">Android may delay reminders to save battery. Exempt Agendula so they arrive on time.</string>
+    <string name="settings_reliable_delivery_exempt">Exempt from battery optimisation — reminders arrive on time.</string>
     <string name="settings_default_list">Default list</string>
     <string name="settings_default_list_first">First available list</string>
     <string name="settings_add_subtask_row">Show \"add a subtask\" row</string>
@@ -221,7 +433,116 @@
     <string name="settings_bottom_add_bar">Bottom quick-add bar</string>
     <string name="settings_bottom_add_bar_hint">Add tasks from a bar pinned to the bottom of a list, instead of the floating button</string>
 
+    <string name="onboarding_use_own_store">Use this device\'s storage instead</string>
+
+    <!-- Storage and export -->
+    <string name="settings_section_storage">Storage</string>
+    <string name="settings_storage_subtitle">Where tasks are kept, and export</string>
+    <string name="settings_task_store">Task store</string>
+    <string name="settings_task_store_hint">Each store keeps its own tasks. Switching does not move them across — copy them over first, or export them.</string>
+    <string name="settings_store_own">On this device</string>
+    <string name="settings_store_own_hint">Agendula\'s own storage. Nothing else to install.</string>
+    <string name="settings_store_external">Another task app</string>
+    <string name="settings_store_external_hint">Share tasks with the app that syncs them</string>
+    <string name="settings_store_external_missing">No compatible task app is installed</string>
+    <string name="settings_store_permission_denied">Permission denied</string>
+    <string name="settings_store_permission_denied_hint">The other app\'s tasks stay unreachable until you allow access. Tap to open app settings.</string>
+
+    <!-- Switching stores, and copying tasks from another task app into ours -->
+    <string name="settings_store_switch_title">Switch task store?</string>
+    <string name="settings_store_switch_to_own">Your tasks stay in %1$s — they are not moved. Agendula will show its own storage, which starts out empty unless you copy them over.</string>
+    <string name="settings_store_switch_to_external">Your tasks stay in %1$s — they are not moved. Agendula will show the other app\'s tasks instead.</string>
+    <string name="settings_store_switch_confirm">Switch</string>
+    <string name="settings_copy_from_external">Copy tasks from %1$s</string>
+    <string name="settings_copy_from_external_hint">Bring them into Agendula\'s own storage. A one-time copy — the originals stay where they are.</string>
+    <string name="settings_copy_confirm_title">Copy tasks over?</string>
+    <string name="settings_copy_counting">Counting what there is to copy…</string>
+    <string name="settings_copy_confirm_empty">%1$s holds no tasks to copy.</string>
+    <plurals name="settings_copy_confirm_message">
+        <item quantity="one">%1$d task from %2$s will be copied into Agendula\'s own storage. The originals stay where they are, and the two stop matching from here on — so this is offered only once.</item>
+        <item quantity="other">%1$d tasks from %2$s will be copied into Agendula\'s own storage. The originals stay where they are, and the two stop matching from here on — so this is offered only once.</item>
+    </plurals>
+    <string name="settings_copy_confirm_action">Copy</string>
+    <string name="settings_copy_running">Copying tasks…</string>
+    <plurals name="settings_copy_done">
+        <item quantity="one">Copied %1$d task into %2$d list. Pick “On this device” above to see them.</item>
+        <item quantity="other">Copied %1$d tasks into %2$d lists. Pick “On this device” above to see them.</item>
+    </plurals>
+    <string name="settings_copy_nothing">There was nothing to copy</string>
+    <string name="settings_copy_failed">The tasks could not be copied. Nothing was changed — your originals are untouched.</string>
+    <string name="settings_legacy_import_failed">Your earlier tasks could not be moved</string>
+    <string name="settings_legacy_import_failed_hint">They are still saved and nothing was lost. Tap to try moving them again.</string>
+    <string name="settings_legacy_import_retrying">Moving them now…</string>
+    <string name="settings_export">Export tasks</string>
+    <string name="settings_export_hint">Save your lists as iCalendar files</string>
+    <string name="export_hint">One .ics file per list, readable by other task and calendar apps. The ticked lists go to a folder you pick, or into a single zip.</string>
+    <string name="export_no_lists">No lists to export</string>
+    <string name="export_to_folder">Save to a folder</string>
+    <string name="export_to_zip">Save as a zip file</string>
+    <string name="export_running">Exporting…</string>
+    <string name="export_open">Open</string>
+    <plurals name="add_account_summary_lists">
+        <item quantity="one">Syncing %1$d list</item>
+        <item quantity="other">Syncing %1$d lists</item>
+    </plurals>
+    <plurals name="export_done">
+        <item quantity="one">Exported %1$d list</item>
+        <item quantity="other">Exported %1$d lists</item>
+    </plurals>
+    <string name="export_failed">The export could not be written</string>
+    <string name="export_failed_folder">The chosen folder could not be opened</string>
+    <string name="export_failed_read_only">The chosen folder is not writable</string>
+    <string name="export_failed_create">A file could not be created in the chosen folder</string>
+    <string name="export_failed_access">Access to the chosen location was lost</string>
+
+    <!-- Import from .ics -->
+    <string name="import_title">Import tasks</string>
+    <string name="settings_import_hint">Bring in tasks from an iCalendar file</string>
+    <string name="import_hint">Pick an .ics file, or a zip of them like the export writes. Repeats, subtasks and everything else the tasks carry come along. Tasks already in the chosen list are skipped.</string>
+    <string name="import_own_store_only">Importing writes into Agendula\'s own storage. Switch the task store to “On this device” to import.</string>
+    <string name="import_open_storage">Storage</string>
+    <string name="import_pick">Choose a file</string>
+    <string name="import_pick_other">Choose another file</string>
+    <string name="import_pick_another">Import another file</string>
+    <string name="import_reading">Reading the file…</string>
+    <string name="import_running">Importing…</string>
+    <string name="import_picked_file">Picked file</string>
+    <plurals name="import_found">
+        <item quantity="one">%1$d task</item>
+        <item quantity="other">%1$d tasks</item>
+    </plurals>
+    <plurals name="import_events_left_out">
+        <item quantity="one">%1$d calendar event left out</item>
+        <item quantity="other">%1$d calendar events left out</item>
+    </plurals>
+    <string name="import_target_label">Import into</string>
+    <!-- %1$s is the name the new list will get, e.g. "New list: Groceries". -->
+    <string name="import_new_list">New list: %1$s</string>
+    <string name="import_new_list_hint">A new list on this device</string>
+    <string name="import_new_list_default_name">Imported tasks</string>
+    <string name="import_button">Import</string>
+    <!-- %2$s is the list the tasks went into. -->
+    <plurals name="import_done">
+        <item quantity="one">Imported %1$d task into %2$s</item>
+        <item quantity="other">Imported %1$d tasks into %2$s</item>
+    </plurals>
+    <plurals name="import_done_skipped_existing">
+        <item quantity="one">%1$d already there, skipped</item>
+        <item quantity="other">%1$d already there, skipped</item>
+    </plurals>
+    <string name="import_failed_unreadable">The file could not be read as iCalendar</string>
+    <string name="import_failed_no_tasks">The file holds no tasks</string>
+    <string name="import_failed_write">The tasks could not be saved</string>
+
     <!-- Reminder lead times (custom amounts) -->
+    <plurals name="duration_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
     <plurals name="reminder_minutes">
         <item quantity="one">%1$d minute before</item>
         <item quantity="other">%1$d minutes before</item>
@@ -238,4 +559,205 @@
         <item quantity="one">%1$d week before</item>
         <item quantity="other">%1$d weeks before</item>
     </plurals>
+
+    <!-- CalDAV accounts -->
+    <string name="settings_section_accounts">Accounts</string>
+    <string name="settings_accounts_subtitle">Sync your tasks with a CalDAV server</string>
+    <string name="accounts_empty_title">No accounts yet</string>
+    <string name="accounts_empty_body">Add a CalDAV account and Agendula keeps your task lists in step with it — Nextcloud, Radicale, Baïkal and anything else that speaks the protocol.</string>
+    <string name="accounts_add">Add an account</string>
+    <string name="accounts_sync_interval">Sync automatically</string>
+    <string name="accounts_sync_interval_manual">Only when you sync</string>
+    <string name="accounts_sync_interval_hint">How often every account syncs in the background. Edits you make are sent within a minute either way. Android may stretch the interval to save battery.</string>
+    <plurals name="accounts_sync_every_minutes">
+        <item quantity="one">Every %d minute</item>
+        <item quantity="other">Every %d minutes</item>
+    </plurals>
+    <plurals name="accounts_sync_every_hours">
+        <item quantity="one">Every hour</item>
+        <item quantity="other">Every %d hours</item>
+    </plurals>
+    <string name="accounts_push">Push</string>
+    <string name="accounts_push_off">Off</string>
+    <string name="accounts_push_via">Changes arrive instantly, via %1$s</string>
+    <plurals name="accounts_push_partial">
+        <item quantity="one">Instant for %1$d of %2$d list, via %3$s</item>
+        <item quantity="other">Instant for %1$d of %2$d lists, via %3$s</item>
+    </plurals>
+    <string name="accounts_push_unsupported">Your server doesn’t offer push yet</string>
+    <string name="accounts_push_pending">Setting up push with your server\u2026</string>
+    <string name="accounts_push_no_distributor">Install a UnifiedPush app to get changes instantly</string>
+    <string name="accounts_push_choose">Choose which app delivers push</string>
+    <string name="accounts_push_hint">With a UnifiedPush app such as ntfy installed, changes made on other devices arrive within seconds rather than at the next sync. Your server has to offer WebDAV-Push — on Nextcloud, that is the WebDAV Push app.</string>
+    <string name="accounts_push_none_installed">No UnifiedPush app is installed. Install one — ntfy, NextPush or Sunup, for example — and it appears here.</string>
+    <string name="accounts_push_account_on">Changes arrive instantly</string>
+    <plurals name="accounts_push_account_partial">
+        <item quantity="one">Instant for %1$d of %2$d list</item>
+        <item quantity="other">Instant for %1$d of %2$d lists</item>
+    </plurals>
+    <string name="accounts_push_account_unsupported">This server doesn’t offer push</string>
+    <string name="accounts_remove">Remove account</string>
+    <string name="accounts_remove_body">%1$s stops syncing with this device. Nothing is deleted from the server.</string>
+    <string name="accounts_remove_keep">Remove, keep the tasks</string>
+    <string name="accounts_remove_keep_body">Its lists stay on this device as device-only lists.</string>
+    <string name="accounts_remove_wipe">Remove and delete the tasks</string>
+    <string name="accounts_remove_wipe_body">Also deletes this account\u2019s lists and tasks from this device.</string>
+    <string name="accounts_never_synced">Never synced</string>
+    <string name="accounts_last_sync">Last sync</string>
+    <string name="accounts_generic_provider">CalDAV account</string>
+    <string name="accounts_sync_failed">Last sync didn\u2019t finish</string>
+    <string name="accounts_failed_sign_in">Sync failed \u2014 the server didn\u2019t accept the password</string>
+    <string name="accounts_failed_unreachable">Sync failed \u2014 couldn\u2019t reach the server</string>
+    <string name="accounts_failed_certificate">Sync failed \u2014 the server\u2019s certificate isn\u2019t trusted</string>
+    <string name="accounts_failed_server">Sync failed \u2014 the server reported an error</string>
+    <string name="accounts_failed_server_code">Sync failed \u2014 the server reported an error (%1$d)</string>
+    <string name="accounts_failed_misconfigured">Sync failed \u2014 the account is incomplete; remove it and add it again</string>
+    <string name="accounts_sync_now">Sync now</string>
+    <string name="accounts_removing">Removing\u2026</string>
+    <string name="accounts_lists">Lists</string>
+    <string name="accounts_lists_summary">Choose which lists sync</string>
+    <string name="accounts_lists_loading">Reading lists from the server\u2026</string>
+    <string name="accounts_lists_drop_title">Stop syncing lists</string>
+    <string name="accounts_lists_drop_body">The lists you unticked stop syncing with this device. Nothing is deleted from the server.</string>
+    <string name="accounts_lists_drop_keep">Stop syncing, keep the tasks</string>
+    <string name="accounts_lists_drop_keep_body">They stay on this device as device-only lists.</string>
+    <string name="accounts_lists_drop_wipe">Stop syncing and delete the tasks</string>
+    <string name="accounts_lists_drop_wipe_body">Also deletes those lists and their tasks from this device.</string>
+    <string name="accounts_external_storage_title">Accounts need Agendula\u2019s own storage</string>
+    <string name="accounts_external_storage">Accounts sync into Agendula\u2019s own store, which isn\u2019t in use while your tasks come from another app. Switch in Settings \u2192 Storage.</string>
+    <string name="add_account_browser_failed_title">Sign-in didn\u2019t finish</string>
+    <string name="add_account_step_of">Step %1$d of %2$d</string>
+    <string name="add_account_provider_title">Where are your tasks?</string>
+    <string name="add_account_provider_body">Pick the service your task lists live on. Agendula syncs with anything that speaks CalDAV.</string>
+    <string name="add_account_provider_self_hosted">You run the server</string>
+    <string name="add_account_provider_unsupported">Doesn\u2019t support tasks over CalDAV</string>
+    <string name="add_account_provider_other_header">Any CalDAV server</string>
+    <string name="add_account_provider_other">Other CalDAV server</string>
+    <string name="add_account_provider_other_summary">Baïkal, DAViCal, SOGo, Radicale, or one you run yourself</string>
+    <string name="add_account_email_title">What\u2019s your address there?</string>
+    <string name="add_account_email_body">The email address you use with this service. Agendula finds the server itself.</string>
+    <string name="add_account_email_label">Email address</string>
+    <string name="add_account_summary_title">You\u2019re set up</string>
+    <string name="add_account_summary_body">Agendula will keep these lists in sync from now on. You can change what syncs in Settings.</string>
+    <string name="add_account_summary_done">Done</string>
+    <string name="add_account_server_title">Where are your tasks?</string>
+    <string name="add_account_server_body">Enter the address of your CalDAV server. An email address works too, if the server publishes itself under its domain.</string>
+    <string name="add_account_credentials_title">Sign in</string>
+    <string name="add_account_credentials_body">Use an app password if your provider offers one \u2014 it can be revoked without changing your account password.</string>
+    <string name="add_account_lists_body">Pick the task lists to keep in sync. You can change this later.</string>
+    <string name="add_account_error_not_an_address">That doesn\u2019t look like a web address. Try something like cloud.example.com.</string>
+    <string name="add_account_error_not_dav">That address answered, but it isn\u2019t a CalDAV server. If you pasted the website, try the server address your provider gives for calendars.</string>
+    <string name="add_account_error_no_calendar">That server doesn\u2019t offer calendars. Check the address with your provider.</string>
+    <string name="add_account_error_unreachable">Couldn\u2019t reach that server. Check the address and your connection.</string>
+    <string name="add_account_error_insecure">That address is unencrypted. Agendula only sends your password over https.</string>
+    <string name="add_account_error_no_calendars">Signed in, but this account has no task lists.</string>
+    <string name="add_account_error_server">The server ran into a problem. Try again in a moment.</string>
+    <string name="add_account_working_discovering">Looking for a CalDAV server</string>
+    <string name="add_account_working_signing_in">Signing in</string>
+    <string name="add_account_working_reading_lists">Reading your task lists</string>
+    <string name="add_account_working_saving">Adding the account</string>
+    <string name="add_account_error_google_unsupported">Google Calendar does not support tasks over CalDAV \u2014 its own documentation says so \u2014 so Agendula cannot sync with it.</string>
+    <string name="add_account_error_cross_domain">This server keeps some task lists on %1$s, which Agendula can\u2019t sign in to yet.</string>
+    <string name="add_account_error_already_exists">That account is already set up.</string>
+    <string name="add_account_error_no_usable_lists">Signed in, but this account has no task lists Agendula can use.</string>
+    <string name="add_account_error_not_saved">The account couldn\u2019t be saved.</string>
+    <string name="add_account_error_keystore">This device wouldn\u2019t store the password.</string>
+    <string name="add_account_error_credentials_rejected">That username or password was not accepted.</string>
+    <string name="add_account_browser_error_expired">The approval window closed before the server answered.</string>
+    <string name="add_account_browser_error_rate_limited">The server is turning away repeated attempts. Wait a few minutes and try again.</string>
+    <string name="add_account_browser_error_maintenance">The server is in maintenance mode. Try again once it is back.</string>
+    <string name="add_account_browser_error_failed">The server didn\u2019t finish signing you in. Try again in a moment.</string>
+    <string name="add_account_browser_error_unavailable">This device has no browser that can open the sign-in page. Use a password instead.</string>
+    <string name="add_account_quirk_hint_fastmail">Fastmail needs an app password, not your account password \u2014 and CalDAV is not on the Basic plan.</string>
+    <string name="add_account_quirk_hint_icloud">iCloud needs an app-specific password, which you create at appleid.apple.com with two-factor on.</string>
+    <string name="add_account_setup_body">You\u2019ll do this in your browser, then come back here to finish.</string>
+    <string name="add_account_setup_icloud_title">iCloud needs an app-specific password</string>
+    <string-array name="add_account_setup_icloud_steps">
+        <item>Sign in at appleid.apple.com.</item>
+        <item>Turn on two-factor authentication if it isn\u2019t already \u2014 Apple only offers app passwords with it on.</item>
+        <item>Under Sign-In and Security, open App-Specific Passwords and create one.</item>
+        <item>Come back here and use that password with your iCloud address.</item>
+    </string-array>
+    <string name="add_account_setup_icloud_footnote">Tasks kept in iCloud won\u2019t show up in Apple\u2019s Reminders app.</string>
+    <string name="add_account_setup_fastmail_title">Fastmail needs an app password</string>
+    <string-array name="add_account_setup_fastmail_steps">
+        <item>Sign in at fastmail.com.</item>
+        <item>Open Settings, then Privacy &amp; Security, then Integrations.</item>
+        <item>Under App Passwords, create one and give it CalDAV access.</item>
+        <item>Come back here and use that password with your Fastmail address.</item>
+    </string-array>
+    <string name="add_account_setup_fastmail_footnote">CalDAV isn\u2019t included in Fastmail\u2019s Basic plan.</string>
+    <string name="add_account_quirk_google">Google Calendar does not support tasks over CalDAV.</string>
+    <string name="accounts_needs_sign_in">Sign in again to keep syncing</string>
+    <string name="accounts_sign_in_again">Sign in again</string>
+    <string name="accounts_summary">%1$s \u00b7 %2$s</string>
+    <string name="sync_notice_channel_name">Sync reports</string>
+    <string name="sync_notice_channel_desc">When a sync replaces one of your edits with the server\u2019s copy, or stops trying to sync a task.</string>
+    <string name="sync_notice_body">%1$s</string>
+    <string name="sync_notice_line">%1$s \u00b7 %2$s</string>
+    <string name="sync_notices_title">What the last sync changed</string>
+    <string name="sync_notices_dismiss">Got it</string>
+    <string name="sync_notice_retry">Retry</string>
+    <string name="sync_notice_cause_server_newer">Replaced by the server\u2019s newer copy</string>
+    <string name="sync_notice_cause_deleted_on_server">Deleted on the server while you were editing it</string>
+    <string name="sync_notice_cause_delete_lost">You deleted it here, but the server changed it afterwards</string>
+    <string name="sync_notice_cause_quarantined">Stopped syncing \u2014 the server keeps refusing this one</string>
+    <string name="sync_sign_in_channel_name">Sign-in needed</string>
+    <string name="sync_sign_in_channel_desc">When an account stops syncing until you sign in again.</string>
+    <string name="sync_sign_in_title">Sign in to %1$s again</string>
+    <string name="sync_sign_in_body">The server stopped accepting Agendula\u2019s password, so this account has stopped syncing.</string>
+    <string name="sync_notification_channel">Syncing</string>
+    <string name="sync_notification_title">Syncing tasks</string>
+
+    <string name="add_account_server_label">Server address</string>
+    <string name="add_account_server_hint">https://cloud.example.com</string>
+    <string name="add_account_continue">Continue</string>
+    <string name="add_account_start_over">Start over</string>
+
+    <string name="add_account_username_label">User name</string>
+    <string name="add_account_password_label">Password</string>
+    <string name="add_account_password_hint">Use an app password if your server offers one — it can be revoked without changing your account password.</string>
+    <string name="add_account_sign_in">Sign in</string>
+
+    <string name="add_account_browser_title">Waiting for your browser</string>
+    <string name="add_account_browser_body">Approve Agendula in the browser, then come back here. Your password is never sent to this app — the server issues a separate app password you can revoke at any time.</string>
+    <string name="add_account_browser_use_password">Use a password instead</string>
+    <string name="add_account_browser_retry">Try again</string>
+    <string name="add_account_browser_confirm_title">Check this before you sign in</string>
+    <string name="add_account_browser_confirm_body">The sign-in page is on your server, not in Agendula \u2014 so it is worth a look before you type your account password there.</string>
+    <string name="add_account_browser_open">Open the sign-in page</string>
+    <string name="add_account_browser_insecure">That sign-in page is unencrypted (http). Anything you type there, including your account password, travels in the clear.</string>
+    <string name="add_account_browser_host_mismatch">The server sent us to %1$s, but you typed %2$s. That usually means its overwrite.cli.url setting is wrong.</string>
+    <string name="add_account_origin_mismatch">The server reported its address as %1$s, which this device cannot reach, so %2$s was used instead. Its overwrite.cli.url or trusted_proxies setting is probably wrong.</string>
+
+    <string name="add_account_lists_title">Which lists should sync?</string>
+    <string name="add_account_lists_read_only">Read-only</string>
+    <string name="add_account_lists_shared">Shared with you</string>
+    <string name="add_account_save">Add account</string>
+    <string name="add_account_no_lists_selected">Pick at least one list</string>
+    <plurals name="sync_notice_discarded_title">
+        <item quantity="one">An edit was replaced by the server</item>
+        <item quantity="other">%1$d edits were replaced by the server</item>
+    </plurals>
+    <plurals name="sync_notice_quarantined_title">
+        <item quantity="one">A task has stopped syncing</item>
+        <item quantity="other">%1$d tasks have stopped syncing</item>
+    </plurals>
+    <plurals name="accounts_notices">
+        <item quantity="one">1 sync report to read</item>
+        <item quantity="other">%1$d sync reports to read</item>
+    </plurals>
+    <plurals name="sync_notice_more">
+        <item quantity="one">and %1$d more</item>
+        <item quantity="other">and %1$d more</item>
+    </plurals>
+
+    <!-- Home-screen widget -->
+    <string name="widget_tasks_label">Tasks</string>
+    <string name="widget_tasks_description">Today\'s tasks, or any list, with a tap to tick them off</string>
+    <string name="widget_empty">Nothing to do here</string>
+    <string name="widget_unavailable">Open Agendula to finish setting up</string>
+    <string name="widget_complete_task">Complete %1$s</string>
+    <string name="widget_config_title">Show in widget</string>
+    <string name="widget_config_smart_lists">Smart lists</string>
 </resources>

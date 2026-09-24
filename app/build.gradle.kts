@@ -27,12 +27,21 @@ android {
         // a bumped versionName into main triggers .gitea/workflows/release.yaml,
         // which builds this version and then creates the matching vX.Y.Z tag +
         // release itself (versionCode is pinned to MAJOR*10000 + MINOR*100 +
-        // PATCH from versionName, e.g. 0.2.0 -> 200). The Gitea release is marked
-        // as a pre-release while MAJOR is 0. See docs/RELEASING.md.
-        versionCode = 400
-        versionName = "0.4.0"
+        // PATCH from versionName, e.g. 1.0.0 -> 10000). Releases were flagged as
+        // pre-releases while MAJOR was 0; 1.0.0 is the first stable one, and the
+        // pipeline graduates it on its own. See docs/RELEASING.md.
+        versionCode = 10000
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // The sync-adapter and authenticator XML descriptors cannot read
+        // BuildConfig, so the two identifiers they need are generated here.
+        // Derived from applicationId so the debug and releaseTest builds get
+        // their own and can be installed alongside the real app without their
+        // accounts colliding. Must stay in step with SyncContract.
+        resValue("string", "account_type", "de.jeanlucmakiola.agendula.caldav")
+        resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.sync")
     }
 
     signingConfigs {
@@ -66,6 +75,8 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+            resValue("string", "account_type", "de.jeanlucmakiola.agendula.debug.caldav")
+            resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.debug.sync")
         }
         // A locally-installable twin of `release`: same R8 shrinking + obfuscation
         // and resource shrinking, but debug-signed and given its own applicationId
@@ -82,6 +93,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             matchingFallbacks += "release"
+            resValue("string", "account_type", "de.jeanlucmakiola.agendula.releasetest.caldav")
+            resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.releasetest.sync")
         }
     }
 
@@ -93,6 +106,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // The account type and sync authority are generated per variant so the
+        // debug and releaseTest builds do not fight the real app over ownership
+        // of an account type. AGP 9 requires opting in.
+        resValues = true
     }
 
     // Don't embed AGP's dependency-metadata block in the APK signing block. It's
@@ -108,6 +125,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        // Ship the prebuilt .so files (datastore's shared counter) exactly as the
+        // AAR has them. AGP strips them only when an NDK happens to be installed,
+        // so CI and F-Droid's buildserver would otherwise disagree on the bytes.
+        jniLibs {
+            keepDebugSymbols += "**/*.so"
         }
     }
 
@@ -129,6 +152,10 @@ android {
             isReturnDefaultValues = true
         }
     }
+
+    // MigrationTestHelper reads the exported schemas out of the test APK's
+    // assets, so app/schemas/ has to ship with the instrumented tests.
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 }
 
 kotlin {
@@ -137,11 +164,27 @@ kotlin {
     }
 }
 
+// Export each Room schema version to app/schemas/ and commit it. That JSON is
+// what MigrationTestHelper reads to build an old database and migrate it, so
+// without it a migration can only be tested by hand.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
+    // Not a dependency we use directly — lifecycle already drags it in at 1.7.3.
+    // AGP's consistent resolution then pins androidTest to the app classpath, and
+    // room-testing's MigrationTestHelper needs 1.8+ to deserialize the exported
+    // schema; on 1.7.3 it dies with an AbstractMethodError. Raise it in one place.
+    constraints {
+        implementation(libs.kotlinx.serialization.json)
+    }
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))
@@ -154,22 +197,53 @@ dependencies {
 
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     ksp(libs.hilt.compiler)
 
-    implementation(libs.androidx.datastore.preferences)
+    // Sync runs in WorkManager, triggered *through* the sync-adapter framework.
+    // hilt-work supplies the HiltWorkerFactory; its compiler generates the
+    // @HiltWorker plumbing.
+    implementation(libs.androidx.work.runtime.ktx)
+    // Custom Tabs: the Nextcloud login flow hands the browser an approval page.
+    implementation(libs.androidx.browser)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
+    // Push sync: a UnifiedPush distributor delivers the server's WebDAV-Push messages.
+    implementation(libs.unifiedpush.connector)
+
+    // RFC 5545 recurrence expansion, in-process; see the catalog for the pin.
+    implementation(libs.dmfs.lib.recur)
+
+    // Vendored dav4jvm — the CalDAV protocol layer. See dav/PROVENANCE.md.
+    implementation(project(":dav"))
+    // Discovery, auth and Nextcloud Login Flow v2.
+    implementation(project(":caldav"))
+    // :dav gets org.xmlpull.v1 from the Android framework at runtime and declares
+    // xpp3 compileOnly, which is not transitive. Unit tests run on a plain JVM
+    // with no framework, and android.jar's stub factory returns null under
+    // isReturnDefaultValues — so anything touching XmlUtils would NPE without a
+    // real implementation here.
+    testImplementation(libs.xpp3)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+    implementation(libs.androidx.documentfile)
 
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.coroutines.core)
-    implementation("de.jeanlucmakiola.floret:core-time")
-    implementation("de.jeanlucmakiola.floret:core-reminders")
-    implementation("de.jeanlucmakiola.floret:core-locale")
-    implementation("de.jeanlucmakiola.floret:core-crash")
-    implementation("de.jeanlucmakiola.floret:identity")
-    implementation("de.jeanlucmakiola.floret:components")
+    implementation(libs.floret.core.time)
+    implementation(libs.floret.core.reminders)
+    implementation(libs.floret.core.locale)
+    implementation(libs.floret.core.crash)
+    implementation(libs.floret.identity)
+    implementation(libs.floret.components)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -185,6 +259,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
 }

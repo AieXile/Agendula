@@ -1,4 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- No file-based backups; settings live in DataStore which is backed up by default. -->
+    <!--
+        Agendula's own task store. Room runs in WAL mode and Auto Backup copies
+        files without checkpointing, so the `-wal` sidecar can hold writes the
+        `.db` alone does not — all three go in together, and the app checkpoints
+        on ON_STOP so a restore is consistent either way.
+
+        Naming any <include> makes everything else excluded by default, so the
+        archived dmfs database (`tasks.db.imported`, kept one release as the
+        import's rollback path) is already left out. An explicit <exclude> for it
+        would be redundant *and* rejected — lint's FullBackupContent check errors
+        on an exclude that sits under no included path.
+
+        Settings live in DataStore, which this exclusion now also covers, so its
+        sharedpref file is listed back in.
+    -->
+    <include domain="database" path="agendula-tasks.db" />
+    <include domain="database" path="agendula-tasks.db-wal" />
+    <include domain="database" path="agendula-tasks.db-shm" />
+    <include domain="file" path="datastore/" />
+    <!--
+        The one thing that must not travel. Keystore keys are non-exportable, so
+        a restored ciphertext can never be decrypted again — it would surface as
+        an account that silently stops syncing with no way to tell why. Excluding
+        it means the user signs in again on a new device, which is the honest
+        outcome. Note how narrow the exclusions here are, and must stay:
+        dropping the database or all of DataStore
+        from backup would trade a latent bug for a live one, since Auto Backup is
+        Local mode's only automatic safety net. Only files that are *meaningless
+        or harmful* on another device come out.
+    -->
+    <exclude domain="file" path="datastore/agendula_credentials.preferences_pb" />
+    <!--
+        Per-device sync bookkeeping: quarantine counters and the
+        full-reconciliation clock. Restored onto a new install every value
+        in it is a claim about a conversation this device never had — and a
+        restored "reconciled recently" makes the engine trust a stale sync
+        token for another day, which is the one RFC 6578 failure that has no
+        signal of its own.
+    -->
+    <exclude domain="file" path="datastore/agendula_sync_state.preferences_pb" />
 </full-backup-content>

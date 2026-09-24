@@ -1,0 +1,11 @@
+### Novo
+- Sincronização CalDAV integrada: Nextcloud, Radicale, Baïkal e outros.
+- O Agendula guarda suas tarefas sozinho, sem outro app. Copie-as do OpenTasks
+  ou do tasks.org em Ajustes → Armazenamento.
+- Tarefas recorrentes, vários lembretes por tarefa, listas no app, importação e
+  exportação iCalendar, widget e bloco de Configurações rápidas.
+
+### Alterado
+- Novos ajustes: lembretes de dia inteiro, soneca, intervalo de sincronização,
+  formato de hora e início da semana.
+

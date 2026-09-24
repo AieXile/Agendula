@@ -1,0 +1,44 @@
+# Draft fdroiddata recipe for the OFFICIAL F-Droid repository. Submitted as
+# metadata/de.jeanlucmakiola.agendula.yml in fdroiddata; see README.md here.
+# Not the self-hosted control file (that is ../../fdroid-metadata/).
+#
+# Reproducible build + developer-signed binary: F-Droid rebuilds from source,
+# compares against our APK from `Binaries`, and on a match publishes OUR binary,
+# so official and self-hosted installs share one signature.
+
+Categories:
+  - Task
+License: MIT
+AuthorName: Jean-Luc Makiola
+SourceCode: https://codeberg.org/jlmakiola/agendula
+IssueTracker: https://codeberg.org/jlmakiola/agendula/issues
+Translation: https://weblate.dev.jeanlucmakiola.de/engage/agendula/
+Changelog: https://codeberg.org/jlmakiola/agendula/src/branch/main/CHANGELOG.md
+Donate: https://ko-fi.com/jeanlucmakiola
+
+AutoName: Agendula
+
+RepoType: git
+Repo: https://codeberg.org/jlmakiola/agendula.git
+Binaries: https://apps.dev.jeanlucmakiola.de/dev/fdroid/repo/agendula_v%v.apk
+
+# 1.0.0 is the first release that carries every reproducibility fix
+# (scripts/check_reproducible_release.sh); 0.x releases strip datastore's .so
+# files host-dependently and won't verify. submodules: floret-kit is an
+# included build. No key.properties on the buildserver, so the release build
+# comes out unsigned, which is what F-Droid compares.
+Builds:
+  - versionName: 1.0.0
+    versionCode: 10000
+    commit: v1.0.0
+    subdir: app
+    submodules: true
+    gradle:
+      - yes
+
+AllowedAPKSigningKeys: 097946b32c375a8cc81fcdf1985d601c06134b29613d9d8632f59178085af120
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 1.0.0
+CurrentVersionCode: 10000

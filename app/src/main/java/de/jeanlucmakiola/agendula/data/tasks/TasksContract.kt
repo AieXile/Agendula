@@ -1,6 +1,7 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
 import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * The subset of the OpenTasks `TaskContract` that Agendula uses, vendored as
@@ -66,6 +67,12 @@ object TasksContract {
         const val IS_ALLDAY = "is_allday"
         const val TZ = "tz"
         const val RRULE = "rrule"
+        const val RDATE = "rdate"
+        const val EXDATE = "exdate"
+        /** Set on an override row — the master occurrence this one replaces. */
+        const val ORIGINAL_INSTANCE_ID = "original_instance_id"
+        /** On an override row: the start of the occurrence it replaces. */
+        const val ORIGINAL_INSTANCE_TIME = "original_instance_time"
         const val PARENT_ID = "parent_id"
         const val SORTING = "sorting"
         const val CREATED = "created"
@@ -96,7 +103,58 @@ object TasksContract {
         const val INSTANCE_DUE_SORTING = "instance_due_sorting"
         const val DISTANCE_FROM_CURRENT = "distance_from_current"
         const val IS_RECURRING = "is_recurring"
+
+        /**
+         * The occurrence's `RECURRENCE-ID` — the time this occurrence was
+         * instantiated at, before any override moved it. Set on every occurrence
+         * of a recurring task, which is what makes it the occurrence's identity.
+         */
+        const val INSTANCE_ORIGINAL_TIME = "instance_original_time"
     }
+
+    /** The `properties` table — per-task side rows, discriminated by [Properties.MIMETYPE]. */
+    object Properties {
+        const val PATH = "properties"
+        const val PROPERTY_ID = "property_id"
+        const val TASK_ID = "task_id"
+        const val MIMETYPE = "mimetype"
+    }
+
+    /**
+     * An alarm property row — a per-task reminder lead.
+     *
+     * Storage and sync format *only*: the provider fires nothing (its alarm
+     * scheduling is commented out and the internal `alarms` table is never
+     * populated), so [de.jeanlucmakiola.agendula.data.reminders.ReminderScheduler]
+     * still arms the real AlarmManager alarm. Writing it here is what makes the
+     * lead survive a sync and show up in other OpenTasks clients.
+     *
+     * The columns are the generic `dataN` slots; the meanings below are the
+     * Alarm property's contract for them.
+     */
+    object Alarm {
+        const val MIMETYPE = "vnd.android.cursor.item/alarm"
+
+        /** `data0` — minutes from the reference date; positive means *before* it. */
+        const val MINUTES_BEFORE = "data0"
+
+        /** `data1` — which date to count from. */
+        const val REFERENCE = "data1"
+
+        /** `data2` — optional message shown with the alarm. */
+        const val MESSAGE = "data2"
+
+        /** `data3` — alarm kind. Must be present, and non-zero to count as an alarm. */
+        const val ALARM_TYPE = "data3"
+
+        const val REFERENCE_DUE = 1
+        const val REFERENCE_START = 2
+
+        /** 0 (NOTHING) is excluded from the provider's `has_alarms` count — use MESSAGE. */
+        const val TYPE_MESSAGE = 1
+    }
+
+    fun propertiesUri(authority: String): Uri = "content://$authority/${Properties.PATH}".toUri()
 
     // --- status values (TaskColumns.STATUS_*) --------------------------------
     const val STATUS_NEEDS_ACTION = 0
@@ -107,10 +165,21 @@ object TasksContract {
     /** Priority 0 means "no priority"; 1 is highest, 9 lowest (iCalendar). */
     const val PRIORITY_NONE = 0
 
-    fun authorityUri(authority: String): Uri = Uri.parse("content://$authority")
-    fun listsUri(authority: String): Uri = Uri.parse("content://$authority/${Lists.PATH}")
-    fun tasksUri(authority: String): Uri = Uri.parse("content://$authority/${Tasks.PATH}")
-    fun instancesUri(authority: String): Uri = Uri.parse("content://$authority/${Instances.PATH}")
+    fun authorityUri(authority: String): Uri = "content://$authority".toUri()
+    fun listsUri(authority: String): Uri = "content://$authority/${Lists.PATH}".toUri()
+    fun listUri(authority: String, listId: Long): Uri =
+        "content://$authority/${Lists.PATH}/$listId".toUri()
+    fun tasksUri(authority: String): Uri = "content://$authority/${Tasks.PATH}".toUri()
+    fun instancesUri(authority: String): Uri = "content://$authority/${Instances.PATH}".toUri()
+
+    /**
+     * A single occurrence. Updating through this URI is how a *recurring* task is
+     * edited: the provider clones the row into an override task
+     * (`original_instance_id` set, recurrence fields stripped) instead of moving
+     * the series anchor, which is what writing to `tasks/<id>` would do.
+     */
+    fun instanceUri(authority: String, instanceId: Long): Uri =
+        "content://$authority/${Instances.PATH}/$instanceId".toUri()
 
     /** Append the sync-adapter params required to write local-account rows. */
     fun asSyncAdapter(uri: Uri, accountName: String, accountType: String): Uri =

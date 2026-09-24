@@ -11,7 +11,6 @@ fun testTask(
     priority: Priority = Priority.NONE,
     due: Instant? = null,
 ): Task = Task(
-    id = id,
     taskId = id,
     listId = listId,
     title = title,
@@ -32,6 +31,7 @@ fun testTask(
     accountName = null,
     parentId = null,
     isRecurring = false,
+    occurrenceStart = null,
     distanceFromCurrent = 0,
     created = null,
     lastModified = null,

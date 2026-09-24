@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Agendula</string>
-    <string name="app_tagline">Um app de tarefas em Material 3 Expressive. \nFlorescendo.</string>
     <string name="task_untitled">Tarefa sem título</string>
     <string name="back">Voltar</string>
     <string name="save">Salvar</string>
@@ -14,9 +13,6 @@
     <string name="task_detail_title">Tarefa</string>
     <string name="task_detail_not_found">Esta tarefa não existe mais.</string>
     <string name="edit">Editar</string>
-    <string name="edit_task_title">Editar tarefa</string>
-    <string name="new_task_title">Nova tarefa</string>
-    <string name="field_title">Título</string>
     <string name="field_description">Descrição</string>
     <string name="edit_save_failed">Não foi possível salvar. Tente novamente.</string>
     <string name="add_task_hint">Adicionar tarefa</string>
@@ -37,11 +33,8 @@
     <string name="priority_low">Baixa</string>
     <string name="priority_medium">Média</string>
     <string name="priority_high">Alta</string>
-    <string name="detail_mark_complete">Marcar como concluído</string>
-    <string name="detail_mark_incomplete">Marcar como não concluído</string>
     <string name="detail_list">Lista</string>
     <string name="detail_due">Prazo</string>
-    <string name="detail_start">Inicia</string>
     <string name="detail_priority">Prioridade</string>
     <string name="detail_progress">Progresso</string>
     <string name="detail_subtasks">Subtarefas</string>
@@ -71,11 +64,6 @@
     <string name="edit_conflict_overwrite">Sobrescrever</string>
     <string name="reminder_none">Nenhum</string>
     <string name="reminder_at_due">Na hora da tarefa</string>
-    <string name="reminder_5_min">5 minutos antes</string>
-    <string name="reminder_10_min">10 minutos antes</string>
-    <string name="reminder_30_min">30 minutos antes</string>
-    <string name="reminder_1_hour">1 hora antes</string>
-    <string name="reminder_1_day">1 dia antes</string>
     <string name="reminder_custom">Personalizado</string>
     <string name="reminder_custom_with_value">Personalizado (%1$s)</string>
     <string name="reminder_custom_set">Ajustar</string>
@@ -100,9 +88,6 @@
     <string name="smart_overdue">Prazo expirado</string>
     <string name="smart_upcoming">A seguir</string>
     <string name="smart_all">Tudo</string>
-    <string name="open_count">%1$d abertos</string>
-    <string name="home_today_progress">%1$d de %2$d concluídos</string>
-    <string name="home_today_remaining">%1$d restantes</string>
     <string name="home_today_all_done">Tudo pronto 🎉</string>
     <string name="home_today_empty">Nada terminando hoje 🎉</string>
     <string name="home_upcoming_view_all">Ver tudo</string>
@@ -110,7 +95,6 @@
     <string name="home_due_tomorrow">Amanhã</string>
     <string name="home_search_hint">Buscar tarefas</string>
     <string name="home_search_clear">Limpar buscas</string>
-    <string name="home_search_close">Fechar busca</string>
     <string name="home_search_empty">Nenhuma tarefa corresponde a \"%1$s\"</string>
     <string name="reminder_due_at">Termina em %1$s</string>
     <string name="reminder_channel_name">Lembretes de tarefas</string>
@@ -120,8 +104,6 @@
     <string name="onboarding_permission_title">Permitir acesso às suas tarefas</string>
     <string name="onboarding_permission_body">O Agendula precisa de permissão para ler e salvar suas tarefas. É tudo o que ele pede.</string>
     <string name="onboarding_permission_button">Conceder acesso às tarefas</string>
-    <string name="onboarding_install_opentasks">Instalar OpenTasks</string>
-    <string name="onboarding_install_tasksorg">Instalar tasks.org</string>
     <string name="reminder_onboarding_title">Nunca perca seus prazos</string>
     <string name="reminder_onboarding_body">Apps de tarefas não enviam lembretes sozinhos, então o Agendula os entrega para você. Ative para receber uma notificação de quando uma tarefa estiver no prazo.</string>
     <string name="reminder_onboarding_enable_button">Ativar lembretes</string>
@@ -166,7 +148,6 @@
     <string name="settings_exact_alarms">Na hora</string>
     <string name="settings_exact_alarms_allowed">Lembretes disparam na mesma hora</string>
     <string name="settings_exact_alarms_blocked">Bloqueado — toque para permitir lembretes na hora</string>
-    <string name="settings_section_tasks">Tarefas</string>
     <string name="settings_default_list">Lista padrão</string>
     <string name="settings_default_list_first">Primeira lista disponível</string>
     <string name="settings_add_subtask_row">Mostrar uma linha \"adicionar subtarefa\"</string>

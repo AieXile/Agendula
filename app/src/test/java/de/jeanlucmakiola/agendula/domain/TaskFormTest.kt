@@ -32,7 +32,7 @@ class TaskFormTest {
 
     @Test
     fun `a reminder requires a due date`() {
-        val errors = TaskForm(title = "x", listId = 1, reminderMinutesBeforeDue = 10).validate()
+        val errors = TaskForm(title = "x", listId = 1, reminders = listOf(10)).validate()
         assertThat(errors).contains(TaskFormError.REMINDER_WITHOUT_DUE)
     }
 

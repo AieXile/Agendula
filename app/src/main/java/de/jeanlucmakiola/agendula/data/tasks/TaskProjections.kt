@@ -1,8 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
-import de.jeanlucmakiola.agendula.data.tasks.TasksContract.Instances
 import de.jeanlucmakiola.agendula.data.tasks.TasksContract.Lists
-import de.jeanlucmakiola.agendula.data.tasks.TasksContract.Tasks
 
 /** Column lists requested from the provider. Order is irrelevant; we read by name. */
 object TaskProjections {
@@ -18,31 +16,9 @@ object TaskProjections {
         Lists.ACCOUNT_TYPE,
     )
 
-    /** Read from the `instances` view (inherits all task columns). */
-    val INSTANCES: Array<String> = arrayOf(
-        Tasks.ID,
-        Instances.TASK_ID,
-        Tasks.LIST_ID,
-        Tasks.TITLE,
-        Tasks.DESCRIPTION,
-        Tasks.LOCATION,
-        Tasks.URL,
-        Tasks.PRIORITY,
-        Tasks.STATUS,
-        Tasks.PERCENT_COMPLETE,
-        Tasks.COMPLETED,
-        Tasks.IS_ALLDAY,
-        Tasks.TZ,
-        Instances.INSTANCE_START,
-        Instances.INSTANCE_DUE,
-        Tasks.TASK_COLOR,
-        Tasks.LIST_COLOR,
-        Tasks.LIST_NAME,
-        Tasks.ACCOUNT_NAME,
-        Tasks.PARENT_ID,
-        Instances.IS_RECURRING,
-        Instances.DISTANCE_FROM_CURRENT,
-        Tasks.CREATED,
-        Tasks.LAST_MODIFIED,
-    )
+    // No `instances` projection on purpose: that read passes `projection = null`
+    // (all columns), because the view's shape differs across provider versions —
+    // tasks.org's bundled OpenTasks has no `is_recurring`, for one. A fixed list
+    // here would drift out of sync with the by-name mapper and quietly drop
+    // columns it depends on. See AndroidTasksDataSource.queryInstances.
 }

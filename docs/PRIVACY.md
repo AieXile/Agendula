@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy — Agendula
 description: What Agendula does with your data. No servers, no account, no analytics — your tasks stay on your device unless you add a CalDAV server yourself.
-updated: 2026-09-15
+updated: 2026-09-21
 ---
 
 <!--
@@ -21,7 +21,7 @@ updated: 2026-09-15
   render on the published page.
 -->
 
-**Last updated:** 9 September 2026  
+**Last updated:** 21 September 2026  
 Applies to the Android app **Agendula** (package `de.jeanlucmakiola.agendula`),
 all versions and all distribution channels.
 
@@ -144,9 +144,13 @@ stored locally on your device and are removed when you uninstall the app.
 
 If Android Auto Backup is enabled on your device, your tasks and settings may
 be backed up to your own Google account, under Google's terms — the developer
-has no access to it. Two things are deliberately excluded from that backup:
-your stored CalDAV password, and Agendula's per-device sync bookkeeping. After
-restoring onto a new device you therefore sign in to your server again.
+has no access to it. What travels is Agendula's own task database and your
+settings, and nothing else: the backup rules name those explicitly, which makes
+everything not named — including the archived copy the app keeps of an older
+version's database — excluded by default. Two things are deliberately kept out
+of that backup: your stored CalDAV password, and Agendula's per-device sync
+bookkeeping. After restoring onto a new device you therefore sign in to your
+server again.
 
 ## 7. Crash reports
 
@@ -183,6 +187,10 @@ process — it only opens the address.
 
 ## 9. Permissions and why they exist
 
+This is the complete list the released app declares — you can check it against
+the app's entry in F-Droid, or against `app/src/main/AndroidManifest.xml` in the
+source:
+
 - `INTERNET`, `ACCESS_NETWORK_STATE` — CalDAV sync with the server you
   configure, and checking whether a connection exists before trying. Without a
   CalDAV account, no connection is made.
@@ -195,7 +203,8 @@ process — it only opens the address.
 - `org.dmfs.permission.READ_TASKS` / `WRITE_TASKS` and
   `org.tasks.permission.READ_TASKS` / `WRITE_TASKS` — optional, requested only
   if you choose the external-provider storage mode, and only for the provider
-  you selected (OpenTasks or tasks.org).
+  you selected (OpenTasks or tasks.org). All four are declared in the manifest
+  because a manifest is static, but none is requested until you pick that mode.
 - `WAKE_LOCK`, `FOREGROUND_SERVICE` — required by the Android system component
   used for scheduled background work (WorkManager); on older Android versions
   it needs them to run an expedited sync.

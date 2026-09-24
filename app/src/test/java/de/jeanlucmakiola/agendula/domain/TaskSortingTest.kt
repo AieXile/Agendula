@@ -17,7 +17,7 @@ class TaskSortingTest {
 
         val sorted = listOf(completed, noDate, dueLater, dueSooner).sortedWith(TaskSorting.DEFAULT)
 
-        assertThat(sorted.map { it.id }).containsExactly(3L, 2L, 4L, 1L).inOrder()
+        assertThat(sorted.map { it.taskId }).containsExactly(3L, 2L, 4L, 1L).inOrder()
     }
 
     @Test
@@ -27,6 +27,6 @@ class TaskSortingTest {
 
         val sorted = listOf(low, high).sortedWith(TaskSorting.DEFAULT)
 
-        assertThat(sorted.map { it.id }).containsExactly(2L, 1L).inOrder()
+        assertThat(sorted.map { it.taskId }).containsExactly(2L, 1L).inOrder()
     }
 }

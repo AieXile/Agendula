@@ -1,0 +1,12 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Agendula//Test//EN
+BEGIN:VTODO
+UID:folded-utf8-001
+DTSTAMP:20260901T120000Z
+SUMMARY:Gießkanne füllen und die Pflanzen im Wintergarten gießen — 🌱🌿🪴 
+ jede Woche montags
+DESCRIPTION:Zeile eins\nZeile zwei mit Komma\, Semikolon\; und Backslash\\ dr
+ in
+END:VTODO
+END:VCALENDAR

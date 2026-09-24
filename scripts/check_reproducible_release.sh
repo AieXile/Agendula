@@ -17,6 +17,8 @@
 #   3. dependenciesInfo { includeInApk = false } — else AGP embeds a "Dependency
 #      metadata" block (id 0x504b4453) in the APK Signing Block, which F-Droid's
 #      binary scanner rejects as an extra signing block.
+#   4. jniLibs { keepDebugSymbols += "**/*.so" } — else AGP strips prebuilt .so
+#      files only when an NDK is installed, so the bytes depend on the host.
 set -euo pipefail
 
 APP="app/build.gradle.kts"
@@ -59,6 +61,17 @@ else
   echo "ERROR: '$APP' is missing 'dependenciesInfo { includeInApk = false }'." >&2
   echo "       AGP would embed a 'Dependency metadata' block (0x504b4453) in the APK" >&2
   echo "       Signing Block, which F-Droid's binary scanner rejects." >&2
+  fail=1
+fi
+
+# 4. Prebuilt native libs must not be stripped. AGP strips them only if an NDK is
+#    installed, so the output would depend on the build host.
+if grep -Pzoq 'jniLibs\s*\{[^}]*keepDebugSymbols\s*\+=\s*"\*\*/\*\.so"' "$APP"; then
+  echo "OK: jniLibs keepDebugSymbols — native libs ship unstripped on every host."
+else
+  echo "ERROR: '$APP' is missing 'jniLibs { keepDebugSymbols += \"**/*.so\" }'." >&2
+  echo "       AGP strips .so files only when an NDK is present, so a from-source" >&2
+  echo "       rebuild would not match the published APK." >&2
   fail=1
 fi
 

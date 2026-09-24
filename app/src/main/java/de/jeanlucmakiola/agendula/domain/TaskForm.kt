@@ -18,20 +18,25 @@ data class TaskForm(
     val parentId: Long? = null,
     /** 0..100 progress; `null` leaves it unset (cleared). */
     val percentComplete: Int? = null,
-    /** Minutes before [due] to fire a reminder; `null` = no reminder. */
-    val reminderMinutesBeforeDue: Int? = null,
+    /** The task's own reminders, in minutes before [due]; empty = the list's or app default applies. */
+    val reminders: List<Int> = emptyList(),
+    val location: String? = null,
+    val url: String? = null,
+    /** The series' `RRULE` value; `null` = does not repeat. Ignored for a single-occurrence edit. */
+    val rrule: String? = null,
 ) {
     fun validate(): Set<TaskFormError> = buildSet {
         if (title.isBlank()) add(TaskFormError.BLANK_TITLE)
         if (listId <= 0L) add(TaskFormError.NO_LIST)
         if (start != null && due != null && due < start) add(TaskFormError.DUE_BEFORE_START)
-        if (reminderMinutesBeforeDue != null && due == null) add(TaskFormError.REMINDER_WITHOUT_DUE)
+        if (reminders.isNotEmpty() && due == null) add(TaskFormError.REMINDER_WITHOUT_DUE)
+        if (rrule != null && start == null && due == null) add(TaskFormError.RECURRENCE_WITHOUT_DATE)
     }
 
     val isValid: Boolean get() = validate().isEmpty()
 }
 
-enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITHOUT_DUE }
+enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITHOUT_DUE, RECURRENCE_WITHOUT_DATE }
 
 /**
  * Optional edit-form sections that can be shown or tucked behind "More fields"
@@ -39,7 +44,7 @@ enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITH
  * a setting; the rest unfold on demand. Declaring these as an enum keeps the
  * disclosure generic, so adding a field later is one entry plus its card.
  */
-enum class TaskFormField { Description, Priority, Progress, Parent, Reminder }
+enum class TaskFormField { Description, Recurrence, Priority, Progress, Parent, Reminder, Location, Url }
 
 /** The optional fields that already carry a value — auto-revealed when editing. */
 fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
@@ -47,5 +52,8 @@ fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
     if (priority != Priority.NONE) add(TaskFormField.Priority)
     if ((percentComplete ?: 0) > 0) add(TaskFormField.Progress)
     if (parentId != null && parentId > 0) add(TaskFormField.Parent)
-    if (reminderMinutesBeforeDue != null) add(TaskFormField.Reminder)
+    if (reminders.isNotEmpty()) add(TaskFormField.Reminder)
+    if (rrule != null) add(TaskFormField.Recurrence)
+    if (!location.isNullOrBlank()) add(TaskFormField.Location)
+    if (!url.isNullOrBlank()) add(TaskFormField.Url)
 }

@@ -1,0 +1,26 @@
+Agendula ist eine moderne Open-Source-Aufgaben-App für Android und die
+Schwester-App von Calendula.
+
+Synchronisiere deine Aufgaben per CalDAV: Füge ein Nextcloud-, Radicale-,
+Baïkal- oder anderes CalDAV-Konto hinzu und wähle, welche Aufgabenlisten
+mitkommen. Oder behalte alles auf dem Handy – Agendula speichert deine Aufgaben
+selbst, ohne Konto und ohne weitere App.
+
+Du nutzt schon OpenTasks oder tasks.org? Dann lass Agendula mit dieser App
+arbeiten, damit per DAVx5 o. Ä. synchronisierte Aufgaben so erscheinen, wie sie
+sind – und übernimm sie jederzeit in Agendulas eigenen Speicher, unter
+Einstellungen → Speicher.
+
+Was die App kann: Listen direkt in der App verwalten, Fälligkeits- und
+Startdaten, ganztägige Aufgaben, Unteraufgaben, Prioritäten, Fortschritt,
+wiederkehrende Aufgaben, bei denen du auch einzelne Termine bearbeiten kannst,
+mehrere Erinnerungen pro Aufgabe mit Schlummern, iCalendar-Import und -Export,
+ein Widget für den Startbildschirm, App-Verknüpfungen und eine
+Schnelleinstellungs-Kachel.
+
+Das Design ist durchgehend echtes Material 3 Expressive, mit dynamischen Farben
+und ausdrucksstarken Animationen und Formen.
+
+Datenschutz: keine Telemetrie, keine Analyse, keine Werbung. Agendula geht nur
+online, um mit den CalDAV-Konten zu synchronisieren, die du selbst hinzufügst.
+Ohne Konto verlassen deine Aufgaben das Gerät nur, wenn du sie exportierst.

@@ -1,29 +1,29 @@
 # Contributing to Agendula
 
-Thanks for your interest in Agendula — a Material 3 Expressive task app that's a
-pure front-end over the OpenTasks `TaskContract` provider, with no own database
-or sync stack. Before diving in, skim [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-(how it's built), [`docs/ROADMAP.md`](docs/ROADMAP.md) (what's next), and
-[`docs/PLAN.md`](docs/PLAN.md) (the design rationale). This file covers the
-practical how.
+Thanks for your interest in Agendula — a Material 3 Expressive task app with its
+own Room task store and its own CalDAV sync, which can also work on top of the
+OpenTasks `TaskContract` provider. This file covers the practical how.
 
 ## The one architectural rule
 
 Everything above the data layer talks to `TasksRepository` and sees only domain
-types and Flows. **Provider column names, `TaskContract`, `ContentResolver`, and
-the authority string never leak above `data/tasks/`.** This is what keeps
-"Posture B" (bundling the provider later) an additive change instead of a
-rewrite — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §7. If a change
-would expose provider details to a ViewModel or the UI, it's in the wrong layer.
+types and Flows. **Room entities, provider column names, `TaskContract`,
+`ContentResolver` and the authority string never leak above `data/tasks/`.**
+That seam is what let the store move from the provider to Room without touching
+a screen, and what lets both stores sit behind one `TasksDataSource`. If a
+change would expose storage details to a ViewModel or the UI, it's in the wrong
+layer.
 
 ## Prerequisites
 
 - JDK 17
 - Android SDK: compileSdk 37, build-tools 36.0.0 (the Gradle wrapper handles AGP/Kotlin)
-- A device or emulator with **OpenTasks** or **tasks.org** installed for
-  anything touching the read/write paths (ideally with DAVx5 syncing a CalDAV
-  task list, so there's real data). Debug builds fall back to `DemoSeeder` for
-  sample data.
+- Any device or emulator for the default path — the store is Agendula's own.
+  Debug builds seed an "Agendula Demo" list via `DemoSeeder`. For External
+  mode, one with **OpenTasks** or **tasks.org** installed; for sync, a CalDAV
+  account (a local Radicale is the quickest).
+- Clone with `--recurse-submodules`: the `floret-kit` component library is a
+  submodule.
 
 ## Build, test, lint
 
@@ -65,7 +65,8 @@ truth for both the in-app picker and the Android 13+ per-app language setting.
 | Layer | Lives in | Rule of thumb |
 |---|---|---|
 | Pure logic (models, filtering, sorting, form validation, date maths) | `domain/` | No Android imports — must be JVM-unit-testable. |
-| Provider access | `data/tasks/` | The only place that knows about the provider. New provider work goes through `TasksDataSource`. |
+| Task storage | `data/tasks/` (`room/` for our own store) | The only place that knows about Room or the provider. New storage work goes through `TasksDataSource`, for both stores. |
+| CalDAV sync | `data/sync/` | Accounts, the engine, scheduling and sync notices. |
 | Reminders, prefs, DI, demo data | `data/reminders/`, `data/prefs/`, `data/di/`, `data/demo/` | |
 | Screens | `ui/<area>/` | One ViewModel + immutable `UiState` per area; Compose for the screen. |
 
@@ -74,20 +75,20 @@ truth for both the in-app picker and the Android 13+ per-app language setting.
 - **Kotlin**, 4-space indent, LF line endings, final newline, no trailing
   whitespace — all enforced by `.editorconfig` (2-space for yaml/toml/json/md).
   Match the surrounding code.
-- **Material 3 Expressive** for all UI: use `MaterialExpressiveTheme`, the
-  colour-scheme tokens (never hardcoded colours), and canonical M3 components
-  (e.g. `ListItem` for rows). Consult the `material-3` skill before designing a
-  new screen or component.
-- Prefer the domain layer for anything testable; keep `AndroidTasksDataSource`
-  the only Android-coupled data implementation so the rest stays JVM-testable.
+- **Material 3 Expressive** for all UI, built from **floret-kit** components
+  first (`CollapsingScaffold`, `GroupedRow`, `InlineTextField`,
+  `FullScreenPicker` / `OptionPicker`, …) and colour-scheme tokens (never
+  hardcoded colours). If a floret-kit component is nearly right, add the
+  parameter there rather than dropping to raw Material 3.
+- Prefer the domain layer for anything testable.
 
 ## Tests
 
 - New domain logic (mappers, filters, sorting, forms, value mapping) **must**
   come with JVM unit tests under `app/src/test/`. The data source is the
   JVM-testable seam — mock or fake it rather than reaching for instrumentation.
-- Add an instrumented test only when a path genuinely needs a real
-  `ContentResolver`.
+- Add an instrumented test only when a path genuinely needs Android: the Room
+  data source, migrations and the import paths live under `app/src/androidTest/`.
 
 ## Commits & PRs
 
@@ -96,9 +97,6 @@ truth for both the in-app picker and the Android 13+ per-app language setting.
 - Update [`CHANGELOG.md`](CHANGELOG.md) under `[Unreleased]` for any
   user-visible change — its sections feed the release notes and F-Droid "What's
   New" (see [`docs/RELEASING.md`](docs/RELEASING.md)).
-- If your change shifts the architecture or completes a milestone, update
-  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / [`docs/ROADMAP.md`](docs/ROADMAP.md)
-  in the same PR.
 - Don't bump `versionName` / `versionCode` in a regular PR — the committed
   `versionName` is bumped only when **cutting a release** (that bump reaching
   `main` is what triggers the release; the pipeline then mints the tag). See
@@ -106,10 +104,9 @@ truth for both the in-app picker and the Android 13+ per-app language setting.
 
 ## Scope
 
-Agendula stays true to its thesis: a front-end over **open** task backends
-(CalDAV / iCalendar / DecSync via the OpenTasks provider). Proprietary backends
-(Google Tasks, Microsoft To Do) are out of scope by design — they'd mean owning
-a sync stack. v1 targets the OpenTasks contract (OpenTasks + tasks.org); jtx's
+Agendula stays on **open** standards: CalDAV and iCalendar, through its own
+sync or through the OpenTasks provider (OpenTasks and tasks.org). Proprietary
+backends (Google Tasks, Microsoft To Do) are out of scope by design. jtx's
 richer contract is a possible later addition.
 
 ## License

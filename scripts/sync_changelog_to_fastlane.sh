@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
-# Write the current version's CHANGELOG.md section into the fastlane changelog
-# file that F-Droid harvests: fastlane/metadata/android/en-US/changelogs/<code>.txt
-# (en-US is F-Droid's fallback locale, so it covers every language).
+# Ensure the current version's "What's New" exists at
+# fastlane/metadata/android/en-US/changelogs/<code>.txt, which both F-Droid and
+# Google Play publish.
 #
-# Run this when cutting a release (after editing CHANGELOG.md and bumping
-# versionName in app/build.gradle.kts) and COMMIT the result, so the OFFICIAL
-# F-Droid repo — which reads the changelog from the tagged source tree — shows
-# this version's "What's New". The self-hosted release pipeline also runs it so
-# its changelog never depends on the file having been committed. Idempotent.
-#
-# Extraction matches the awk used for the Gitea release notes so all three
-# (release notes, self-hosted changelog, official changelog) stay in sync.
+# A COMMITTED file wins and is never rewritten: it is a hand-written summary
+# under 500 characters (Play's cap), not a copy of the CHANGELOG.md section.
+# Only when the file is missing is it generated from that section, so the
+# self-hosted release pipeline always has something to publish. The other
+# locales' changelogs are written by hand and never touched here.
 set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root
 
@@ -20,22 +17,38 @@ MAJOR=${VERSION%%.*}; rest=${VERSION#*.}; MINOR=${rest%%.*}; PATCH=${rest##*.}
 MAJOR=${MAJOR:-0}; MINOR=${MINOR:-0}; PATCH=${PATCH:-0}
 VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
 
+# Play rejects a longer "What's New" and F-Droid truncates it in-client.
+MAX_CHARS=${MAX_CHARS:-500}
+
 CL_DIR="fastlane/metadata/android/en-US/changelogs"
 mkdir -p "$CL_DIR"
 OUT="$CL_DIR/${VERSION_CODE}.txt"
 
-awk -v ver="$VERSION" '
-  $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
-  /^## \[/ { flag = 0 }
-  flag' CHANGELOG.md > "$OUT"
-# Trim leading blank lines (same as the pipeline did).
-sed -i -e '/./,$!d' "$OUT"
-if [ ! -s "$OUT" ]; then
-  echo "See CHANGELOG.md for $VERSION." > "$OUT"
+if [ -s "$OUT" ]; then
+  ACTION="Kept"
+else
+  ACTION="Generated"
+  awk -v ver="$VERSION" '
+    $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+    /^## \[/ { flag = 0 }
+    flag' CHANGELOG.md > "$OUT"
+  # Trim leading blank lines (same as the pipeline did).
+  sed -i -e '/./,$!d' "$OUT"
+  [ -s "$OUT" ] || echo "See CHANGELOG.md for $VERSION." > "$OUT"
 fi
 
-CHARS=$(wc -m < "$OUT" | tr -d ' ')
-echo "Wrote $OUT (version $VERSION, code $VERSION_CODE, ${CHARS} chars)"
-if [ "$CHARS" -gt 500 ]; then
-  echo "  note: >500 chars — F-Droid may truncate this changelog in-client." >&2
+# Counted like check_store_listing.py: surrounding whitespace doesn't count.
+CHARS=$(python3 -c 'import sys; print(len(open(sys.argv[1], encoding="utf-8").read().strip()))' "$OUT")
+echo "$ACTION $OUT (version $VERSION, code $VERSION_CODE, ${CHARS} chars)"
+
+# Hard limit, enforced in CI (.forgejo/workflows/ci.yaml) and before a release.
+if [ "$CHARS" -gt "$MAX_CHARS" ]; then
+  cat >&2 <<MSG
+ERROR: $OUT is $CHARS characters, over the $MAX_CHARS-character limit.
+
+F-Droid truncates the in-client changelog, so this one would be cut off
+mid-sentence and Play would reject the upload. Replace it with a hand-written
+summary under $MAX_CHARS characters and commit it.
+MSG
+  exit 1
 fi

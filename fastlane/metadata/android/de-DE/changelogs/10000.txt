@@ -1,0 +1,11 @@
+### Neu
+- CalDAV-Sync eingebaut: Nextcloud, Radicale, Baïkal und mehr.
+- Agendula speichert deine Aufgaben selbst, keine andere App nötig. Aus
+  OpenTasks oder tasks.org übernimmst du sie unter Einstellungen → Speicher.
+- Wiederkehrende Aufgaben, mehrere Erinnerungen, Listen in der App,
+  iCalendar-Import und -Export, ein Widget und eine Schnelleinstellungs-Kachel.
+
+### Geändert
+- Neue Einstellungen: ganztägige Erinnerungen, Schlummern, Sync-Intervall,
+  Zeitformat, Wochenbeginn.
+

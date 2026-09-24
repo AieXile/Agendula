@@ -1,10 +1,11 @@
 AuthorName: Jean-Luc Makiola
 License: MIT
 Name: Agendula
-Summary: A modern Material 3 Expressive task app for Android.
+Summary: A Material 3 Expressive task app with CalDAV sync.
 
 Categories:
   - Time
 
 SourceCode: https://codeberg.org/jlmakiola/agendula
 IssueTracker: https://codeberg.org/jlmakiola/agendula/issues
+Donate: https://ko-fi.com/jeanlucmakiola

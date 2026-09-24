@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock shown in the widget picker (android:previewLayout); the live
+     widget is rendered by Glance. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/preview_widget_bg"
+    android:padding="12dp"
+    tools:ignore="HardcodedText,UseCompoundDrawables,UseAppTint">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/smart_today"
+            android:textColor="@color/widget_preview_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="9dp"
+            android:contentDescription="@null"
+            android:background="@drawable/preview_add_bg"
+            android:src="@drawable/ic_widget_add"
+            android:tint="@color/widget_preview_on_primary_container" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="4dp"
+            android:layout_height="32dp"
+            android:contentDescription="@null"
+            android:background="@drawable/preview_stripe"
+            android:backgroundTint="#B48A9C" />
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="9dp"
+            android:layout_marginEnd="9dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_checkbox"
+            android:tint="@color/widget_preview_variant" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Water the plants"
+                android:textColor="@color/widget_preview_on_surface"
+                android:textSize="14sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Today"
+                android:textColor="@color/widget_preview_variant"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="4dp"
+            android:layout_height="32dp"
+            android:contentDescription="@null"
+            android:background="@drawable/preview_stripe"
+            android:backgroundTint="#7FA3C9" />
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="9dp"
+            android:layout_marginEnd="9dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_checkbox"
+            android:tint="@color/widget_preview_variant" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Call the dentist"
+                android:textColor="@color/widget_preview_on_surface"
+                android:textSize="14sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Today · 10:30"
+                android:textColor="@color/widget_preview_variant"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="4dp"
+            android:layout_height="32dp"
+            android:contentDescription="@null"
+            android:background="@drawable/preview_stripe"
+            android:backgroundTint="#8FB58A" />
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="9dp"
+            android:layout_marginEnd="9dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_widget_checkbox"
+            android:tint="@color/widget_preview_variant" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pick up groceries"
+                android:textColor="@color/widget_preview_on_surface"
+                android:textSize="14sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Today · 18:00"
+                android:textColor="@color/widget_preview_variant"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

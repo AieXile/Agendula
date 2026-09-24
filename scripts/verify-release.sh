@@ -38,11 +38,26 @@ adb shell pm revoke "$PKG" org.tasks.permission.WRITE_TASKS     2>/dev/null || t
 adb shell pm revoke "$PKG" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
 
 echo
-echo "Installed and reset. Now verify ON THE DEVICE before releasing:"
-echo "  1. Launch from a clean state — the permission screen must appear (no crash)."
-echo "  2. Grant tasks access — the task list must load."
-echo "  3. Create a task with a due reminder and confirm the notification fires."
-echo "  4. Exercise the release's headline changes end to end."
+echo "Installed and reset. Now verify ON THE DEVICE before releasing."
+echo
+echo "Which path you are on depends on what else is installed — since 1.0.0 the"
+echo "app owns its store, so the default path grants nothing at all:"
+echo
+echo "  No OpenTasks / tasks.org on the device (the default, and what a fresh"
+echo "  install looks like):"
+echo "    1. Launch from a clean state — the task list must load straight away."
+echo "       There is no permission to grant in this mode, so no gate appears."
+echo "    2. Create a list, then a task in it — a fresh install has neither."
+echo "    3. Give the task a due reminder and confirm the notification fires."
+echo
+echo "  With OpenTasks or tasks.org installed:"
+echo "    1. Launch from a clean state — the permission gate must appear (no crash)."
+echo "    2. Grant tasks access — that app's task list must load."
+echo "    3. Settings -> Storage -> Copy tasks from ... — the confirm must name a"
+echo "       real count, and switching to \"On this device\" must then show them."
+echo "    4. Create a task with a due reminder and confirm the notification fires."
+echo
+echo "  Either way: exercise the release's headline changes end to end."
 echo
 echo "Watch for crashes with:  adb logcat -b crash"
 echo "Only merge the release branch to main once all of the above pass on a device"

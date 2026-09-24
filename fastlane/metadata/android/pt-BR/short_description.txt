@@ -1,0 +1,1 @@
+Um app de tarefas em Material 3 Expressive, com sincronização CalDAV.

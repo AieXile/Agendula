@@ -10,6 +10,9 @@ import de.jeanlucmakiola.floret.reminders.ReminderUnit
 /** Common reminder lead times offered as quick picks in the reminder pickers. */
 val REMINDER_PRESETS = listOf(0, 5, 10, 30, 60, 1_440)
 
+/** Day-scale lead times for all-day tasks: on the day, 1 and 2 days, 1 week before. */
+val ALLDAY_REMINDER_PRESETS = listOf(0, 1_440, 2_880, 10_080)
+
 @StringRes
 fun reminderUnitLabel(unit: ReminderUnit): Int = when (unit) {
     ReminderUnit.Minutes -> R.string.reminder_unit_minutes
@@ -21,11 +24,12 @@ fun reminderUnitLabel(unit: ReminderUnit): Int = when (unit) {
 /**
  * Humanise a reminder lead time (minutes before due) into one line: "At time of
  * task" (0), "10 minutes before", "1 hour before", … Shared by the reminder
- * pickers and the settings summaries so the wording never drifts. Ported from
- * Calendula.
+ * pickers and the settings summaries so the wording never drifts. For an
+ * [allDay] task, 0 reads "On the day". Ported from Calendula.
  */
 @Composable
-fun reminderLeadTimeLabel(minutes: Int): String = when {
+fun reminderLeadTimeLabel(minutes: Int, allDay: Boolean = false): String = when {
+    minutes <= 0 && allDay -> stringResource(R.string.reminder_on_the_day)
     minutes <= 0 -> stringResource(R.string.reminder_at_due)
     minutes % 10_080 == 0 ->
         pluralStringResource(R.plurals.reminder_weeks, minutes / 10_080, minutes / 10_080)

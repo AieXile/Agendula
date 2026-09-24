@@ -1,5 +1,9 @@
 package de.jeanlucmakiola.agendula.ui.lists
 
+import de.jeanlucmakiola.floret.components.ReorderableColumn
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.SwapVert
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -46,6 +50,7 @@ import androidx.compose.material.icons.rounded.Upcoming
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -66,12 +71,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.Priority
@@ -80,7 +86,12 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.ui.common.ActionShapes
 import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.SnackChip
+import de.jeanlucmakiola.floret.components.SnackChipHeight
+import de.jeanlucmakiola.floret.components.SnackChipMargin
+import kotlinx.coroutines.delay
 import de.jeanlucmakiola.agendula.ui.common.ListColorChip
+import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
 import de.jeanlucmakiola.agendula.ui.common.ShapedActionButton
 import de.jeanlucmakiola.agendula.ui.common.priorityAccent
 import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel
@@ -99,7 +110,7 @@ import java.time.ZoneId
 @Composable
 fun ListsScreen(
     onOpenFilter: (TaskFilter) -> Unit,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
     onNewTask: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -108,9 +119,27 @@ fun ListsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var searchActive by rememberSaveable { mutableStateOf(false) }
+    var newList by rememberSaveable { mutableStateOf(false) }
+    val destinations by viewModel.destinations.collectAsStateWithLifecycle()
+    // ⚠️ Asked when the sheet opens, not when the screen is built. The answer is
+    // an OPTIONS against each account's home set, and an account added since —
+    // or a server upgraded since — has to be able to appear without a restart.
+    val deviceLabel = stringResource(R.string.list_where_device)
+    LaunchedEffect(newList) { if (newList) viewModel.refreshDestinations(deviceLabel) }
     val closeSearch = {
         query = ""
         searchActive = false
+    }
+    // With no lists there is nowhere to put a task, so the primary action becomes
+    // making one — otherwise a fresh install's FAB opens a form that cannot save.
+    val noLists = (state as? ListsUiState.Content)?.groups?.isEmpty() == true
+    // The sheet closes on save, so a refused write has to report itself here.
+    val writeFailure by viewModel.writeFailure.collectAsStateWithLifecycle()
+    LaunchedEffect(writeFailure) {
+        if (writeFailure != null) {
+            delay(4_000)
+            viewModel.clearWriteFailure()
+        }
     }
     // System back closes search before leaving the screen.
     BackHandler(enabled = searchActive, onBack = closeSearch)
@@ -130,9 +159,11 @@ fun ListsScreen(
             // The FAB would otherwise float over the search results.
             if (!searchActive) {
                 ExtendedFloatingActionButton(
-                    onClick = onNewTask,
+                    onClick = if (noLists) ({ newList = true }) else onNewTask,
                     icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.new_task)) },
+                    text = {
+                        Text(stringResource(if (noLists) R.string.list_add else R.string.new_task))
+                    },
                 )
             }
         },
@@ -147,6 +178,8 @@ fun ListsScreen(
                         state = s,
                         onOpenFilter = onOpenFilter,
                         onOpenTask = onOpenTask,
+                        onNewList = { newList = true },
+                        onReorder = viewModel::reorderLists,
                         topPadding = 0.dp,
                         bottomPadding = inner.calculateBottomPadding() + 96.dp,
                     )
@@ -166,18 +199,65 @@ fun ListsScreen(
                     }
                 }
             }
+            // Anchored beside the FAB, at its height — the same receipt placement
+            // the task list uses.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = SnackChipMargin,
+                        bottom = inner.calculateBottomPadding() + SnackChipMargin,
+                    )
+                    .height(SnackChipHeight),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                SnackChip(
+                    visible = writeFailure != null,
+                    message = stringResource(
+                        listWriteFailureMessage(writeFailure ?: ListWriteFailure.SAVE),
+                    ),
+                )
+            }
         }
     }
+
+    if (newList) {
+        ListEditorSheet(
+            initial = null,
+            onSave = viewModel::createList,
+            onDismiss = { newList = false },
+            destinations = destinations,
+        )
+    }
+}
+
+/**
+ * Wording for a refused list write.
+ *
+ * Shared with the task list, which offers the same edit from the other side —
+ * one refusal should not read differently depending on where it was asked for.
+ */
+internal fun listWriteFailureMessage(failure: ListWriteFailure): Int = when (failure) {
+    ListWriteFailure.SAVE -> R.string.list_save_failed
+    ListWriteFailure.DELETE -> R.string.list_delete_failed
+    ListWriteFailure.SERVER_REFUSED -> R.string.list_save_failed_server
+    ListWriteFailure.OFFLINE -> R.string.list_save_failed_offline
+    ListWriteFailure.READ_ONLY -> R.string.list_save_failed_read_only
+    ListWriteFailure.UNSUPPORTED -> R.string.list_save_failed_unsupported
 }
 
 @Composable
 private fun ListsContent(
     state: ListsUiState.Content,
     onOpenFilter: (TaskFilter) -> Unit,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
+    onNewList: () -> Unit,
+    onReorder: (List<Long>) -> Unit,
     topPadding: androidx.compose.ui.unit.Dp,
     bottomPadding: androidx.compose.ui.unit.Dp,
 ) {
+    // Lists get drag handles only while reordering, so the home screen stays calm.
+    var reordering by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -215,11 +295,61 @@ private fun ListsContent(
         }
 
         if (state.groups.isEmpty()) {
-            item { CenteredMessage(stringResource(R.string.lists_empty), PaddingValues(top = 24.dp)) }
+            item { EmptyLists(onNewList = onNewList) }
         } else {
-            item { SectionHeader(stringResource(R.string.lists_header)) }
+            item {
+                SectionHeader(
+                    text = stringResource(R.string.lists_header),
+                    action = {
+                        IconButton(onClick = { reordering = !reordering }) {
+                            Icon(
+                                if (reordering) Icons.Rounded.Check else Icons.Rounded.SwapVert,
+                                contentDescription = stringResource(
+                                    if (reordering) R.string.lists_reorder_done else R.string.lists_reorder,
+                                ),
+                            )
+                        }
+                        ShapedActionButton(
+                            shape = ActionShapes.AddList,
+                            morphTo = ActionShapes.AddListPressed,
+                            icon = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.list_add),
+                            onClick = onNewList,
+                        )
+                    },
+                )
+            }
             state.groups.forEach { group ->
                 item(key = "acct-${group.accountName}") { AccountHeader(group.accountName) }
+                if (reordering) {
+                    item(key = "reorder-${group.accountName}") {
+                        ReorderableColumn(
+                            items = group.lists,
+                            keyOf = { it.list.id },
+                            onReorder = { ordered -> onReorder(ordered.map { it.list.id }) },
+                            rowHeight = 72.dp,
+                        ) { overview, position, dragHandle, isDragging ->
+                            GroupedRow(
+                                title = overview.list.name,
+                                position = position,
+                                minHeight = 72.dp,
+                                gapBelow = false,
+                                container = if (isDragging) MaterialTheme.colorScheme.secondaryContainer else null,
+                                leading = { ListColorChip(overview.list.color) },
+                                trailing = {
+                                    Box(modifier = dragHandle.size(48.dp), contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Rounded.DragHandle,
+                                            contentDescription = stringResource(R.string.lists_reorder_handle),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    return@forEach
+                }
                 itemsIndexed(group.lists, key = { _, o -> o.list.id }) { index, overview ->
                     GroupedRow(
                         title = overview.list.name,
@@ -239,6 +369,28 @@ private fun ListsContent(
                     )
                 }
             }
+        }
+    }
+}
+
+/** No lists at all — a fresh install, where nothing else on this screen works yet. */
+@Composable
+private fun EmptyLists(onNewList: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.lists_empty),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        FilledTonalButton(onClick = onNewList) {
+            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.lists_empty_action))
         }
     }
 }
@@ -398,14 +550,17 @@ private fun SearchPill(
 private fun SearchResults(
     query: String,
     allTasks: List<Task>,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (query.isBlank()) return
     val results = remember(query, allTasks) {
         val q = query.trim()
         allTasks
-            .filter { it.title.contains(q, ignoreCase = true) }
+            .filter { t -> listOfNotNull(t.title, t.description, t.location).any { it.contains(q, ignoreCase = true) } }
+            // A series matches once, on its current occurrence.
+            .sortedBy { kotlin.math.abs(it.distanceFromCurrent ?: 0) }
+            .distinctBy { it.seriesId ?: it.taskId }
             .sortedWith(compareBy({ it.isCompleted }, { it.title.lowercase() }))
     }
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surface) {
@@ -419,8 +574,8 @@ private fun SearchResults(
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(results, key = { it.id }) { task ->
-                    UpcomingRow(task = task, onClick = { onOpenTask(task.taskId) })
+                items(results, key = { it.occurrenceKey }) { task ->
+                    UpcomingRow(task = task, onClick = { onOpenTask(task) })
                 }
             }
         }
@@ -466,12 +621,12 @@ private fun TodayHero(done: Int, total: Int, onClick: () -> Unit) {
                 val headline = when {
                     total == 0 -> stringResource(R.string.home_today_empty)
                     left == 0 -> stringResource(R.string.home_today_all_done)
-                    else -> stringResource(R.string.home_today_progress, done, total)
+                    else -> pluralStringResource(R.plurals.home_today_progress_count, total, done, total)
                 }
                 Text(headline, style = MaterialTheme.typography.headlineSmall)
                 if (total > 0 && left > 0) {
                     Text(
-                        stringResource(R.string.home_today_remaining, left),
+                        pluralStringResource(R.plurals.home_today_remaining_count, left, left),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     )
@@ -485,7 +640,7 @@ private fun TodayHero(done: Int, total: Int, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
                     )
-                    Text("$done/$total", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.progress_fraction_compact, done, total), style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
@@ -514,7 +669,7 @@ private fun SmartPairRow(counts: List<SmartCount>, onOpenFilter: (TaskFilter) ->
 @Composable
 private fun UpcomingPreview(
     tasks: List<Task>,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
     onViewAll: () -> Unit,
 ) {
     Surface(
@@ -524,7 +679,7 @@ private fun UpcomingPreview(
     ) {
         Column {
             tasks.forEach { task ->
-                UpcomingRow(task = task, onClick = { onOpenTask(task.taskId) })
+                UpcomingRow(task = task, onClick = { onOpenTask(task) })
             }
             Surface(onClick = onViewAll, color = Color.Transparent, modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -605,7 +760,7 @@ private fun upcomingDueLabel(task: Task): String? {
     return when (dueDate) {
         today -> stringResource(R.string.home_due_today)
         today.plusDays(1) -> stringResource(R.string.home_due_tomorrow)
-        else -> due.formatDateTimeCompact(task.isAllDay)
+        else -> due.formatDateTimeCompact(task.isAllDay, LocalUse24HourFormat.current)
     }
 }
 
@@ -655,12 +810,25 @@ private fun SmartCard(count: SmartCount, modifier: Modifier = Modifier, onClick:
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 16.dp, bottom = 4.dp),
-    )
+private fun SectionHeader(text: String, action: (@Composable () -> Unit)? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 28.dp,
+                end = if (action == null) 28.dp else 20.dp,
+                top = if (action == null) 16.dp else 12.dp,
+                bottom = 4.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        action?.invoke()
+    }
 }
 
 @Composable

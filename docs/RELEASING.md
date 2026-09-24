@@ -1,8 +1,8 @@
 # Agendula — releasing
 
-Agendula is distributed through a **self-hosted F-Droid repo** (on Hetzner) and a
-**Codeberg release** per version carrying the signed APK as a direct download.
-Both are produced automatically by `.gitea/workflows/release.yaml` when a
+Agendula is distributed through a **self-hosted F-Droid repo** (on Hetzner), a
+**Codeberg release** per version carrying the signed APK as a direct download,
+and **Google Play**. All three are produced automatically by `.gitea/workflows/release.yaml` when a
 **bumped `versionName` reaches `main`** — the pipeline builds and publishes that
 version, then creates the matching `vX.Y.Z` tag and the releases itself. The
 parallel **Gitea release** is the changelog of record on the build instance and
@@ -42,19 +42,19 @@ re-running the workflow safely retries).
    that branch, before it reaches `main`.
 2. **Update `CHANGELOG.md`.** Move the `## [Unreleased]` items under a new
    `## [X.Y.Z]` heading (Keep a Changelog format). The text between that heading
-   and the next `## [` becomes both the Gitea release notes and the F-Droid
-   per-version "What's New". The heading **must** match the version exactly.
+   and the next `## [` becomes the Gitea and Codeberg release notes. The
+   heading **must** match the version exactly.
 3. **Bump the committed `versionName`** (and `versionCode`) in
    `app/build.gradle.kts`. **This bump is what triggers the release** when the
-   branch merges to `main`. Then run
-   ```sh
-   scripts/sync_changelog_to_fastlane.sh
-   ```
-   and commit the generated
-   `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt` — this is what
-   makes the **official** F-Droid listing (which harvests the changelog from the
-   tagged source tree) show this version. The self-hosted pipeline regenerates it
-   regardless, so forgetting only affects the official listing.
+   branch merges to `main`.
+   Then write this version's **"What's New"** by hand:
+   `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`, one per
+   shipped locale, each a short summary **under 500 characters** — F-Droid and
+   Play both publish these files, and Play rejects a longer one. It is not a
+   copy of the CHANGELOG.md section. `scripts/sync_changelog_to_fastlane.sh`
+   keeps a committed `en-US` file as it is and only generates one from
+   CHANGELOG.md when it is missing; CI fails a PR whose version has no
+   committed `en-US` changelog.
 4. **Verify the release build on a real device** — the mandatory gate:
    ```sh
    scripts/verify-release.sh
@@ -71,7 +71,8 @@ re-running the workflow safely retries).
    Only proceed once all of that passes on-device.
 5. **Merge `release/vX.Y.Z` into `main`.** That's it — no manual tagging. The
    merge triggers `release.yaml`, which detects the new version, builds, signs,
-   publishes to F-Droid, and creates the `vX.Y.Z` tag + Gitea release.
+   publishes to F-Droid, creates the `vX.Y.Z` tag + releases, and uploads the
+   App Bundle to Play.
 
 > The `releaseTest` build type exists only for step 4 — it is never published.
 > The pipeline always builds and signs the real `release` variant.
@@ -106,8 +107,13 @@ release work when a merge actually cuts a release:
   with the **repo key**, upload `repo/` + `metadata/`, then create the `vX.Y.Z`
   tag + Gitea release (CHANGELOG section as notes, flagged pre-release while
   `MAJOR` is 0), attach the R8 `mapping.txt`, and publish the release on
-  **Codeberg** with the signed APK + a SHA-256 checksum. Ordinary merges with no
-  version bump fall through `detect` and do nothing.
+  **Codeberg** with the signed APK + a SHA-256 checksum, and finally builds the
+  App Bundle. Ordinary merges with no version bump fall through `detect` and do
+  nothing.
+- **`play` job** (same workflow, after `release`) — uploads the App Bundle and
+  every locale's "What's New" to Google Play. Runs last and separately so a Play
+  rejection can't endanger a release that already shipped; skips cleanly until
+  Play is configured.
 
 ### Codeberg direct-download channel
 
@@ -122,6 +128,44 @@ but it is **not** `continue-on-error`: through 0.2.1–0.3.2 this step reported
 green while never once publishing, which is how a crash-fix release reached
 F-Droid but not the Codeberg/Obtainium users who needed it. A broken mirror
 fails the release loudly.
+
+### Google Play channel
+
+**Artifact.** Play gets an **App Bundle** (`bundleRelease`), never the APK. It is
+built from the same source and signing config at the very end of the `release`
+job, `continue-on-error`, and handed to the `play` job as a workflow artifact
+(via a commit-pinned fork of `upload-artifact`/`download-artifact`; the official
+v4 actions refuse any non-github.com forge). The APK and the F-Droid
+reproducibility guarantee are untouched.
+
+**Signature.** Play App Signing treats the app key as the **upload key** only
+and re-signs with Google's key. A Play install and an F-Droid/Codeberg install
+therefore have **different signatures** and cannot update each other; switching
+channels means uninstalling. Losing the app key is recoverable for Play (upload
+key reset) but not for F-Droid.
+
+**fastlane** is only the Play Developer API client (`supply`), never the build.
+The `deploy` lane uploads the bundle plus `changelogs/<versionCode>.txt` for
+every locale that has one. It never touches the listing; that is the `listing`
+lane's job (see [Store listings](#store-listings-single-source-of-truth)).
+
+**Track.** Uploads go straight to `production` at full rollout — the release
+branch review is already the gate. Set the `PLAY_TRACK` variable (e.g.
+`internal`) to stage, or `PLAY_RELEASE_STATUS=draft` to hold it unpublished.
+
+**First-time setup.**
+1. Create the app in the Play Console with **English (United States) – en-US**
+   as the default language, so Play and F-Droid fall back to the same locale.
+2. Upload the first AAB **by hand** — the API can't create an app's first
+   release. Enrol in Play App Signing on the way.
+3. Create a Google Cloud service account, grant it release permissions for the
+   app in the Play Console, and store its JSON key as
+   `PLAY_SERVICE_ACCOUNT_JSON`.
+4. Push the listing once with the `listing` lane (see
+   [Store listings](#store-listings-single-source-of-truth)), so every locale
+   that has a changelog also exists on Play before `deploy` sends its
+   "What's New".
+5. Rehearse with `PLAY_DRY_RUN=true`, then clear it.
 
 One-time setup: the Codeberg repo's **Releases** unit must be enabled and a
 `CODEBERG_RELEASE_TOKEN` secret (Codeberg access token, `write:repository` scope
@@ -196,6 +240,7 @@ user's pinned repo).
 | `HETZNER_HOST`, `HETZNER_USER`, `HETZNER_PASS` | Upload target for the F-Droid repo. |
 | `GITHUB_TOKEN` | Provided by Gitea Actions; used to create the release + attach assets. |
 | `CODEBERG_RELEASE_TOKEN` | Codeberg access token (`write:repository` scope) — pushes the tag to Codeberg, creates the release there and uploads the APK/checksum. If unset the step skips; if set and failing, the release fails. |
+| `PLAY_SERVICE_ACCOUNT_JSON` | Google Cloud service-account key (full JSON) with Play Console release access. Uploads the AAB. If unset, the `play` job skips cleanly. |
 | `RENOVATE_TOKEN` | Codeberg bot-account token — repo read/write + PR scope on `jlmakiola/agendula`. Used only by `renovate.yml`. |
 | `GITHUB_COM_TOKEN` | Read-only github.com PAT (no scopes). Without it Renovate's changelog lookups hit the 60/h anonymous rate limit and PRs arrive with empty release notes. |
 
@@ -204,21 +249,72 @@ users pin). Neither key nor `config.yml` is ever uploaded to the server — they
 live only in CI secrets and are reconstructed in-runner (nginx serves only
 `repo/`).
 
----
+### Variables (Gitea → repo Settings → Actions → Variables)
 
-## F-Droid metadata (single source of truth)
-
-Store-listing text lives in **`fastlane/metadata/android/<locale>/`** — the same
-tree the official F-Droid repo harvests from source. At release time
-`scripts/fastlane_to_fdroid_localized.sh` transforms it into the F-Droid repo's
-"localized" layout, so there is no second copy to maintain. The app-level control
-file (`Categories`/`License`/links) stays in
-`fdroid-metadata/de.jeanlucmakiola.agendula.yml`. Per-version changelogs are
-seeded into `fastlane/.../en-US/changelogs/<versionCode>.txt` by
-`scripts/sync_changelog_to_fastlane.sh` (step 3 above) and carried across by the
-transform.
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PLAY_TRACK` | `production` | Play track for the bundle; `internal`/`alpha`/`beta` to stage. |
+| `PLAY_RELEASE_STATUS` | `completed` | `completed`, `draft`, `inProgress` or `halted`. |
+| `PLAY_DRY_RUN` | `false` | `true` validates the Play edit and discards it. |
 
 ---
+
+## Store listings (single source of truth)
+
+Everything both stores show — title, short and full description, "What's New",
+icon, feature graphic, screenshots — lives in
+**`fastlane/metadata/android/<locale>/`**. Nothing is edited in the Play Console
+or kept in a second copy for F-Droid.
+
+```
+fastlane/metadata/android/
+  en-US/                      fallback of both stores; holds every graphic
+    title.txt                 ≤ 30 chars
+    short_description.txt     ≤ 80 chars
+    full_description.txt      ≤ 4000 chars
+    changelogs/<code>.txt     ≤ 500 chars
+    images/
+      icon.png                512×512, 32-bit PNG
+      featureGraphic.png      1024×500, no alpha
+      phoneScreenshots/       2–8, no alpha, 320–3840 px, long side ≤ 2× short
+      sevenInchScreenshots/   optional, same rules
+      tenInchScreenshots/     optional, same rules
+  en-GB/, de-DE/, pt-BR/, …   text only; one per shipped values-* language
+```
+
+`en-US` is the fallback for both stores: F-Droid always uses it, and it is the
+Play app's default language. So text and graphics committed there cover every
+locale without its own. Graphics are committed **once, under `en-US`**; add them
+to another locale only when they actually differ (e.g. localized screenshots).
+
+A raw phone capture (1080×2400, 20:9) breaks Play's 2:1 aspect cap. Frame or
+crop screenshots to at most 2:1, e.g. 1080×2160.
+
+**Validation.** `scripts/check_store_listing.py` checks the whole tree against
+Play's limits (the stricter of the two stores) and runs on every PR. Add
+`--complete` to also require what a live Play listing needs: icon, feature
+graphic, ≥ 2 phone screenshots and this version's `en-US` changelog.
+
+**F-Droid.** The official repo harvests the tree from the tagged source. The
+self-hosted repo gets it through `scripts/fastlane_to_fdroid_localized.sh` at
+release time. The app-level control file (`Categories`/`License`/links) stays in
+`fdroid-metadata/de.jeanlucmakiola.agendula.yml`.
+
+**Play.** `fastlane/Fastfile`'s `listing` lane pushes text and graphics
+(`supply`, only changed images are re-uploaded). It is run by hand, never by the
+release pipeline, because overwriting a live listing triggers a Play review:
+
+```sh
+bundle install
+SUPPLY_JSON_KEY=/path/to/play-service-account.json \
+  bundle exec fastlane listing dry_run:true   # validate, discard
+SUPPLY_JSON_KEY=/path/to/play-service-account.json \
+  bundle exec fastlane listing
+```
+
+The lane refuses to run unless `check_store_listing.py --complete` passes.
+If the Play app's default language is ever not `en-US`, set
+`PLAY_DEFAULT_LOCALE` and the lane copies the graphics into that locale.
 
 ## Crash deobfuscation
 

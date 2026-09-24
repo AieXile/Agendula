@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Since Android 7 a user who correctly installs their private CA into the
+    system store is *still* not trusted by apps — user CAs are excluded from the
+    default trust anchors. That breaks exactly the self-hosting audience this app
+    is for, so they are added back here.
+
+    Cleartext stays off. It has been the default since API 28, and CalDavDiscovery
+    refuses a typed http:// address for the same reason: credentials are never
+    sent over an unencrypted connection. Any escape hatch has to be a narrow,
+    warned, per-account opt-in — Play's User Data policy requires modern
+    cryptography in transit — and this file is not the place for it.
+
+    ⚠️ KNOWN TRADE-OFF, and it is the widest form of this. base-config applies to
+    *all* traffic, so any CA in the user store — a corporate MDM profile, a "free
+    VPN" app's certificate, one installed during some earlier debugging — can
+    transparently intercept the CalDAV connection and read the app password out
+    of the Authorization header. Without this file
+    a correctly installed private CA is simply not trusted, which is the
+    self-hosting case the app exists to serve.
+
+    The narrower posture is cert4android's: trust nothing extra by default, and
+    ask the user per connection via its bound service + notification. That is
+    what should replace this block rather than
+    sit alongside it.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

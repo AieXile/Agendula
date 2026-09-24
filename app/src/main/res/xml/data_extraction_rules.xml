@@ -1,8 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
+    <!--
+        See backup_rules.xml: the WAL sidecars travel with the database, and
+        naming any <include> makes everything else excluded by default — which is
+        what keeps the archived `tasks.db.imported` out without an <exclude> that
+        lint would reject.
+    -->
     <cloud-backup>
-        <!-- Allow DataStore backup, exclude nothing extra. -->
+        <include domain="database" path="agendula-tasks.db" />
+        <include domain="database" path="agendula-tasks.db-wal" />
+        <include domain="database" path="agendula-tasks.db-shm" />
+        <include domain="file" path="datastore/" />
+        <!-- See backup_rules.xml: a restored ciphertext is undecryptable. -->
+        <exclude domain="file" path="datastore/agendula_credentials.preferences_pb" />
+        <!--
+            Per-device sync bookkeeping: quarantine counters and the
+            full-reconciliation clock. Restored onto a new install every value
+            in it is a claim about a conversation this device never had — and a
+            restored "reconciled recently" makes the engine trust a stale sync
+            token for another day, which is the one RFC 6578 failure that has no
+            signal of its own.
+        -->
+        <exclude domain="file" path="datastore/agendula_sync_state.preferences_pb" />
     </cloud-backup>
     <device-transfer>
+        <include domain="database" path="agendula-tasks.db" />
+        <include domain="database" path="agendula-tasks.db-wal" />
+        <include domain="database" path="agendula-tasks.db-shm" />
+        <include domain="file" path="datastore/" />
+        <exclude domain="file" path="datastore/agendula_credentials.preferences_pb" />
+        <!--
+            Per-device sync bookkeeping: quarantine counters and the
+            full-reconciliation clock. Restored onto a new install every value
+            in it is a claim about a conversation this device never had — and a
+            restored "reconciled recently" makes the engine trust a stale sync
+            token for another day, which is the one RFC 6578 failure that has no
+            signal of its own.
+        -->
+        <exclude domain="file" path="datastore/agendula_sync_state.preferences_pb" />
     </device-transfer>
 </data-extraction-rules>

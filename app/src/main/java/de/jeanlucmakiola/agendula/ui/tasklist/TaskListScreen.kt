@@ -44,6 +44,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.Checkbox
@@ -55,12 +56,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.ui.res.pluralStringResource
+import de.jeanlucmakiola.agendula.domain.TaskSortOrder
+import de.jeanlucmakiola.floret.components.InlineTextField
+import de.jeanlucmakiola.floret.components.OptionPicker
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -86,7 +92,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.floret.time.DayWindow
@@ -96,7 +102,11 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
+import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
 import de.jeanlucmakiola.agendula.ui.common.priorityAccent
+import de.jeanlucmakiola.agendula.ui.lists.ListEditorSheet
+import de.jeanlucmakiola.agendula.ui.lists.listWriteFailureMessage
+import de.jeanlucmakiola.agendula.ui.lists.ListWriteFailure
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.SnackChip
 import de.jeanlucmakiola.floret.components.SnackChipHeight
@@ -117,7 +127,7 @@ import kotlin.time.Clock
 @Composable
 fun TaskListScreen(
     filter: TaskFilter,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
     onNewTask: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -126,28 +136,33 @@ fun TaskListScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val content = state as? TaskListUiState.Content
-    val listName = content?.listName
+    val list = content?.list
+    val listName = list?.name
     val listId = (filter as? TaskFilter.OfList)?.listId
+    // Editing is offered for a device-only list. A collection that belongs to an
+    // account is the server's to rename or remove, not ours.
+    var editingList by rememberSaveable { mutableStateOf(false) }
+    val listWriteFailure by viewModel.listWriteFailure.collectAsStateWithLifecycle()
+    val listDeleted by viewModel.listDeleted.collectAsStateWithLifecycle()
+    // The list this screen is about is gone; there is nothing left to show.
+    LaunchedEffect(listDeleted) { if (listDeleted) onBack() }
+    LaunchedEffect(listWriteFailure) {
+        if (listWriteFailure != null) {
+            delay(4_000)
+            viewModel.clearListWriteFailure()
+        }
+    }
     // One add affordance, never two: a real list with the setting on gets a pinned
     // bottom quick-add bar; everything else (incl. smart lists, which have no single
     // target list) gets the floating "New task" button.
     val showBottomAddBar = content?.bottomAddBar == true && listId != null
 
-    // Swipe-delete hides the row at once, then a floating "Deleted · Undo" chip
-    // gives an undo window: Undo restores it, otherwise the delete commits. A
-    // second delete while a chip is up commits the first (its window is over).
-    var undoTarget by remember { mutableStateOf<Task?>(null) }
-    val onRequestDelete: (Task) -> Unit = { task ->
-        undoTarget?.let { viewModel.commitDelete(it.taskId) }
-        viewModel.markPendingDelete(task)
-        undoTarget = task
-    }
-    LaunchedEffect(undoTarget) {
-        val target = undoTarget ?: return@LaunchedEffect
-        delay(4_000)
-        viewModel.commitDelete(target.taskId)
-        if (undoTarget?.taskId == target.taskId) undoTarget = null
-    }
+    // Swipe-delete and completing a task both leave a floating undo chip; the
+    // view model owns the window, so leaving the screen commits instead of losing it.
+    val undo by viewModel.undo.collectAsStateWithLifecycle()
+    val onRequestDelete: (Task) -> Unit = viewModel::requestDelete
+    var showSort by rememberSaveable { mutableStateOf(false) }
+    var confirmClear by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -160,6 +175,19 @@ fun TaskListScreen(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(R.string.back),
                         )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSort = true }, enabled = content != null) {
+                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort_title))
+                    }
+                    if (list != null && list.isLocal) {
+                        IconButton(onClick = { editingList = true }) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = stringResource(R.string.list_edit_title),
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -176,7 +204,7 @@ fun TaskListScreen(
         },
         bottomBar = {
             if (showBottomAddBar) {
-                listId?.let { id -> QuickAddBar(onAdd = { title -> viewModel.quickAdd(title, id) }) }
+                QuickAddBar(onAdd = { title -> viewModel.quickAdd(title, listId) })
             }
         },
     ) { inner ->
@@ -184,7 +212,10 @@ fun TaskListScreen(
             when (val s = state) {
                 TaskListUiState.Loading -> Unit // brief; avoids a flash before first emission
                 TaskListUiState.Failure -> CenteredMessage(stringResource(R.string.task_list_failure), inner)
-                is TaskListUiState.Content -> TaskListBody(s, filter, inner, onOpenTask, onRequestDelete, viewModel)
+                is TaskListUiState.Content -> TaskListBody(
+                    s, filter, inner, onOpenTask, onRequestDelete, viewModel,
+                    onClearCompleted = if (listId != null && list?.isReadOnly != true) ({ confirmClear = true }) else null,
+                )
             }
             // A FAB-height band anchored at the bottom-start with the FAB's own
             // margin; centring the chip in it lines the chip up beside the bottom-end
@@ -199,17 +230,73 @@ fun TaskListScreen(
                     .height(SnackChipHeight),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                SnackChip(
-                    visible = undoTarget != null,
-                    message = stringResource(R.string.task_deleted),
-                    actionLabel = stringResource(R.string.undo),
-                    onAction = {
-                        undoTarget?.let { viewModel.undoDelete(it.taskId) }
-                        undoTarget = null
-                    },
-                )
+                // One chip, one anchor: the undo receipt takes precedence, and a
+                // refused list write reports itself once the undo window is clear.
+                val failure = listWriteFailure
+                if (undo != null || failure == null) {
+                    SnackChip(
+                        visible = undo != null,
+                        message = stringResource(
+                            if (undo is UndoReceipt.Completed) R.string.task_completed else R.string.task_deleted,
+                        ),
+                        actionLabel = stringResource(R.string.undo),
+                        onAction = viewModel::undo,
+                    )
+                } else {
+                    SnackChip(
+                        visible = true,
+                        message = stringResource(listWriteFailureMessage(failure)),
+                    )
+                }
             }
         }
+    }
+
+    if (showSort && content != null) {
+        OptionPicker(
+            title = stringResource(R.string.sort_title),
+            options = TaskSortOrder.entries,
+            selected = content.sortOrder,
+            label = { stringResource(sortLabel(it)) },
+            onSelect = { viewModel.setSortOrder(it); showSort = false },
+            onDismiss = { showSort = false },
+        )
+    }
+
+    if (confirmClear && listId != null) {
+        val count = content?.tasks?.count { it.isCompleted } ?: 0
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.clear_completed_title)) },
+            text = { Text(pluralStringResource(R.plurals.clear_completed_body, count, count)) },
+            confirmButton = {
+                TextButton(onClick = { confirmClear = false; viewModel.clearCompleted(listId) }) {
+                    Text(stringResource(R.string.clear_completed_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.dialog_cancel)) }
+            },
+        )
+    }
+
+    if (editingList && list != null) {
+        ListEditorSheet(
+            initial = list,
+            onSave = { name, color, _ -> viewModel.updateList(list.id, name, color, list.accountId) },
+            onDismiss = { editingList = false },
+            hiddenFromSmartLists = content?.hiddenFromSmartLists ?: false,
+            onHiddenFromSmartListsChange = { viewModel.setHiddenFromSmartLists(list.id, it) },
+            // ⚠️ Absent for a read-only share, whose removal belongs to whoever
+            // owns it — and which the server would refuse anyway. Present for
+            // the account's own collections, where it now deletes on the server
+            // as well as here.
+            onDelete = if (list.isReadOnly) {
+                null
+            } else {
+                { viewModel.deleteList(list.id, list.accountId) }
+            },
+        )
     }
 }
 
@@ -219,9 +306,10 @@ private fun TaskListBody(
     state: TaskListUiState.Content,
     filter: TaskFilter,
     inner: PaddingValues,
-    onOpenTask: (Long) -> Unit,
+    onOpenTask: (Task) -> Unit,
     onRequestDelete: (Task) -> Unit,
     viewModel: TaskListViewModel,
+    onClearCompleted: (() -> Unit)? = null,
 ) {
     val (todayStart, todayEnd) = remember { DayWindow.today(Clock.System.now(), ZoneId.systemDefault()) }
     // A parent represents its children via a progress chip (counts come from the
@@ -288,6 +376,7 @@ private fun TaskListBody(
                             count = section.tasks.size,
                             expanded = completedExpanded,
                             onToggle = { completedExpanded = !completedExpanded },
+                            onClear = onClearCompleted,
                         )
                     } else {
                         SectionHeader(sectionLabel(section.section))
@@ -311,7 +400,9 @@ private fun TaskListBody(
                         val children = childrenOf(task)
                         val canExpand = task.subtaskTotal > 0
                         val isExpanded = canExpand && task.taskId in expandedParents
-                        val hasExpansionContent = children.isNotEmpty() || state.showAddSubtaskRow
+                        // No quick-add into a read-only share: it would never upload.
+                        val showAdd = state.showAddSubtaskRow && !task.isReadOnly
+                        val hasExpansionContent = children.isNotEmpty() || showAdd
                         // Top-level tasks keep their own connected run — full top
                         // only on the first, full bottom only on the last — so the
                         // task after an expanded one stays mid-run (small top). An
@@ -329,12 +420,12 @@ private fun TaskListBody(
                                 // Subtasks connect up to the parent (small top); with the
                                 // add row present every subtask is mid-run, otherwise the
                                 // last one closes the group (full bottom).
-                                val closesGroup = !state.showAddSubtaskRow && c == sorted.lastIndex
+                                val closesGroup = !showAdd && c == sorted.lastIndex
                                 add(RenderRow(ListRow.Sub(sub), cornerPosition(topFull = false, bottomFull = closesGroup)))
                             }
                             // The add row rounds the group off (full bottom),
                             // independent of whatever top-level task follows.
-                            if (state.showAddSubtaskRow) {
+                            if (showAdd) {
                                 add(RenderRow(ListRow.AddSub(task), cornerPosition(topFull = false, bottomFull = true)))
                             }
                         }
@@ -369,7 +460,7 @@ private fun TaskListBody(
                             },
                             onToggle = { viewModel.toggleComplete(row.task) },
                             onDelete = { onRequestDelete(row.task) },
-                            onClick = { onOpenTask(row.task.taskId) },
+                            onClick = { onOpenTask(row.task) },
                         )
                         is ListRow.Sub -> SubtaskRow(
                             modifier = rowModifier,
@@ -377,7 +468,8 @@ private fun TaskListBody(
                             position = r.position,
                             lastInRun = lastInRun,
                             onToggle = { viewModel.toggleComplete(row.task) },
-                            onClick = { onOpenTask(row.task.taskId) },
+                            onDelete = { onRequestDelete(row.task) },
+                            onClick = { onOpenTask(row.task) },
                         )
                         is ListRow.AddSub -> AddSubtaskRow(
                             modifier = rowModifier,
@@ -392,10 +484,13 @@ private fun TaskListBody(
     }
 }
 
-/** Inline "add a task" — title only, into the current list. */
+/**
+ * Inline "add a task" — title only, into the current list. Shared with the
+ * onboarding step that previews the bottom bar this sits in.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun InlineAdd(onAdd: (String) -> Unit, elevated: Boolean = false) {
+internal fun InlineAdd(onAdd: (String) -> Unit, elevated: Boolean = false) {
     var text by remember { mutableStateOf("") }
     fun submit() {
         if (text.isNotBlank()) {
@@ -423,29 +518,30 @@ private fun InlineAdd(onAdd: (String) -> Unit, elevated: Boolean = false) {
         shadowElevation = if (elevated) 8.dp else 0.dp,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        TextField(
-            value = text,
-            onValueChange = { text = it },
-            placeholder = { Text(stringResource(R.string.add_task_hint)) },
-            leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-            trailingIcon = {
-                if (text.isNotBlank()) {
-                    IconButton(onClick = ::submit) {
-                        Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_add_task))
-                    }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 16.dp, end = 4.dp),
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(12.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                InlineTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    placeholder = stringResource(R.string.add_task_hint),
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    imeAction = ImeAction.Done,
+                    onImeAction = ::submit,
+                )
+            }
+            if (text.isNotBlank()) {
+                IconButton(onClick = ::submit) {
+                    Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.cd_add_task))
                 }
-            },
-            singleLine = true,
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { submit() }),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
+            } else {
+                Spacer(Modifier.width(12.dp))
+            }
+        }
     }
 }
 
@@ -510,6 +606,8 @@ private fun TaskRow(
         // dismissDirection (not targetValue) tracks the live drag, so the colour +
         // icon reveal as you swipe rather than only once the threshold is crossed.
         backgroundContent = { SwipeBackground(dismissState.dismissDirection, task.isCompleted) },
+        // A read-only share takes neither swipe: both are writes the server refuses.
+        gesturesEnabled = !task.isReadOnly,
     ) {
         TaskRowContent(task, position, showListName, subtaskDone, subtaskTotal, expanded, onToggleExpand, onToggle, onClick)
     }
@@ -517,7 +615,7 @@ private fun TaskRow(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun TaskRowContent(
+internal fun TaskRowContent(
     task: Task,
     position: Position,
     showListName: Boolean,
@@ -533,11 +631,11 @@ private fun TaskRowContent(
     val full by animateDpAsState(if (pressed) 36.dp else 22.dp, label = "fullCorner")
     val small by animateDpAsState(if (pressed) 36.dp else 6.dp, label = "smallCorner")
     val dark = isSystemInDarkTheme()
-    val due = task.due?.formatDateTimeCompact(task.isAllDay)
+    val due = task.due?.formatDateTimeCompact(task.isAllDay, LocalUse24HourFormat.current)
     val listName = task.listName?.takeIf { showListName && it.isNotBlank() }
     // Everything secondary collapses into one quiet supporting line below the title.
     val hasMeta = task.priority != Priority.NONE || due != null || subtaskTotal > 0 ||
-        listName != null
+        listName != null || task.isOccurrence
 
     Surface(
         onClick = onClick,
@@ -563,7 +661,11 @@ private fun TaskRowContent(
                     .clip(RoundedCornerShape(3.dp))
                     .background(pastelize(task.effectiveColor, dark)),
             )
-            Checkbox(checked = task.isCompleted, onCheckedChange = { onToggle() })
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { onToggle() },
+                enabled = !task.isReadOnly,
+            )
             Spacer(Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -583,6 +685,7 @@ private fun TaskRowContent(
                     TaskMetaLine(
                         priority = task.priority,
                         due = due,
+                        recurring = task.isOccurrence,
                         subtaskDone = subtaskDone,
                         subtaskTotal = subtaskTotal,
                         listName = listName,
@@ -613,6 +716,7 @@ private fun TaskRowContent(
 private fun TaskMetaLine(
     priority: Priority,
     due: String?,
+    recurring: Boolean,
     subtaskDone: Int,
     subtaskTotal: Int,
     listName: String?,
@@ -638,7 +742,24 @@ private fun TaskMetaLine(
                 }
             }
         }
-        if (due != null) add { Text(due, style = style, color = muted) }
+        if (due != null || recurring) {
+            add {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    if (recurring) {
+                        Icon(
+                            Icons.Rounded.Repeat,
+                            contentDescription = stringResource(R.string.cd_repeats),
+                            tint = muted,
+                            modifier = Modifier.size(13.dp),
+                        )
+                    }
+                    if (due != null) Text(due, style = style, color = muted)
+                }
+            }
+        }
         if (subtaskTotal > 0) {
             add {
                 Row(
@@ -651,7 +772,7 @@ private fun TaskMetaLine(
                         tint = muted,
                         modifier = Modifier.size(13.dp),
                     )
-                    Text("$subtaskDone / $subtaskTotal", style = style, color = muted)
+                    Text(stringResource(R.string.subtask_progress, subtaskDone, subtaskTotal), style = style, color = muted)
                 }
             }
         }
@@ -773,20 +894,20 @@ private fun SubtaskExpandButton(expanded: Boolean, onToggle: () -> Unit) {
 
 /** A visual row in a flattened section run: a top-level task, or one of its subtasks. */
 private sealed interface ListRow {
-    val key: Long
+    val key: String
 
     data class Parent(val task: Task, val expandable: Boolean, val expanded: Boolean) : ListRow {
-        override val key: Long get() = task.taskId
+        override val key: String get() = task.occurrenceKey
     }
 
     data class Sub(val task: Task) : ListRow {
-        override val key: Long get() = task.taskId
+        override val key: String get() = task.occurrenceKey
     }
 
     /** The inline "add a subtask" row that closes an expanded group. */
     data class AddSub(val parent: Task) : ListRow {
-        // Negative so it never collides with a real (positive) provider task id.
-        override val key: Long get() = -parent.taskId
+        // Prefixed so it never collides with the task row it belongs to.
+        override val key: String get() = "add-${parent.occurrenceKey}"
     }
 }
 
@@ -819,14 +940,29 @@ private fun SubtaskRow(
     position: Position,
     lastInRun: Boolean,
     onToggle: () -> Unit,
+    onDelete: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> { onToggle(); false }
+                SwipeToDismissBoxValue.EndToStart -> { onDelete(); false }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        },
+    )
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val full by animateDpAsState(if (pressed) 36.dp else 22.dp, label = "subFullCorner")
     val small by animateDpAsState(if (pressed) 36.dp else 6.dp, label = "subSmallCorner")
     val gap = if (lastInRun) Modifier else Modifier.padding(bottom = 2.dp)
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        backgroundContent = { SwipeBackground(dismissState.dismissDirection, task.isCompleted) },
+    ) {
     Surface(
         onClick = onClick,
         shape = cardShape(position, full, small),
@@ -834,7 +970,7 @@ private fun SubtaskRow(
         // reads as a distinct, recessive tone — the nesting cue alongside shape.
         color = MaterialTheme.colorScheme.surfaceContainer,
         interactionSource = interaction,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
@@ -847,7 +983,11 @@ private fun SubtaskRow(
             // as a subtask. Reserve the bar's 5dp so the checkbox still lines up
             // with the parent rows' checkboxes rather than indenting.
             Spacer(Modifier.width(5.dp))
-            Checkbox(checked = task.isCompleted, onCheckedChange = { onToggle() })
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { onToggle() },
+                enabled = !task.isReadOnly,
+            )
             Spacer(Modifier.width(4.dp))
             Text(
                 text = task.title.ifBlank { stringResource(R.string.task_untitled) },
@@ -863,6 +1003,7 @@ private fun SubtaskRow(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
     }
 }
 
@@ -929,6 +1070,7 @@ private fun CollapsibleSectionHeader(
     count: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onClear: (() -> Unit)? = null,
 ) {
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
     Surface(
@@ -952,6 +1094,9 @@ private fun CollapsibleSectionHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
             )
+            if (onClear != null) {
+                TextButton(onClick = onClear) { Text(stringResource(R.string.clear_completed_action)) }
+            }
             Icon(
                 imageVector = Icons.Rounded.ExpandMore,
                 contentDescription = null,
@@ -1035,3 +1180,10 @@ internal fun priorityLabel(priority: Priority): String = stringResource(
         Priority.HIGH -> R.string.priority_high
     },
 )
+
+private fun sortLabel(order: TaskSortOrder): Int = when (order) {
+    TaskSortOrder.DUE -> R.string.sort_due
+    TaskSortOrder.PRIORITY -> R.string.sort_priority
+    TaskSortOrder.TITLE -> R.string.sort_title_alpha
+    TaskSortOrder.CREATED -> R.string.sort_created
+}

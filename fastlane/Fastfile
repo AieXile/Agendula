@@ -1,0 +1,75 @@
+# Google Play: release upload and listing sync.
+#
+# fastlane/metadata/android is the single source for both stores: the official
+# F-Droid repo harvests it from the tagged tree, the self-hosted repo gets it
+# through scripts/fastlane_to_fdroid_localized.sh, and this pushes it to Play.
+# Building and signing stay with Gradle so the release build remains
+# F-Droid-reproducible.
+
+require "fileutils"
+require "tmpdir"
+
+default_platform(:android)
+
+ROOT = File.expand_path("..", __dir__)
+METADATA = File.join(ROOT, "fastlane/metadata/android")
+
+# Graphics are committed once, under en-US (F-Droid's fallback). Play falls back
+# to its *default language*, en-US for this app; if that ever differs
+# (PLAY_DEFAULT_LOCALE), the listing lane copies the graphics across.
+IMAGE_LOCALE = "en-US"
+
+platform :android do
+  desc "Upload an already-built, already-signed AAB to Play"
+  lane :deploy do |options|
+    aab = File.expand_path(options[:aab] || "app/build/outputs/bundle/release/app-release.aab", ROOT)
+    UI.user_error!("AAB not found at #{aab}") unless File.exist?(aab)
+
+    supply(
+      aab: aab,
+      metadata_path: METADATA,
+      track: options[:track] || "production",
+      release_status: options[:release_status] || "completed",
+      # The APK belongs to F-Droid and the Codeberg download.
+      skip_upload_apk: true,
+      # The listing goes through the `listing` lane, deliberately; overwriting
+      # a live listing by accident triggers a Play review.
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      # "What's New" tracks every release, from every locale's
+      # changelogs/<versionCode>.txt — the same files F-Droid shows.
+      skip_upload_changelogs: false,
+      validate_only: options[:dry_run].to_s == "true",
+    )
+  end
+
+  desc "Push listing text and graphics from the repo to Play"
+  desc "  dry_run:true  validate against the API and discard the edit"
+  lane :listing do |options|
+    sh("python3", File.join(ROOT, "scripts/check_store_listing.py"), "--complete")
+
+    default_locale = ENV["PLAY_DEFAULT_LOCALE"] || IMAGE_LOCALE
+
+    Dir.mktmpdir("play-listing") do |staged|
+      FileUtils.cp_r("#{METADATA}/.", staged)
+      src = File.join(staged, IMAGE_LOCALE, "images")
+      dst = File.join(staged, default_locale, "images")
+      FileUtils.cp_r(src, dst) if default_locale != IMAGE_LOCALE && !File.exist?(dst)
+
+      supply(
+        metadata_path: staged,
+        skip_upload_aab: true,
+        skip_upload_apk: true,
+        skip_upload_metadata: false,
+        # "What's New" belongs to a release on a track, not to the listing.
+        skip_upload_changelogs: true,
+        skip_upload_images: false,
+        skip_upload_screenshots: false,
+        # Only re-upload graphics whose content changed.
+        sync_image_upload: true,
+        validate_only: options[:dry_run].to_s == "true",
+      )
+    end
+  end
+end

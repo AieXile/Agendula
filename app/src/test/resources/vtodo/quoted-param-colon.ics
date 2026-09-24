@@ -1,0 +1,11 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//SOGo//EN
+BEGIN:VTODO
+UID:quoted-param-001
+DTSTAMP:20260901T120000Z
+SUMMARY:Review with the team
+ATTENDEE;CN="Smith, J:r";PARTSTAT=NEEDS-ACTION:mailto:jr@example.com
+ORGANIZER;CN=Alice:mailto:alice@example.com
+END:VTODO
+END:VCALENDAR

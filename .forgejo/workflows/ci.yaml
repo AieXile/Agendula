@@ -37,6 +37,29 @@ jobs:
       - name: Reproducible-release invariant
         run: bash scripts/check_reproducible_release.sh
 
+      # Also cheap, also always-on. Two failures in one: the script exits
+      # non-zero if this version's changelog is over the 500-character limit,
+      # and the porcelain check below catches a version with no committed
+      # changelog, which would otherwise ship the CHANGELOG.md section instead
+      # of a hand-written summary.
+      - name: Changelog fits the stores, and is committed
+        run: |
+          set -e
+          bash scripts/sync_changelog_to_fastlane.sh
+          DIRTY=$(git status --porcelain fastlane/metadata/android/en-US/changelogs)
+          if [ -n "$DIRTY" ]; then
+            echo "$DIRTY"
+            echo "ERROR: no committed What's New for this version." >&2
+            echo "Write fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt" >&2
+            echo "(under 500 chars, every shipped locale) and commit it." >&2
+            exit 1
+          fi
+
+      # The fastlane tree feeds F-Droid and Play alike; Play rejects oversized
+      # text and off-spec graphics at upload time, so catch that on the PR.
+      - name: Store listing fits both stores
+        run: python3 scripts/check_store_listing.py
+
       # Decide whether anything that affects the app build changed. Docs, store
       # metadata, licence texts and forge housekeeping don't, so those PRs skip
       # the SDK + Gradle work below but still report a green `ci`.
@@ -47,7 +70,7 @@ jobs:
           # about defaults to building. Only paths the Gradle build provably
           # never reads belong here — note that the workflows themselves, the
           # `.gitmodules` submodule pointer and `scripts/` are *not* in it.
-          SKIP_RE: '(\.md$|^docs/|^fastlane/|^fdroid-metadata/|^design/|^\.(forgejo|gitea)/ISSUE_TEMPLATE/|^\.editorconfig$|^\.gitattributes$|^\.gitignore$|^LICENSE$)'
+          SKIP_RE: '(\.md$|^docs/|^fastlane/|^fdroid-metadata/|^Gemfile$|^design/|^\.(forgejo|gitea)/ISSUE_TEMPLATE/|^\.editorconfig$|^\.gitattributes$|^\.gitignore$|^LICENSE$)'
         run: |
           set -e
           BASE="${{ github.base_ref }}"
@@ -141,9 +164,12 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: ./gradlew lintDebug
 
+      # :dav is a plain JVM module, so it has no testDebugUnitTest — naming only
+      # that task would compile the vendored suite and run none of it, which is
+      # the whole safety argument in dav/PROVENANCE.md.
       - name: Unit tests
         if: steps.scope.outputs.code == 'true'
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testDebugUnitTest :dav:test :caldav:test
 
       - name: Assemble debug APK
         if: steps.scope.outputs.code == 'true'

@@ -1,18 +1,29 @@
 package de.jeanlucmakiola.agendula
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.work.Configuration
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
+import de.jeanlucmakiola.agendula.data.di.ApplicationScope
+import de.jeanlucmakiola.agendula.data.reminders.ReminderMaintenanceWorker
 import de.jeanlucmakiola.agendula.data.reminders.ReminderScheduler
+import de.jeanlucmakiola.agendula.data.reminders.TaskNotifier
+import de.jeanlucmakiola.agendula.data.sync.SyncNoticeNotifier
+import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
+import de.jeanlucmakiola.agendula.data.tasks.StartupGate
+import de.jeanlucmakiola.agendula.data.tasks.room.DatabaseCheckpoint
+import de.jeanlucmakiola.agendula.widget.TaskWidgetUpdater
 import de.jeanlucmakiola.floret.crash.CrashConfig
 import de.jeanlucmakiola.floret.crash.CrashReporter
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.inject.Inject
 
 /**
  * Application entry point. Registered as android:name=".AgendulaApp". Besides
@@ -20,7 +31,20 @@ import kotlinx.coroutines.launch
  * so alarms reflect tasks synced while the app was closed.
  */
 @HiltAndroidApp
-class AgendulaApp : Application() {
+class AgendulaApp : Application(), Configuration.Provider {
+
+    /**
+     * Lets `@HiltWorker` workers take injected dependencies. The manifest removes
+     * WorkManager's default initializer so this one is used instead; without both
+     * halves, a worker with a constructor argument fails to instantiate at
+     * runtime rather than at build time.
+     */
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()
@@ -32,20 +56,71 @@ class AgendulaApp : Application() {
                 appLabel = getString(R.string.app_name),
                 newIssueUrl = getString(R.string.report_issue_url),
                 chooseIssueUrl = getString(R.string.report_issue_url),
-                issueTitle = getString(R.string.crash_report_issue_title),
             ),
         )
-        val scheduler = EntryPointAccessors
-            .fromApplication(this, ReminderEntryPoint::class.java)
-            .reminderScheduler()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            runCatching { scheduler.sync() }
+        val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
+        val scheduler = entryPoint.reminderScheduler()
+        // Mirror the stored storage mode into ProviderResolver and import a
+        // v0.3.x install's tasks, both before anything reads a store.
+        val startupGate = entryPoint.startupGate()
+        val scope = entryPoint.applicationScope()
+        // An alarm is armed off whichever store was active when it was scheduled,
+        // so a switch has to rebuild the set. Armed only once startup's own
+        // null -> stored transition is past, which the launch sync below covers.
+        val started = AtomicBoolean(false)
+        entryPoint.providerResolver().onModeChanged {
+            if (started.get()) {
+                scope.launch { runCatching { scheduler.sync() } }
+                runCatching { entryPoint.taskNotifier().refreshChannel() }
+            }
+        }
+        startupGate.start()
+        refreshNotificationChannels()
+        ProcessLifecycleOwner.get().lifecycle.addObserver(entryPoint.databaseCheckpoint())
+        scope.launch {
+            // Wait for the stored mode and the import to land first. Rescheduling
+            // alarms against whichever store autoMode happens to pick would arm
+            // them off the wrong one — or off an empty one, mid-import.
+            runCatching {
+                startupGate.awaitReady()
+                started.set(true)
+                scheduler.sync()
+            }
+            runCatching { entryPoint.taskWidgetUpdater().start() }
+            runCatching { ReminderMaintenanceWorker.schedule(this@AgendulaApp) }
         }
     }
 
-    @EntryPoint
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshNotificationChannels()
+        // Language or dark mode changed: the widget's strings and list colours follow.
+        runCatching {
+            EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java).taskWidgetUpdater().requestRefresh()
+        }
+    }
+
+    /** Channel names are stored by the system in whatever language created them. */
+    private fun refreshNotificationChannels() {
+        val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
+        runCatching {
+            entryPoint.taskNotifier().refreshChannel()
+            entryPoint.syncNoticeNotifier().refreshChannel()
+        }
+    }
+
+        @EntryPoint
     @InstallIn(SingletonComponent::class)
-    interface ReminderEntryPoint {
+    interface AppEntryPoint {
         fun reminderScheduler(): ReminderScheduler
+        fun startupGate(): StartupGate
+        fun providerResolver(): ProviderResolver
+
+        @ApplicationScope
+        fun applicationScope(): CoroutineScope
+        fun databaseCheckpoint(): DatabaseCheckpoint
+        fun taskNotifier(): TaskNotifier
+        fun syncNoticeNotifier(): SyncNoticeNotifier
+        fun taskWidgetUpdater(): TaskWidgetUpdater
     }
 }

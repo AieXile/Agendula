@@ -26,4 +26,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Agendula"
 include(":app")
+include(":dav")
+include(":caldav")
 includeBuild("floret-kit")

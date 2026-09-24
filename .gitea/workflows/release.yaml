@@ -1,4 +1,4 @@
-name: Release — F-Droid repo + Gitea/Codeberg release
+name: Release — F-Droid repo + Gitea/Codeberg release + Play
 
 # A release is cut by merging a release branch into main with a bumped
 # versionName (see docs/RELEASING.md). This workflow reads that versionName and,
@@ -8,6 +8,11 @@ name: Release — F-Droid repo + Gitea/Codeberg release
 # direct-download channel — the tag is an output of the pipeline, not its
 # trigger. Ordinary merges (no version bump) fall through `detect` and do
 # nothing.
+#
+# A trailing `play` job then uploads the App Bundle to Google Play. It is last
+# and separate because Play can reject a good build for reasons the pipeline
+# can't see, and that must not endanger a release which already shipped to
+# F-Droid and Codeberg. It skips cleanly until PLAY_SERVICE_ACCOUNT_JSON exists.
 #
 # This file lives in .gitea/workflows on purpose: Codeberg is canonical for git,
 # issues, PRs and releases, but every secret (app key, F-Droid repo key, Hetzner
@@ -109,6 +114,16 @@ jobs:
               exit 1
               ;;
           esac
+
+      # Before a single Gradle task runs: F-Droid truncates the in-client
+      # changelog, so an over-long one would reach users cut off mid-sentence.
+      # The script exits non-zero past the limit. Cheap enough to sit in the
+      # gate job, where failing costs nothing and publishes nothing — the step
+      # further down that regenerates the file for the repo would otherwise be
+      # the first thing to notice, after the build and the signing.
+      - name: Changelog fits the stores
+        if: steps.v.outputs.is_release == 'true'
+        run: bash scripts/sync_changelog_to_fastlane.sh
 
   # Releases: build + sign + publish, then mint the tag and Gitea release.
   # Also runs on manual dispatch, where it skips the build and just re-signs and
@@ -501,3 +516,136 @@ jobs:
               "$API/releases/$ID/assets?name=$A" -o /dev/null -w "asset $A HTTP %{http_code}\n"
           done
           echo "Published $TAG to Codeberg."
+
+      # Play takes an App Bundle, not the APK: a second artifact from the same
+      # source and signing config. Play treats the release key only as the
+      # upload key and re-signs with its own (Play App Signing), so Play and
+      # F-Droid installs carry different signatures and can't update each other.
+      #
+      # Built last and continue-on-error: everything above has already shipped,
+      # and nothing Play-related may take it down. The AAB never touches the
+      # F-Droid repo or the releases. AGP embeds the R8 mapping in the bundle,
+      # so Play gets deobfuscated stacktraces without a separate upload.
+      - name: Build release AAB
+        if: env.IS_RELEASE == 'true'
+        continue-on-error: true
+        run: ./gradlew bundleRelease
+
+      # NOT actions/upload-artifact@v4: its client refuses any non-github.com
+      # server as unsupported GHES (go-gitea/gitea#36024). This fork drops that
+      # check. Pinned to a commit — a third-party action in the signing
+      # pipeline must not change under us.
+      - name: Hand the AAB to the Play job
+        if: env.IS_RELEASE == 'true'
+        continue-on-error: true
+        uses: https://github.com/ChristopherHX/gitea-upload-artifact@81f940d004763f986ba3582c007fd842dd5cb0d7 # v4
+        with:
+          name: release-aab-${{ needs.detect.outputs.version }}
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  # Google Play channel. A separate job after the F-Droid publish and both forge
+  # releases, so a Play rejection (policy review, API outage, listing rules)
+  # shows up as one red job next to a release that already shipped.
+  #
+  # Not a `container:` job: act_runner provides no node inside custom job
+  # containers, so JavaScript actions (checkout, download-artifact) can't run.
+  play:
+    needs: [detect, release]
+    # workflow_dispatch is the F-Droid re-sign recovery path; never touch Play.
+    if: needs.detect.outputs.is_release == 'true'
+    runs-on: docker
+    env:
+      VERSION: ${{ needs.detect.outputs.version }}
+      VERSION_CODE: ${{ needs.detect.outputs.version_code }}
+      # The release itself is the gate (a bumped versionName only reaches main
+      # after on-device review), so it goes straight to production. Override
+      # with repo variables to stage instead.
+      PLAY_TRACK: ${{ vars.PLAY_TRACK || 'production' }}
+      PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+      # true validates the edit against the API and discards it.
+      PLAY_DRY_RUN: ${{ vars.PLAY_DRY_RUN || 'false' }}
+      BUNDLE_PATH: vendor/bundle
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Skip cleanly when Play isn't configured yet, same contract as the
+      # Codeberg publish.
+      - name: Write the Play service-account key
+        id: key
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLAY_SERVICE_ACCOUNT_JSON:-}" ]; then
+            echo "PLAY_SERVICE_ACCOUNT_JSON not set — skipping the Play upload."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > play-service-account.json
+          python3 -c "import json,sys; d=json.load(open('play-service-account.json')); sys.exit(0 if d.get('type')=='service_account' else 1)" \
+            || { echo "PLAY_SERVICE_ACCOUNT_JSON is not a valid service-account JSON." >&2; exit 1; }
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      # Same GHES-detection fix as the upload side.
+      - name: Download the AAB
+        if: steps.key.outputs.configured == 'true'
+        uses: https://github.com/ChristopherHX/gitea-download-artifact@75635f32b4c1c41c4b3d64e8f85210112ed4c9c7 # v4
+        with:
+          name: release-aab-${{ needs.detect.outputs.version }}
+          path: dist
+
+      - name: Install Ruby
+        if: steps.key.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          SUDO=""
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+          $SUDO apt-get update
+          # Several fastlane dependencies build native extensions.
+          $SUDO apt-get install -y ruby-full ruby-dev build-essential
+          ruby -v
+
+      - name: Cache bundled gems
+        if: steps.key.outputs.configured == 'true'
+        uses: actions/cache@v4
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('Gemfile') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install fastlane
+        if: steps.key.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          gem install bundler --no-document
+          bundle config set --local path vendor/bundle
+          bundle install --jobs 4
+          bundle exec fastlane --version
+
+      - name: Upload to Play
+        if: steps.key.outputs.configured == 'true'
+        env:
+          SUPPLY_JSON_KEY: play-service-account.json
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_HIDE_CHANGELOG: '1'
+        run: |
+          set -euo pipefail
+          # Absolute: a lane body runs from fastlane/, not the workspace root.
+          AAB="$GITHUB_WORKSPACE/dist/app-release.aab"
+          test -f "$AAB" || { echo "No AAB at $AAB — the artifact handoff failed." >&2; ls -la dist || true; exit 1; }
+          bundle exec fastlane deploy \
+            aab:"$AAB" \
+            track:"$PLAY_TRACK" \
+            release_status:"$PLAY_RELEASE_STATUS" \
+            dry_run:"$PLAY_DRY_RUN"
+          echo "Uploaded $VERSION (code $VERSION_CODE) to the '$PLAY_TRACK' track."
+
+      # The workspace is reused on a self-hosted runner; the key must not
+      # outlive the job.
+      - name: Shred the service-account key
+        if: always()
+        run: shred -u play-service-account.json 2>/dev/null || rm -f play-service-account.json

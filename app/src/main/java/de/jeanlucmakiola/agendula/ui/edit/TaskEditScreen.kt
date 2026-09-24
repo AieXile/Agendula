@@ -1,5 +1,30 @@
 package de.jeanlucmakiola.agendula.ui.edit
 
+import de.jeanlucmakiola.agendula.ui.common.LocalFirstDayOfWeek
+import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import de.jeanlucmakiola.agendula.ui.common.RecurringScopeDialog
+import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
+import de.jeanlucmakiola.agendula.ui.common.icon
+import de.jeanlucmakiola.agendula.ui.common.labelRes
+import de.jeanlucmakiola.agendula.ui.common.recurrenceText
+import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.floret.components.FullScreenPicker
+import de.jeanlucmakiola.floret.components.GroupedListInset
+import de.jeanlucmakiola.floret.components.GroupedSectionHeader
+import de.jeanlucmakiola.floret.components.GroupedSurface
+import de.jeanlucmakiola.floret.components.Position
+import de.jeanlucmakiola.floret.components.SelectedCheck
+import de.jeanlucmakiola.floret.locale.currentLocale
+import de.jeanlucmakiola.floret.reminders.ReminderOverride
+import kotlinx.datetime.toKotlinDayOfWeek
+import kotlinx.datetime.toKotlinLocalDate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,10 +40,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -44,8 +65,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -59,14 +78,14 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -78,7 +97,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.floret.time.DayWindow
@@ -92,20 +111,19 @@ import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.OptionalFormSection
 import de.jeanlucmakiola.floret.components.InlineTextField
-import de.jeanlucmakiola.floret.components.OptionCard
 import de.jeanlucmakiola.agendula.ui.common.priorityFill
 import de.jeanlucmakiola.floret.time.formatDate
 import de.jeanlucmakiola.floret.time.formatTime
 import de.jeanlucmakiola.agendula.ui.common.localToInstant
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.components.positionOf
-import de.jeanlucmakiola.agendula.ui.common.toLocalDate
+import de.jeanlucmakiola.agendula.domain.allDayInstantOf
+import de.jeanlucmakiola.agendula.domain.calendarDate
 import de.jeanlucmakiola.agendula.ui.common.toLocalTime
 import de.jeanlucmakiola.agendula.ui.tasklist.priorityLabel
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
-import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -127,8 +145,13 @@ fun TaskEditScreen(
     viewModel: TaskEditViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showDiscard by rememberSaveable { mutableStateOf(false) }
+    var showScope by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state.saved) { if (state.saved) onSaved() }
+
+    val requestBack = { if (state.isDirty && !state.saved) showDiscard = true else onBack() }
+    BackHandler(enabled = state.isDirty && !state.saved) { showDiscard = true }
 
     Scaffold(
         modifier = modifier,
@@ -136,13 +159,13 @@ fun TaskEditScreen(
             TopAppBar(
                 title = {},
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = requestBack) {
                         Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.close))
                     }
                 },
                 actions = {
                     Button(
-                        onClick = viewModel::save,
+                        onClick = { if (viewModel.needsScope()) showScope = true else viewModel.save() },
                         enabled = !state.loading,
                         modifier = Modifier.padding(end = 12.dp),
                     ) { Text(stringResource(R.string.save)) }
@@ -158,6 +181,34 @@ fun TaskEditScreen(
             state = state,
             viewModel = viewModel,
             modifier = Modifier.padding(inner),
+        )
+    }
+
+    if (showDiscard) {
+        AlertDialog(
+            onDismissRequest = { showDiscard = false },
+            title = { Text(stringResource(R.string.edit_discard_title)) },
+            text = { Text(stringResource(R.string.edit_discard_body)) },
+            confirmButton = {
+                TextButton(onClick = { showDiscard = false; onBack() }) {
+                    Text(stringResource(R.string.edit_discard_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscard = false }) { Text(stringResource(R.string.edit_keep_editing)) }
+            },
+        )
+    }
+
+    if (showScope) {
+        RecurringScopeDialog(
+            title = stringResource(R.string.edit_scope_title),
+            allowOccurrence = !state.recurrenceChanged,
+            onSelect = { scope ->
+                showScope = false
+                viewModel.save(scope = scope)
+            },
+            onDismiss = { showScope = false },
         )
     }
 }
@@ -178,11 +229,21 @@ private fun EditContent(
     val accent = selectedList?.let { pastelize(it.color, dark) } ?: MaterialTheme.colorScheme.primary
     val gap = 12.dp
 
-    var pickerTarget by remember { mutableStateOf<PickerTarget?>(null) }
+    var pickerTarget by rememberSaveable { mutableStateOf<PickerTarget?>(null) }
     var showListPicker by rememberSaveable { mutableStateOf(false) }
     var showParentPicker by rememberSaveable { mutableStateOf(false) }
     var showReminderPicker by rememberSaveable { mutableStateOf(false) }
     var showFieldPicker by rememberSaveable { mutableStateOf(false) }
+    var showRecurrencePicker by rememberSaveable { mutableStateOf(false) }
+
+    // A fresh, still-empty form takes the cursor once; an edit or a prefilled
+    // title never grabs focus.
+    val titleFocus = remember { FocusRequester() }
+    LaunchedEffect(state.loading) {
+        if (!state.loading && state.autofocusTitle && state.isNew && state.title.isBlank()) {
+            runCatching { titleFocus.requestFocus() }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -198,6 +259,7 @@ private fun EditContent(
             onValueChange = viewModel::onTitleChange,
             placeholder = stringResource(R.string.edit_title_hint),
             textStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+            modifier = Modifier.focusRequester(titleFocus),
         )
         Spacer(Modifier.height(10.dp))
         Box(
@@ -258,7 +320,7 @@ private fun EditContent(
             icon = Icons.Rounded.Checklist,
             iconContentDescription = stringResource(R.string.edit_list_label),
             iconTint = accent,
-            onClick = { showListPicker = true }.takeIf { state.lists.isNotEmpty() },
+            onClick = { showListPicker = true }.takeIf { state.writableLists.isNotEmpty() },
         ) {
             Text(
                 text = selectedList?.name ?: stringResource(R.string.error_no_list),
@@ -290,6 +352,40 @@ private fun EditContent(
                     singleLine = false,
                     minLines = 3,
                 )
+            }
+        }
+
+        OptionalFormSection(visible = TaskFormField.Recurrence in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            val locale = currentLocale()
+            EditCard(
+                icon = Icons.Rounded.Repeat,
+                iconContentDescription = null,
+                onClick = { showRecurrencePicker = true },
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = state.rrule?.let { recurrenceText(it, locale) }
+                                ?: AnnotatedString(stringResource(R.string.edit_recurrence_none)),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.edit_recurrence_label),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (TaskFormError.RECURRENCE_WITHOUT_DATE in state.errors) {
+                    Spacer(Modifier.height(2.dp))
+                    FieldError(R.string.error_recurrence_without_date)
+                }
             }
         }
 
@@ -424,33 +520,55 @@ private fun EditContent(
 
         OptionalFormSection(visible = TaskFormField.Reminder in state.visibleFields) {
             Spacer(Modifier.height(gap))
-            EditCard(
-                icon = Icons.Rounded.Notifications,
-                iconContentDescription = null,
+            // One card per reminder, connected, the last row adding another.
+            val rows = state.reminders.size + 1
+            state.reminders.forEachIndexed { index, minutes ->
+                ReminderItemCard(
+                    position = positionOf(index, rows),
+                    title = reminderLeadTimeLabel(minutes, state.isAllDay),
+                    onRemove = { viewModel.removeReminder(minutes) },
+                )
+            }
+            AddReminderCard(
+                position = positionOf(state.reminders.size, rows),
+                label = stringResource(
+                    if (state.reminders.isEmpty()) R.string.edit_reminder_add_first else R.string.edit_reminder_add,
+                ),
                 onClick = { showReminderPicker = true },
+            )
+            if (TaskFormError.REMINDER_WITHOUT_DUE in state.errors) {
+                Spacer(Modifier.height(4.dp))
+                FieldError(R.string.error_reminder_without_due)
+            }
+        }
+
+        OptionalFormSection(visible = TaskFormField.Location in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            EditCard(
+                icon = Icons.Rounded.LocationOn,
+                iconContentDescription = stringResource(R.string.edit_location_label),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(reminderOptionFor(state.reminderMinutesBeforeDue).labelRes),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        Text(
-                            text = stringResource(R.string.edit_reminder_label),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowDropDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (TaskFormError.REMINDER_WITHOUT_DUE in state.errors) {
-                    Spacer(Modifier.height(2.dp))
-                    FieldError(R.string.error_reminder_without_due)
-                }
+                InlineField(
+                    value = state.location,
+                    onValueChange = viewModel::onLocationChange,
+                    placeholder = stringResource(R.string.edit_location_label),
+                )
+            }
+        }
+
+        OptionalFormSection(visible = TaskFormField.Url in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            EditCard(
+                icon = Icons.Rounded.Link,
+                iconContentDescription = stringResource(R.string.edit_url_label),
+            ) {
+                InlineField(
+                    value = state.url,
+                    onValueChange = viewModel::onUrlChange,
+                    placeholder = stringResource(R.string.edit_url_hint),
+                    keyboardType = KeyboardType.Uri,
+                    capitalization = KeyboardCapitalization.None,
+                )
             }
         }
 
@@ -487,7 +605,7 @@ private fun EditContent(
 
     if (showListPicker) {
         ListPickerDialog(
-            lists = state.lists,
+            lists = state.writableLists,
             selectedId = state.listId,
             onSelect = { viewModel.onListChange(it); showListPicker = false },
             onDismiss = { showListPicker = false },
@@ -520,10 +638,28 @@ private fun EditContent(
     }
 
     if (showReminderPicker) {
-        ReminderPickerDialog(
-            selected = state.reminderMinutesBeforeDue,
-            onSelect = { viewModel.onReminderChange(it); showReminderPicker = false },
+        ReminderLeadPicker(
+            title = stringResource(R.string.edit_reminder_add),
+            selected = ReminderOverride.Inherit,
+            allowInherit = false,
+            allowNone = false,
+            allDay = state.isAllDay,
+            onSelect = { choice ->
+                (choice as? ReminderOverride.Minutes)?.minutes?.firstOrNull()?.let(viewModel::addReminder)
+                showReminderPicker = false
+            },
             onDismiss = { showReminderPicker = false },
+        )
+    }
+
+    if (showRecurrencePicker) {
+        val anchor = (state.start ?: state.due)?.calendarDate(state.isAllDay) ?: java.time.LocalDate.now()
+        RecurrencePicker(
+            current = state.rrule,
+            startDate = anchor.toKotlinLocalDate(),
+            firstDayOfWeek = LocalFirstDayOfWeek.current.toKotlinDayOfWeek(),
+            onSelect = { viewModel.onRecurrenceChange(it); showRecurrencePicker = false },
+            onDismiss = { showRecurrencePicker = false },
         )
     }
 
@@ -607,17 +743,23 @@ private fun InlineField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    modifier: Modifier = Modifier,
     textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleMedium,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
 ) {
     InlineTextField(
         value = value,
         onValueChange = onValueChange,
         placeholder = placeholder,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).then(modifier),
         textStyle = textStyle,
         singleLine = singleLine,
         minLines = minLines,
+        keyboardType = keyboardType,
+        capitalization = capitalization,
     )
 }
 
@@ -660,7 +802,7 @@ private fun ScheduleRow(
             )
             if (!allDay) {
                 Text(
-                    text = value.formatTime(),
+                    text = value.formatTime(LocalUse24HourFormat.current),
                     style = MaterialTheme.typography.titleMedium,
                     color = valueColor,
                     modifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp),
@@ -689,12 +831,15 @@ private fun DateTimePickerFlow(
     onResult: (Instant) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var pendingDate by remember { mutableStateOf<java.time.LocalDate?>(null) }
-    var showTime by remember { mutableStateOf(false) }
+    var pendingDate by rememberSaveable { mutableStateOf<java.time.LocalDate?>(null) }
+    var showTime by rememberSaveable { mutableStateOf(false) }
 
     if (!showTime) {
+        // M3's DatePicker speaks UTC millis. An all-day value is already UTC-based,
+        // a timed one is read in the device zone — calendarDate picks the right frame
+        // so the dialog opens on the day the rest of the UI shows.
         val initialMillis = (initial ?: nowInstant())
-            .toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            .calendarDate(allDay).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         val dateState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         DatePickerDialog(
             onDismissRequest = onDismiss,
@@ -703,7 +848,7 @@ private fun DateTimePickerFlow(
                     val millis = dateState.selectedDateMillis ?: run { onDismiss(); return@TextButton }
                     val date = java.time.Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     if (allDay) {
-                        onResult(localToInstant(date, LocalTime.MIDNIGHT))
+                        onResult(allDayInstantOf(date))
                     } else {
                         pendingDate = date
                         showTime = true
@@ -719,6 +864,7 @@ private fun DateTimePickerFlow(
         val timeState = rememberTimePickerState(
             initialHour = base.toLocalTime().hour,
             initialMinute = base.toLocalTime().minute,
+            is24Hour = LocalUse24HourFormat.current,
         )
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -736,6 +882,7 @@ private fun DateTimePickerFlow(
     }
 }
 
+/** The target list, full-screen and grouped under each list's account. */
 @Composable
 private fun ListPickerDialog(
     lists: List<TaskList>,
@@ -744,37 +891,31 @@ private fun ListPickerDialog(
     onDismiss: () -> Unit,
 ) {
     val dark = isSystemInDarkTheme()
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.edit_list_label)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                lists.forEach { list ->
-                    OptionCard(
-                        label = list.name,
-                        onClick = { onSelect(list.id) },
-                        icon = Icons.Rounded.Circle,
-                        iconTint = pastelize(list.color, dark),
-                        supportingText = list.accountName.takeIf { it.isNotBlank() },
-                        selected = list.id == selectedId,
-                    )
-                }
+    val groups = remember(lists) { lists.groupBy { it.accountName } }
+    FullScreenPicker(title = stringResource(R.string.edit_list_label), onDismiss = onDismiss) {
+        groups.forEach { (account, inAccount) ->
+            if (groups.size > 1 && account.isNotBlank()) GroupedSectionHeader(account)
+            inAccount.forEachIndexed { index, list ->
+                val selected = list.id == selectedId
+                GroupedRow(
+                    title = list.name,
+                    position = positionOf(index, inAccount.size),
+                    selected = selected,
+                    leading = { Icon(Icons.Rounded.Circle, contentDescription = null, tint = pastelize(list.color, dark)) },
+                    trailing = if (selected) ({ SelectedCheck() }) else null,
+                    onClick = { onSelect(list.id) },
+                )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
-        },
-    )
+        }
+    }
 }
 
 /**
- * Pick the task to file this one under, or "None" to keep it top-level. A
- * full-width modal sheet (not a cramped dialog): a search field filters by title,
- * and candidates group under the same due-date sections as the task list
- * (Overdue / Today / Upcoming / No date) so the right one is easy to find in a
- * long list. Only active tasks are offered (the VM filters closed ones out).
+ * Pick the task to file this one under, or "None" to keep it top-level. A search
+ * field filters by title, and candidates group under the same due-date sections as
+ * the task list (Overdue / Today / Upcoming / No date). Only active tasks are
+ * offered (the VM filters closed ones out).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ParentPickerSheet(
     candidates: List<Task>,
@@ -782,15 +923,6 @@ private fun ParentPickerSheet(
     onSelect: (Long?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-    // Animate the sheet out before reporting the pick, so it doesn't snap shut.
-    fun choose(id: Long?) {
-        scope.launch { sheetState.hide() }.invokeOnCompletion {
-            if (!sheetState.isVisible) onSelect(id)
-        }
-    }
-
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = remember(candidates, query) {
         val q = query.trim()
@@ -799,93 +931,63 @@ private fun ParentPickerSheet(
     val (todayStart, todayEnd) = remember { DayWindow.today(Clock.System.now(), ZoneId.systemDefault()) }
     val sections = remember(filtered) { TaskSections.of(filtered, todayStart, todayEnd) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = 32.dp),
+    FullScreenPicker(title = stringResource(R.string.edit_parent_label), onDismiss = onDismiss) {
+        GroupedSurface(
+            position = Position.Alone,
+            modifier = Modifier.padding(horizontal = GroupedListInset),
         ) {
-            item(key = "title") {
-                Text(
-                    text = stringResource(R.string.edit_parent_label),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-                )
-            }
-            // The search field pins to the top of the sheet while the list scrolls.
-            stickyHeader(key = "search") {
-                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(16.dp))
+                Box(modifier = Modifier.weight(1f)) {
+                    InlineTextField(
                         value = query,
                         onValueChange = { query = it },
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.edit_clear))
-                                }
-                            }
-                        },
-                        placeholder = { Text(stringResource(R.string.edit_parent_search)) },
-                        shape = RoundedCornerShape(28.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
+                        placeholder = stringResource(R.string.edit_parent_search),
                     )
                 }
-            }
-            // "None" — promote to top-level. Pinned above the grouped candidates.
-            item(key = "none") {
-                GroupedRow(
-                    title = stringResource(R.string.edit_parent_none),
-                    position = de.jeanlucmakiola.floret.components.Position.Alone,
-                    selected = selectedId == null,
-                    minHeight = 56.dp,
-                    onClick = { choose(null) },
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-
-            if (sections.isEmpty()) {
-                item(key = "empty") {
-                    Text(
-                        text = stringResource(R.string.edit_parent_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
-                    )
-                }
-            }
-
-            sections.forEach { section ->
-                stickyHeader(key = "hdr-${section.section}") {
-                    SheetSectionHeader(parentSectionLabel(section.section))
-                }
-                itemsIndexed(section.tasks, key = { _, t -> t.taskId }) { index, task ->
-                    GroupedRow(
-                        title = task.title.ifBlank { stringResource(R.string.task_untitled) },
-                        position = positionOf(index, section.tasks.size),
-                        summary = task.due?.formatDate(task.isAllDay),
-                        selected = task.taskId == selectedId,
-                        minHeight = 56.dp,
-                        onClick = { choose(task.taskId) },
-                    )
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { query = "" }) {
+                        Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.edit_clear))
+                    }
                 }
             }
         }
-    }
-}
-
-/** Section header inside the parent sheet — opaque so rows scroll cleanly under it. */
-@Composable
-private fun SheetSectionHeader(text: String) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = 28.dp, end = 28.dp, top = 12.dp, bottom = 6.dp),
+        Spacer(Modifier.height(12.dp))
+        GroupedRow(
+            title = stringResource(R.string.edit_parent_none),
+            position = Position.Alone,
+            selected = selectedId == null,
+            trailing = if (selectedId == null) ({ SelectedCheck() }) else null,
+            minHeight = 56.dp,
+            onClick = { onSelect(null) },
         )
+        if (sections.isEmpty()) {
+            Text(
+                text = stringResource(R.string.edit_parent_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 24.dp),
+            )
+        }
+        sections.forEach { section ->
+            GroupedSectionHeader(parentSectionLabel(section.section))
+            section.tasks.forEachIndexed { index, task ->
+                val selected = task.taskId == selectedId
+                GroupedRow(
+                    title = task.title.ifBlank { stringResource(R.string.task_untitled) },
+                    position = positionOf(index, section.tasks.size),
+                    summary = task.due?.formatDate(task.isAllDay),
+                    selected = selected,
+                    trailing = if (selected) ({ SelectedCheck() }) else null,
+                    minHeight = 56.dp,
+                    onClick = { onSelect(task.taskId) },
+                )
+            }
+        }
     }
 }
 
@@ -900,30 +1002,42 @@ private fun parentSectionLabel(section: TaskSection): String = stringResource(
     },
 )
 
+/** One reminder in the connected run, with a remove button. */
 @Composable
-private fun ReminderPickerDialog(
-    selected: Int?,
-    onSelect: (Int?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.edit_reminder_label)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                reminderOptions.forEach { option ->
-                    OptionCard(
-                        label = stringResource(option.labelRes),
-                        onClick = { onSelect(option.minutes) },
-                        selected = option.minutes == selected,
-                    )
-                }
+private fun ReminderItemCard(position: Position, title: String, onRemove: () -> Unit) {
+    GroupedSurface(position = position, gapBelow = position != Position.Bottom && position != Position.Alone) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        ) {
+            Icon(Icons.Rounded.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(16.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            IconButton(onClick = onRemove, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.edit_reminder_remove),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
-        },
-    )
+        }
+    }
+}
+
+/** The run's last row: add a reminder. */
+@Composable
+private fun AddReminderCard(position: Position, label: String, onClick: () -> Unit) {
+    GroupedSurface(position = position, onClick = onClick, gapBelow = false) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.width(16.dp))
+            Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        }
+    }
 }
 
 /** Picks one hidden optional section to add to the form. */
@@ -933,56 +1047,17 @@ private fun FieldPickerDialog(
     onSelect: (TaskFormField) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.edit_more_fields)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                hiddenFields.forEach { field ->
-                    OptionCard(
-                        label = stringResource(fieldLabel(field)),
-                        onClick = { onSelect(field) },
-                        icon = fieldIcon(field),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
-        },
-    )
+    FullScreenPicker(title = stringResource(R.string.edit_more_fields), onDismiss = onDismiss) {
+        hiddenFields.forEachIndexed { index, field ->
+            GroupedRow(
+                title = stringResource(field.labelRes()),
+                position = positionOf(index, hiddenFields.size),
+                leading = { Icon(field.icon(), contentDescription = null) },
+                onClick = { onSelect(field) },
+            )
+        }
+    }
 }
-
-private fun fieldLabel(field: TaskFormField): Int = when (field) {
-    TaskFormField.Description -> R.string.field_description
-    TaskFormField.Priority -> R.string.edit_priority_label
-    TaskFormField.Progress -> R.string.edit_progress_label
-    TaskFormField.Parent -> R.string.edit_parent_label
-    TaskFormField.Reminder -> R.string.edit_reminder_label
-}
-
-private fun fieldIcon(field: TaskFormField): ImageVector = when (field) {
-    TaskFormField.Description -> Icons.AutoMirrored.Rounded.Notes
-    TaskFormField.Priority -> Icons.Rounded.Flag
-    TaskFormField.Progress -> Icons.Rounded.Percent
-    TaskFormField.Parent -> Icons.Rounded.AccountTree
-    TaskFormField.Reminder -> Icons.Rounded.Notifications
-}
-
-private data class ReminderOption(val labelRes: Int, val minutes: Int?)
-
-private val reminderOptions = listOf(
-    ReminderOption(R.string.reminder_none, null),
-    ReminderOption(R.string.reminder_at_due, 0),
-    ReminderOption(R.string.reminder_5_min, 5),
-    ReminderOption(R.string.reminder_10_min, 10),
-    ReminderOption(R.string.reminder_30_min, 30),
-    ReminderOption(R.string.reminder_1_hour, 60),
-    ReminderOption(R.string.reminder_1_day, 1_440),
-)
-
-private fun reminderOptionFor(minutes: Int?): ReminderOption =
-    reminderOptions.firstOrNull { it.minutes == minutes } ?: reminderOptions.first()
 
 @Composable
 private fun FieldError(messageRes: Int) {
