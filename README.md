@@ -20,6 +20,14 @@ required.</p>
 <a href="https://ko-fi.com/jeanlucmakiola"><img src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_badge_beige.png" alt="Support me on Ko-fi" height="56"></a>
 </p>
 
+<p>
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" alt="Home screen: today's progress, overdue and upcoming tasks, and your lists" width="18%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" alt="Onboarding: sync with your own CalDAV server" width="18%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" alt="Upcoming list with a task expanded into its subtasks" width="18%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" alt="Task detail: a monthly recurring task with a reminder and priority" width="18%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05.png" alt="Reminder notification with Done and Snooze actions" width="18%">
+</p>
+
 </div>
 
 Agendula is the task-list sibling to [Calendula](https://codeberg.org/jlmakiola/calendula).
