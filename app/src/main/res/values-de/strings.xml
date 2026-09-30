@@ -375,4 +375,9 @@
     </plurals>
     <string name="import_failed_unreadable">Die Datei konnte nicht als iCalendar eingelesen werden</string>
     <string name="import_failed_no_tasks">Die Datei beinhaltet keine Aufgaben</string>
+    <string name="import_failed_write">Die Aufgabe konnte nicht gespeichert werden</string>
+    <plurals name="accounts_sync_every_hours">
+        <item quantity="one">Jede Stunde</item>
+        <item quantity="other">Alle %d Stunden</item>
+    </plurals>
 </resources>
