@@ -380,4 +380,33 @@
         <item quantity="one">Jede Stunde</item>
         <item quantity="other">Alle %d Stunden</item>
     </plurals>
+    <string name="accounts_remove">Konto entfernen</string>
+    <string name="accounts_generic_provider">CalDAV-Konto</string>
+    <string name="accounts_sync_now">Jetzt synchronisieren</string>
+    <string name="accounts_removing">Entfernen…</string>
+    <string name="accounts_lists">Listen</string>
+    <string name="add_account_step_of">Schritt %1$d von %2$d</string>
+    <string name="add_account_provider_other_summary">Baïkal, DAViCal, SOGo, Radicale oder einen, den du selber laufen lässt</string>
+    <string name="add_account_provider_other_header">Jeglichen CalDAV-Server</string>
+    <string name="add_account_provider_other">Andere CalDAV-Server</string>
+    <string name="add_account_email_title">Was ist dort deine Adresse?</string>
+    <string name="add_account_email_body">Die E-Mail-Adresse, mit der du diesen Dienst nutzt. Agendula findet den Server selbst.</string>
+    <string name="add_account_email_label">E-Mail-Adresse</string>
+    <string name="add_account_summary_title">Du bist eingerichtet</string>
+    <string name="add_account_summary_done">Fertig</string>
+    <string name="add_account_server_title">Wo sind deine Aufgaben?</string>
+    <string name="add_account_credentials_title">Anmelden</string>
+    <string name="add_account_error_not_an_address">Das scheint keine Web-Adresse zu sein. Versuche etwas wie cloud.example.com.</string>
+    <string name="add_account_working_signing_in">Anmelden</string>
+    <string name="add_account_working_reading_lists">Aufgaben auslesen</string>
+    <string name="add_account_working_saving">Konto hinzufügen</string>
+    <string name="add_account_error_google_unsupported">Google Kalendar unterstützt nach eigener Dokumentation nicht Aufgaben über CalDAV, also kann Agendula nicht damit synchronisieren.</string>
+    <string name="add_account_error_already_exists">Konto ist schon eingerichtet.</string>
+    <string name="add_account_error_credentials_rejected">Diser Benutzername oder dieses Passwort wurde nicht akzeptiert.</string>
+    <string name="add_account_browser_error_maintenance">Der Server befindet sich um Wartungsmodus. Versuche es erneut, wenn er wieder zurück ist.</string>
+    <string name="add_account_setup_icloud_title">iCloud braucht ein App-spezifisches Passwort</string>
+    <string name="accounts_sign_in_again">Erneut anmelden</string>
+    <string name="sync_notice_body">%1$s</string>
+    <string name="sync_notices_title">Änderungen durch letzte Synchronisierung</string>
+    <string name="sync_notices_dismiss">Verstanden</string>
 </resources>
