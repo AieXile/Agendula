@@ -94,10 +94,12 @@ release work when a merge actually cuts a release:
   `values-*/strings.xml`, so Weblate PRs get fast feedback. Runs on every PR
   without a path filter, so the required `Translations / check` status is always
   reported.
-- **`renovate.yml`** (`.gitea/workflows/`, Mondays 05:00 UTC plus
-  `workflow_dispatch`, **Gitea**) — the dependency sweep. Runs the pinned
-  Renovate image as its job container and targets Codeberg's API; the cadence
-  lives here, not in `renovate.json5`, so the two don't double-gate.
+- **`renovate.yml`** (`.gitea/workflows/`, Mondays 05:00 UTC, on push to
+  `main`, plus `workflow_dispatch`, **Gitea**) — the dependency sweep. Runs the
+  pinned Renovate image as its job container and targets Codeberg's API. New
+  PRs only open in the Monday `schedule` window in `renovate.json5` (keep it
+  bracketing the cron); the on-merge runs fall outside it and only rebase
+  existing PRs that the merge left conflicted.
 - **`release.yaml`** (`.gitea/workflows/`, on push to `main` plus
   `workflow_dispatch`, **Gitea**) — a cheap `detect` job reads `versionName` and
   checks **Codeberg** for a tag for it. Only when there isn't one does the

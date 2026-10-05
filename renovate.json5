@@ -52,9 +52,16 @@
   prConcurrentLimit: 5,
   prHourlyLimit: 0,
 
-  // Cadence is owned by the Gitea Actions cron (.gitea/workflows/renovate.yml,
-  // Mondays) — no internal `schedule` here, so the two don't double-gate and
-  // silently skip a run.
+  // New branches/PRs only in the Monday window (UTC), which brackets the weekly
+  // cron in .gitea/workflows/renovate.yml with slack for a late start — keep
+  // the two in step, or the sweep lands outside the window and finds nothing.
+  // The same workflow also runs on every push to main; those runs fall outside
+  // the window and, via the default updateNotScheduled: true, only maintain
+  // existing branches — chiefly rebasing PRs a merge just conflicted.
+  schedule: ["* 4-6 * * 1"],
+  // Rebase only on conflict, not every time main moves (automerge is off, so
+  // this matches "auto"; spelled out because the on-merge trigger relies on it).
+  rebaseWhen: "conflicted",
 
   // Workflows are split by forge and neither directory is .github: CI lives in
   // .forgejo/workflows (Codeberg) and the release/renovate jobs in

@@ -1,8 +1,17 @@
 name: Renovate
 
 on:
-  # Weekly sweep. Mondays 05:00 UTC — this cron owns the cadence; the repo's
-  # renovate.json5 deliberately has no internal schedule (avoids double-gating).
+  # Every merge to main. Mirror syncs from Codeberg fire push events here (the
+  # same trigger release.yaml relies on), so a merged Renovate PR is followed
+  # within minutes by a run that rebases the sibling PRs it just conflicted —
+  # most bumps touch gradle/libs.versions.toml. Outside renovate.json5's
+  # `schedule` window such a run only maintains existing branches
+  # (updateNotScheduled), it never opens new PRs. Renovate's own rebases push
+  # to renovate/* branches, not main, so this cannot loop.
+  push:
+    branches: [main]
+  # Weekly sweep for new updates. Mondays 05:00 UTC, inside the schedule window
+  # in renovate.json5 — keep the two in step.
   schedule:
     - cron: '0 5 * * 1'
   # Manual run for an on-demand sweep from the Actions tab.
