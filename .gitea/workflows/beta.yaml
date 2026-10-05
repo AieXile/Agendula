@@ -1,0 +1,206 @@
+name: Beta — Codeberg pre-release
+
+# A beta is cut by pushing a release branch whose committed versionName is
+# X.Y.Z-beta.N (see docs/RELEASING.md). Same model as release.yaml: the
+# committed version is the trigger and the vX.Y.Z-beta.N tag is an output. If
+# no tag exists for that version yet, this runs the unit tests, builds and
+# signs the APK with the app key, records a Gitea pre-release (with the R8
+# mapping) and publishes a Codeberg pre-release with the APK + SHA-256.
+#
+# Deliberately nothing else. A beta never reaches the F-Droid repos or Play:
+# Obtainium hides pre-releases unless a user opts in, the official F-Droid
+# recipe only picks up `^v[0-9.]+$` tags, and Codeberg's "latest release"
+# skips pre-releases. Pushes of a release branch carrying a stable version
+# (the usual state) fall through `detect` and do nothing.
+#
+# Lives in .gitea/workflows next to release.yaml for the same reason: it needs
+# the app signing key, which only the self-hosted Gitea instance holds.
+on:
+  push:
+    branches: ['release/**']
+
+concurrency:
+  group: beta
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    # Gitea only; see the same guard in release.yaml.
+    if: github.repository_owner == 'makiolaj'
+    runs-on: docker
+    outputs:
+      is_beta: ${{ steps.v.outputs.is_beta }}
+      version: ${{ steps.v.outputs.version }}
+      version_code: ${{ steps.v.outputs.version_code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version and whether it is a new beta
+        id: v
+        env:
+          # Codeberg, not Gitea: see the same lookup in release.yaml.
+          TAG_API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
+        run: |
+          set -e
+          INFO=$(bash scripts/version_info.sh)
+          echo "$INFO"
+          echo "$INFO" >> "$GITHUB_OUTPUT"
+          VERSION=$(echo "$INFO" | sed -n 's/^version=//p')
+          BASE=$(echo "$INFO" | sed -n 's/^base_version=//p')
+          if [ "$(echo "$INFO" | sed -n 's/^channel=//p')" != "beta" ]; then
+            echo "versionName $VERSION is not a beta — nothing to do."
+            echo "is_beta=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Fatal on anything but a clean 200/404, as in release.yaml: guessing
+          # "no tag" during an outage would re-cut a published beta.
+          tag_status() {
+            curl -s -o /dev/null -w '%{http_code}' "$TAG_API/git/refs/tags/$1" || echo 000
+          }
+          # A beta of a version that already shipped stable would carry a lower
+          # versionCode than the stable one: nobody could install it over it.
+          case "$(tag_status "v$BASE")" in
+            200)
+              echo "v$BASE already shipped as stable; a beta of it is pointless. Bump the version." >&2
+              exit 1 ;;
+            404) ;;
+            *) echo "Codeberg tag lookup for v$BASE failed — refusing to guess." >&2; exit 1 ;;
+          esac
+          STATUS=$(tag_status "v$VERSION")
+          case "$STATUS" in
+            200)
+              echo "Tag v$VERSION already exists on Codeberg — nothing to release."
+              echo "is_beta=false" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "No tag for v$VERSION on Codeberg yet — cutting the beta."
+              echo "is_beta=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Codeberg tag lookup for v$VERSION returned HTTP $STATUS." >&2
+              echo "Refusing to guess: treating this as 'no tag' could re-cut a published beta." >&2
+              exit 1
+              ;;
+          esac
+
+  beta:
+    needs: detect
+    if: needs.detect.outputs.is_beta == 'true'
+    runs-on: docker
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      ANDROID_SDK_ROOT: /opt/android-sdk
+      VERSION: ${{ needs.detect.outputs.version }}
+      VERSION_CODE: ${{ needs.detect.outputs.version_code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Setup Android SDK cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/android-sdk
+          key: ${{ runner.os }}-android-sdk-37-36.0.0
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Install jq
+        run: |
+          set -e
+          SUDO=""
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+          if command -v apt-get >/dev/null 2>&1; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y jq
+          elif command -v apk >/dev/null 2>&1; then
+            $SUDO apk add --no-cache jq
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Pin versionCode to versionName
+        run: |
+          set -e
+          sed -i "s/versionCode = .*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+          grep -E 'versionName|versionCode' app/build.gradle.kts
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest
+
+      # The real app key, same as a stable release: a beta has to update in
+      # place to the next beta and to the stable version.
+      - name: Setup Android Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          mkdir -p app
+          echo "$KEYSTORE_BASE64" | base64 --decode > app/upload-keystore.jks
+          cat > key.properties <<EOF
+          storePassword=$KEY_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
+      # Notes = a `## [X.Y.Z-beta.N]` section if there is one, else
+      # `## [Unreleased]`. Gitea creates the tag at this commit.
+      - name: Create tag + Gitea pre-release
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          bash scripts/release_notes.sh "$VERSION" > release-notes.md
+          cat release-notes.md
+          TAG="v$VERSION" PRERELEASE=true NOTES_FILE=release-notes.md \
+            MAPPING=app/build/outputs/mapping/release/mapping.txt \
+            bash scripts/publish_gitea_release.sh
+
+      # The point of the whole workflow, so NOT continue-on-error.
+      - name: Publish pre-release to Codeberg
+        env:
+          TOKEN: ${{ secrets.CODEBERG_RELEASE_TOKEN }}
+          API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
+          SHA: ${{ github.sha }}
+        run: |
+          set -e
+          TAG="v$VERSION" PRERELEASE=true NOTES_FILE=release-notes.md \
+            APK=app/build/outputs/apk/release/app-release.apk \
+            bash scripts/publish_codeberg_release.sh

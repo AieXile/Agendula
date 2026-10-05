@@ -16,6 +16,7 @@ without setup.
 """
 import re
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -120,10 +121,11 @@ def check_images(locale_dir):
 
 
 def version_code():
-    gradle = (ROOT / "app/build.gradle.kts").read_text()
-    name = re.search(r'versionName\s*=\s*"([^"]+)"', gradle).group(1)
-    parts = (name.split(".") + ["0", "0"])[:3]
-    return int(parts[0]) * 10000 + int(parts[1]) * 100 + int(parts[2])
+    """The committed version's code, or None for a beta (it ships no What's New)."""
+    def info(key):
+        return subprocess.run(["bash", str(ROOT / "scripts/version_info.sh"), key],
+                              check=True, capture_output=True, text=True).stdout.strip()
+    return None if info("channel") == "beta" else int(info("version_code"))
 
 
 def shipped_languages():
@@ -183,7 +185,7 @@ def main():
             err(images / "featureGraphic.png", "required for Play (1024x500, no alpha)")
         if len(list((images / "phoneScreenshots").glob("*"))) < 2:
             err(images / "phoneScreenshots", "Play requires at least 2 phone screenshots")
-        for loc in REQUIRED_LOCALES:
+        for loc in REQUIRED_LOCALES if current is not None else []:
             if not (META / loc / "changelogs" / f"{current}.txt").exists():
                 err(META / loc / "changelogs" / f"{current}.txt", "no What's New for this version")
 

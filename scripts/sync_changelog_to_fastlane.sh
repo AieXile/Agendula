@@ -11,11 +11,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root
 
-VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-[ -n "$VERSION" ] || { echo "No versionName in app/build.gradle.kts" >&2; exit 1; }
-MAJOR=${VERSION%%.*}; rest=${VERSION#*.}; MINOR=${rest%%.*}; PATCH=${rest##*.}
-MAJOR=${MAJOR:-0}; MINOR=${MINOR:-0}; PATCH=${PATCH:-0}
-VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+VERSION=$(bash scripts/version_info.sh version)
+VERSION_CODE=$(bash scripts/version_info.sh version_code)
+
+# Betas only ship to Codeberg, whose notes come from CHANGELOG.md. A What's New
+# file for one would sit in the tree F-Droid and Play read, so none is wanted.
+if [ "$(bash scripts/version_info.sh channel)" = beta ]; then
+  echo "Beta $VERSION: no store What's New (betas only ship to Codeberg)."
+  exit 0
+fi
 
 # Play rejects a longer "What's New" and F-Droid truncates it in-client.
 MAX_CHARS=${MAX_CHARS:-500}

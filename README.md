@@ -119,6 +119,8 @@ APK and a `.sha256` checksum attached — the same APK the F-Droid repository
 serves. For automatic updates from there, use
 **[Obtainium](https://github.com/ImranR98/Obtainium)** and
 **[add Agendula in one tap](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula)**.
+Betas of upcoming versions are published there too, as pre-releases; to test
+them, switch on *Include prereleases* for Agendula in Obtainium.
 
 ### Build from source
 

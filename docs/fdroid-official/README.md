@@ -42,7 +42,9 @@ on 2026-09-24. Its CI rebuilt v1.0.0 and verified it against our published APK
 
 The file here is a copy of the submitted recipe. fdroiddata's copy is the one
 that counts; after the merge F-Droid picks up new `vX.Y.Z` tags on its own
-(`AutoUpdateMode`), so there is no per-release work there. Only a change to the
+(`AutoUpdateMode`), so there is no per-release work there. Beta tags
+(`vX.Y.Z-beta.N`) don't match `UpdateCheckMode: Tags ^v[0-9.]+$`, so betas stay
+off the official repo; keep that pattern if the recipe ever changes. Only a change to the
 recipe itself (a new submodule, a build flag) needs an MR, pinned to a full
 commit hash, never a tag.
 

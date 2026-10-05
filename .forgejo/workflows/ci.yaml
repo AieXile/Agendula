@@ -37,11 +37,29 @@ jobs:
       - name: Reproducible-release invariant
         run: bash scripts/check_reproducible_release.sh
 
+      # The committed versionName must parse (X.Y.Z or X.Y.Z-beta.N) and the
+      # committed versionCode must be the one it derives: the official F-Droid
+      # repo builds the tag as committed. And a beta must never reach main,
+      # where the release pipeline would ship it to F-Droid and Play; betas are
+      # cut from release/* branches (docs/RELEASING.md).
+      - name: Committed version is well-formed
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -e
+          bash scripts/version_info.sh --check
+          if [ "${BASE#refs/heads/}" = "main" ] && [ "$(bash scripts/version_info.sh channel)" = "beta" ]; then
+            echo "ERROR: versionName $(bash scripts/version_info.sh version) is a beta." >&2
+            echo "Set the stable version (and its versionCode) before merging into main." >&2
+            exit 1
+          fi
+
       # Also cheap, also always-on. Two failures in one: the script exits
       # non-zero if this version's changelog is over the 500-character limit,
       # and the porcelain check below catches a version with no committed
       # changelog, which would otherwise ship the CHANGELOG.md section instead
-      # of a hand-written summary.
+      # of a hand-written summary. A beta version passes both: it ships no
+      # What's New, so the script writes nothing for it.
       - name: Changelog fits the stores, and is committed
         run: |
           set -e
