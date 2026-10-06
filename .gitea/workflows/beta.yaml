@@ -3,7 +3,7 @@ name: Beta — Codeberg pre-release
 # A beta is cut by pushing a release branch whose committed versionName is
 # X.Y.Z-beta.N (see docs/RELEASING.md). Same model as release.yaml: the
 # committed version is the trigger and the vX.Y.Z-beta.N tag is an output. If
-# no tag exists for that version yet, this runs the unit tests, builds and
+# its Codeberg pre-release doesn't carry the APK yet, this runs the unit tests, builds and
 # signs the APK with the app key, records a Gitea pre-release (with the R8
 # mapping) and publishes a Codeberg pre-release with the APK + SHA-256.
 #
@@ -36,53 +36,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve version and whether it is a new beta
+      - name: Resolve version and whether it still needs publishing
         id: v
-        env:
-          # Codeberg, not Gitea: see the same lookup in release.yaml.
-          TAG_API: https://codeberg.org/api/v1/repos/jlmakiola/agendula
         run: |
           set -e
           INFO=$(bash scripts/version_info.sh)
           echo "$INFO"
           echo "$INFO" >> "$GITHUB_OUTPUT"
-          VERSION=$(echo "$INFO" | sed -n 's/^version=//p')
-          BASE=$(echo "$INFO" | sed -n 's/^base_version=//p')
-          if [ "$(echo "$INFO" | sed -n 's/^channel=//p')" != "beta" ]; then
-            echo "versionName $VERSION is not a beta — nothing to do."
+          if [ "$(bash scripts/version_info.sh channel)" != beta ]; then
+            echo "Not a beta — nothing to do."
             echo "is_beta=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Fatal on anything but a clean 200/404, as in release.yaml: guessing
-          # "no tag" during an outage would re-cut a published beta.
-          tag_status() {
-            curl -s -o /dev/null -w '%{http_code}' "$TAG_API/git/refs/tags/$1" || echo 000
-          }
-          # A beta of a version that already shipped stable would carry a lower
-          # versionCode than the stable one: nobody could install it over it.
-          case "$(tag_status "v$BASE")" in
-            200)
-              echo "v$BASE already shipped as stable; a beta of it is pointless. Bump the version." >&2
-              exit 1 ;;
-            404) ;;
-            *) echo "Codeberg tag lookup for v$BASE failed — refusing to guess." >&2; exit 1 ;;
-          esac
-          STATUS=$(tag_status "v$VERSION")
-          case "$STATUS" in
-            200)
-              echo "Tag v$VERSION already exists on Codeberg — nothing to release."
-              echo "is_beta=false" >> "$GITHUB_OUTPUT"
-              ;;
-            404)
-              echo "No tag for v$VERSION on Codeberg yet — cutting the beta."
-              echo "is_beta=true" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              echo "Codeberg tag lookup for v$VERSION returned HTTP $STATUS." >&2
-              echo "Refusing to guess: treating this as 'no tag' could re-cut a published beta." >&2
-              exit 1
-              ;;
-          esac
+          # Done only once its Codeberg pre-release carries the APK, so a failed
+          # publish is redone by the next push; refused unless newer than the
+          # latest stable release.
+          GATE=$(bash scripts/release_gate.sh)
+          echo "is_beta=${GATE#cut=}" >> "$GITHUB_OUTPUT"
 
   beta:
     needs: detect

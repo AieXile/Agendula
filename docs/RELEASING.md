@@ -112,9 +112,11 @@ and to the stable release.
 2. **Optionally verify it on a device** with `scripts/verify-release.sh`, as for
    a stable release.
 3. **Push the branch to Codeberg.** When it reaches Gitea, `beta.yaml` sees a
-   beta version without a tag, runs the unit tests, builds and signs the APK,
-   creates the `vX.Y.Z-beta.1` tag + a Gitea pre-release (with the R8 mapping)
-   and publishes the **Codeberg pre-release** with the APK + `.sha256`.
+   beta whose Codeberg pre-release doesn't carry its APK yet, runs the unit
+   tests, builds and signs the APK, creates the `vX.Y.Z-beta.1` tag + a Gitea
+   pre-release (with the R8 mapping) and publishes the **Codeberg
+   pre-release** with the APK + `.sha256`. If that publish fails part-way, the
+   next push of the branch redoes it.
 4. **Next round:** bump to `-beta.2` (and its `versionCode`) and push again.
 5. **Going stable:** set `versionName = "X.Y.Z"` and its `versionCode`
    (`1.1.0` → `1010099`), then continue from step 2 of
@@ -130,8 +132,8 @@ Who gets a beta:
 - **Play** never.
 
 Guards: a beta version can't reach `main` (CI fails the PR, and `release.yaml`'s
-`detect` refuses one as a backstop), `beta.yaml` refuses a beta of a version
-that already shipped stable, and betas start at 1.1.0 (the 1.0.x codes have no
+`detect` refuses one as a backstop), `beta.yaml` refuses a beta that isn't
+newer than the latest stable release, and betas start at 1.1.0 (the 1.0.x codes have no
 room below them).
 
 ---

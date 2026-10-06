@@ -29,12 +29,12 @@ NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' "$GRADLE" || true)
 COMMITTED=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' "$GRADLE" || true)
 [ -n "$NAME" ] || { echo "No versionName in $GRADLE" >&2; exit 1; }
 
-if [[ ! "$NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-beta\.([0-9]+))?$ ]]; then
+if [[ ! "$NAME" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-beta\.([1-9][0-9]*))?$ ]]; then
   echo "versionName '$NAME' is neither X.Y.Z nor X.Y.Z-beta.N" >&2
   exit 1
 fi
-MAJOR=$((10#${BASH_REMATCH[1]})); MINOR=$((10#${BASH_REMATCH[2]})); PATCH=$((10#${BASH_REMATCH[3]}))
-BETA=${BASH_REMATCH[5]:+$((10#${BASH_REMATCH[5]}))}
+MAJOR=${BASH_REMATCH[1]}; MINOR=${BASH_REMATCH[2]}; PATCH=${BASH_REMATCH[3]}
+BETA=${BASH_REMATCH[5]}
 BASE="$MAJOR.$MINOR.$PATCH"
 
 if [ "$MINOR" -gt 99 ] || [ "$PATCH" -gt 99 ]; then

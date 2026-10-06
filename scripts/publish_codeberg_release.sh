@@ -1,23 +1,16 @@
 #!/usr/bin/env bash
-# Publish TAG on Codeberg, which is canonical for tags and releases, with the
-# signed APK and its SHA-256 checksum attached: the direct-download channel
-# that Obtainium follows. Shared by .gitea/workflows/release.yaml (stable) and
-# beta.yaml (pre-release). Run from the repo checkout: it pushes the tag.
+# Publishes TAG on Codeberg with the signed APK and its SHA-256 attached.
+# Upserts, so re-runs are safe. A missing TOKEN skips a stable release but fails
+# a pre-release, where Codeberg is the only channel.
 #
-# Codeberg push-mirrors branches and tags to Gitea, but releases aren't git
-# objects and don't sync in either direction, so this pushes the tag straight
-# to Codeberg and creates the release over the API. Skips cleanly when TOKEN is
-# unset; fails loudly on anything else (see release.yaml for why).
-#
-# Env:
-#   TOKEN          CODEBERG_RELEASE_TOKEN (write:repository); empty = skip
-#   API            https://codeberg.org/api/v1/repos/<owner>/<repo>
-#   TAG, SHA       vX.Y.Z[-beta.N] and the commit it marks
-#   PRERELEASE     true | false
-#   NOTES_FILE     release notes (scripts/release_notes.sh)
-#   APK            the signed release APK
+# Env: TOKEN, API (.../api/v1/repos/<owner>/<repo>), TAG, SHA, PRERELEASE,
+#      NOTES_FILE, APK
 set -euo pipefail
 if [ -z "${TOKEN:-}" ]; then
+  if [ "${PRERELEASE:-}" = true ]; then
+    echo "CODEBERG_RELEASE_TOKEN not set — a pre-release has nowhere else to go." >&2
+    exit 1
+  fi
   echo "CODEBERG_RELEASE_TOKEN not set — skipping Codeberg publish."
   exit 0
 fi
@@ -32,16 +25,8 @@ ASSET_SUM="${ASSET_APK}.sha256"
 cp "$APK" "$WORK/$ASSET_APK"
 ( cd "$WORK" && sha256sum "$ASSET_APK" > "$ASSET_SUM" )
 
-# Push the tag to Codeberg ourselves. Under Codeberg-canonical the mirror runs
-# Codeberg -> Gitea, so waiting for a tag to arrive from Gitea (what 0.3.2 did)
-# would wait forever. The tag minted on Gitea is in fact *deleted* by the next
-# mirror sync until Codeberg has it, so pushing it here is what makes it
-# durable on both forges.
-#
-# Pushing the ref first and creating the release with NO target_commitish is
-# deliberate: a release POST carrying a target_commitish for a commit or tag
-# Codeberg hasn't received yet is what produced the empty-bodied 500s.
-# Attaching to a ref that already exists doesn't need the API to write one.
+# Push the tag first and create the release without target_commitish: a POST
+# naming a commit Codeberg hasn't received yet 500s.
 HOST=${API#https://}; HOST=${HOST%%/*}
 REPO=${API#*/repos/}
 git tag -f "$TAG" "$SHA"
@@ -59,38 +44,37 @@ print(json.dumps({
 }))
 PY
 
-# Create (or update) the release. Codeberg 500s on a POST/GET against a tag it
-# has only just received (the release request outruns the indexing of the ref
-# pushed a moment ago), so a single attempt can fail even though the very same
-# call succeeds seconds later. Retry with backoff, and PATCH in place if a
-# release already exists (re-run safe). A 5xx body still exits curl 0, so the
-# loop, not `set -e`, controls the flow.
+# Codeberg 500s on a freshly pushed tag for a few seconds, hence the retries.
 ID=""
 for attempt in 1 2 3 4 5 6; do
   EXIST=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/tags/$TAG" | jq -r '.id // empty' 2>/dev/null || true)
   if [ -n "$EXIST" ]; then
-    curl -s -o /dev/null -w "release PATCH HTTP %{http_code}\n" -X PATCH \
+    CODE=$(curl -s -o /dev/null -w '%{http_code}' -X PATCH \
       -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
-      -d @"$WORK/payload.json" "$API/releases/$EXIST"
-    ID="$EXIST"; break
+      -d @"$WORK/payload.json" "$API/releases/$EXIST" || echo 000)
+    echo "release PATCH HTTP $CODE"
+    if [ "$CODE" = 200 ]; then ID="$EXIST"; break; fi
+  else
+    CODE=$(curl -s -o "$WORK/response.json" -w '%{http_code}' -X POST \
+      -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+      -d @"$WORK/payload.json" "$API/releases" || echo 000)
+    echo "release POST attempt $attempt HTTP $CODE"
+    ID=$(jq -r '.id // empty' "$WORK/response.json" 2>/dev/null || true)
+    [ -n "$ID" ] && break
   fi
-  CODE=$(curl -s -o "$WORK/response.json" -w "%{http_code}" -X POST \
-    -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
-    -d @"$WORK/payload.json" "$API/releases")
-  echo "release POST attempt $attempt HTTP $CODE"
-  ID=$(jq -r '.id // empty' "$WORK/response.json" 2>/dev/null || true)
-  [ -n "$ID" ] && break
   sleep $((attempt * 10))
 done
-if [ -z "$ID" ]; then echo "Could not resolve Codeberg release id after retries." >&2; exit 1; fi
+if [ -z "$ID" ]; then echo "Could not create or update the Codeberg release." >&2; exit 1; fi
 
-# Attach APK + checksum, replacing any prior asset of the same name.
 for A in "$ASSET_APK" "$ASSET_SUM"; do
   OLD=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/$ID/assets" \
-    | jq -r --arg n "$A" '.[] | select(.name==$n) | .id')
-  [ -n "$OLD" ] && curl -s -X DELETE -H "Authorization: token $TOKEN" "$API/releases/$ID/assets/$OLD" >/dev/null || true
-  curl -s -X POST -H "Authorization: token $TOKEN" \
-    -F "attachment=@$WORK/$A" \
-    "$API/releases/$ID/assets?name=$A" -o /dev/null -w "asset $A HTTP %{http_code}\n"
+    | jq -r --arg n "$A" '.[]? | select(.name==$n) | .id' 2>/dev/null || true)
+  for O in $OLD; do
+    curl -s -o /dev/null -X DELETE -H "Authorization: token $TOKEN" "$API/releases/$ID/assets/$O" || true
+  done
+  CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Authorization: token $TOKEN" \
+    -F "attachment=@$WORK/$A" "$API/releases/$ID/assets?name=$A" || echo 000)
+  echo "asset $A HTTP $CODE"
+  if [ "$CODE" != 201 ]; then echo "Uploading $A failed." >&2; exit 1; fi
 done
 echo "Published $TAG to Codeberg."
