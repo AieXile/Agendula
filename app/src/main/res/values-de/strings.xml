@@ -421,4 +421,15 @@
     <string name="settings_time_format_24h">24-Stunden (14:00)</string>
     <string name="settings_time_format_auto_summary">Folgend dem System: %1$s</string>
     <string name="settings_notifications_blocked_hint">Erinnerungen können dich nicht erreichen. Drücke, um Benachrichtigungen von Agendula zu erlauben.</string>
+    <string name="list_delete_confirm_message_synced">\"%1$s\" und alle Aufgaben davon werden von dem Server und jedem anderen Gerät, das damit verbunden ist, gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="onboarding_sync_devices_title">Jedes Gerät auf einmal</string>
+    <string name="onboarding_quick_add_bar">Schnell-Hinzufügen-Leiste</string>
+    <string name="onboarding_quick_add_button_hint">Ein schwebender Button, der das ganze Formular öffnet.</string>
+    <string name="settings_default_reminder_allday">Ganztägige Aufgaben</string>
+    <string name="onboarding_use_own_store">Stattdessen lokalen Speicher dieses Geräts nutzen</string>
+    <string name="settings_section_storage">Speicher</string>
+    <string name="settings_store_own">Auf diesem Gerät</string>
+    <string name="settings_store_own_hint">Agendulas eigener Speicher. Nichts weiteres zu installieren nötig.</string>
+    <string name="settings_store_external">Eine andere Aufgaben-App</string>
+    <string name="settings_store_permission_denied">Erlaubnis verweigert</string>
 </resources>
