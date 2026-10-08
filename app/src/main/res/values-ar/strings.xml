@@ -105,4 +105,5 @@
     <string name="settings_legacy_import_retrying">جارٍ نقلهم الآن…</string>
     <string name="settings_report_problem_hint">افتح متعقب المشكلات</string>
     <string name="settings_copy_from_external">نسخ المهام من %1$s</string>
+    <string name="task_completed">مكتمل</string>
 </resources>
