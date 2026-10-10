@@ -106,4 +106,18 @@
     <string name="settings_report_problem_hint">افتح متعقب المشكلات</string>
     <string name="settings_copy_from_external">نسخ المهام من %1$s</string>
     <string name="task_completed">مكتمل</string>
+    <string name="clear_completed_action">مسح</string>
+    <string name="edit_list_label">القائمة</string>
+    <string name="edit_all_day">طوال اليوم</string>
+    <string name="edit_set">تعيين</string>
+    <string name="edit_clear">مسح</string>
+    <string name="edit_more_fields">المزيد من الخانات</string>
+    <string name="close">إغلاق</string>
+    <string name="dialog_cancel">إلغاء</string>
+    <string name="reminder_none">لا شئ</string>
+    <string name="reminder_custom">مخصص</string>
+    <string name="reminder_custom_set">تعيين</string>
+    <string name="list_color_purple">بنفسجي</string>
+    <string name="list_color_pink">وردي</string>
+    <string name="accounts_lists">القائمة</string>
 </resources>
