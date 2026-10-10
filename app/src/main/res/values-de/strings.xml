@@ -107,7 +107,7 @@
     <string name="reminder_onboarding_body">Agendula benachrichtigt dich, wenn etwas fällig wird, also muss nichts in deinem Kopf leben.</string>
     <string name="reminder_onboarding_enable_button">Erinnerungen aktivieren</string>
     <string name="reminder_onboarding_skip_button">Nicht jetzt</string>
-    <string name="reminder_benefit_delivery_title">Agendula erinnert dich</string>
+    <string name="reminder_benefit_delivery_title">Ein kleiner Schubs, wenn es darauf ankommt</string>
     <string name="reminder_benefit_delivery_body">Jede Aufgaben mit Fälligkeitsdatum bekommt seine eigene Benachrichtigung.</string>
     <string name="reminder_benefit_timing_title">Auf deinem Zeitplan</string>
     <string name="reminder_benefit_timing_body">Wähle, wie weit im Voraus du erinnert werden möchtest — für alles oder pro Liste.</string>
@@ -409,4 +409,27 @@
     <string name="sync_notice_body">%1$s</string>
     <string name="sync_notices_title">Änderungen durch letzte Synchronisierung</string>
     <string name="sync_notices_dismiss">Verstanden</string>
+    <string name="recurrence_title">Wiederholung</string>
+    <plurals name="recurrence_with_count">
+        <item quantity="one">%1$s, %2$d Mal</item>
+        <item quantity="other">%1$s, %2$d Mal</item>
+    </plurals>
+    <string name="onboarding_exact_alarms_title">Genau rechtzeitig</string>
+    <string name="onboarding_exact_alarms_body">Android frägt dich, bevor dich eine App minutengenau benachrichtigen darf. Erlaube es und die Erinnerungen kommen, wenn sie fällig sind — ohne die Erlaubnis, könnten sich die Erinnerungen ein paar Minuten verspäten.</string>
+    <string name="onboarding_exact_alarms_allow">Erlaube genaues Timing</string>
+    <string name="settings_time_format_12h">12-Stunden (2:00 PM)</string>
+    <string name="settings_time_format_24h">24-Stunden (14:00)</string>
+    <string name="settings_time_format_auto_summary">Folgend dem System: %1$s</string>
+    <string name="settings_notifications_blocked_hint">Erinnerungen können dich nicht erreichen. Drücke, um Benachrichtigungen von Agendula zu erlauben.</string>
+    <string name="list_delete_confirm_message_synced">\"%1$s\" und alle Aufgaben davon werden von dem Server und jedem anderen Gerät, das damit verbunden ist, gelöscht. Das kann nicht rückgängig gemacht werden.</string>
+    <string name="onboarding_sync_devices_title">Jedes Gerät auf einmal</string>
+    <string name="onboarding_quick_add_bar">Schnell-Hinzufügen-Leiste</string>
+    <string name="onboarding_quick_add_button_hint">Ein schwebender Button, der das ganze Formular öffnet.</string>
+    <string name="settings_default_reminder_allday">Ganztägige Aufgaben</string>
+    <string name="onboarding_use_own_store">Stattdessen lokalen Speicher dieses Geräts nutzen</string>
+    <string name="settings_section_storage">Speicher</string>
+    <string name="settings_store_own">Auf diesem Gerät</string>
+    <string name="settings_store_own_hint">Agendulas eigener Speicher. Nichts weiteres zu installieren nötig.</string>
+    <string name="settings_store_external">Eine andere Aufgaben-App</string>
+    <string name="settings_store_permission_denied">Erlaubnis verweigert</string>
 </resources>
