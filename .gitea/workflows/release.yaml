@@ -48,7 +48,7 @@ jobs:
     # secrets. repository_owner differs between the two forges regardless of
     # URL, proxy or instance rename, so this closes it permanently.
     if: github.repository_owner == 'makiolaj'
-    runs-on: docker
+    runs-on: light
     outputs:
       is_release: ${{ steps.v.outputs.is_release }}
       version: ${{ steps.v.outputs.version }}
@@ -105,7 +105,7 @@ jobs:
   release:
     needs: detect
     if: needs.detect.outputs.is_release == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: docker
+    runs-on: gradle
     env:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk

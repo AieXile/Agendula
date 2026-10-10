@@ -27,7 +27,7 @@ jobs:
   detect:
     # Gitea only; see the same guard in release.yaml.
     if: github.repository_owner == 'makiolaj'
-    runs-on: docker
+    runs-on: light
     outputs:
       is_beta: ${{ steps.v.outputs.is_beta }}
       version: ${{ steps.v.outputs.version }}
@@ -57,7 +57,7 @@ jobs:
   beta:
     needs: detect
     if: needs.detect.outputs.is_beta == 'true'
-    runs-on: docker
+    runs-on: gradle
     env:
       ANDROID_HOME: /opt/android-sdk
       ANDROID_SDK_ROOT: /opt/android-sdk
