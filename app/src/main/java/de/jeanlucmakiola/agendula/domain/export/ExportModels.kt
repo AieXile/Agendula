@@ -42,6 +42,7 @@ data class ExportTask(
     val rdate: String?,
     /** `tasks._id` of the parent, for `RELATED-TO;RELTYPE=PARENT`. */
     val parentId: Long?,
+    val tags: List<String> = emptyList(),
 )
 
 /** A task list and everything in it, ready to become one `.ics` document. */

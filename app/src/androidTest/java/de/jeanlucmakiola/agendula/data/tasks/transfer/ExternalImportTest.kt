@@ -107,6 +107,17 @@ class ExternalImportTest {
         assertThat(importer.hasRun.first()).isTrue()
     }
 
+    @Test
+    fun copiesTagsCleanedUp() = runBlocking {
+        source.lists = listOf(list(7, "Errands"))
+        source.tasks = mapOf(7L to listOf(task(100, "Milk", tags = listOf("Shop", " Shop ", "", "Home"))))
+
+        importer.run()
+
+        assertThat(db.tasks().tasks(listId = null, includeCompleted = true).single().task.categories)
+            .containsExactly("Shop", "Home").inOrder()
+    }
+
     /** Every list arrives device-only: the account belongs to the sync app. */
     @Test
     fun importedListsAreDeviceOnly() = runBlocking {
@@ -241,6 +252,7 @@ class ExternalImportTest {
         title: String,
         uid: String? = "uid-$id",
         parentId: Long? = null,
+        tags: List<String> = emptyList(),
     ) = ExportTask(
         taskId = id,
         uid = uid,
@@ -260,6 +272,7 @@ class ExternalImportTest {
         rrule = null,
         rdate = null,
         parentId = parentId,
+        tags = tags,
     )
 
     private companion object {

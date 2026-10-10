@@ -2,6 +2,8 @@ package de.jeanlucmakiola.agendula.data.tasks.room
 
 import androidx.room.TypeConverter
 import de.jeanlucmakiola.agendula.domain.TaskStatus
+import de.jeanlucmakiola.agendula.domain.ical.ICalValues
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import de.jeanlucmakiola.agendula.domain.statusFromInt
 import de.jeanlucmakiola.agendula.domain.toInt
 import kotlin.time.Instant
@@ -35,4 +37,18 @@ object Converters {
     @TypeConverter
     fun alarmReferenceFrom(value: String): AlarmReference =
         runCatching { AlarmReference.valueOf(value) }.getOrDefault(AlarmReference.DUE)
+}
+
+/**
+ * [TaskEntity.categories] stored as a `CATEGORIES` value, so escaping has one
+ * home; empty when there are none. Scoped to that field rather than the
+ * database, so no other `List<String>` picks up iCalendar escaping by accident.
+ */
+object CategoriesConverter {
+    @TypeConverter
+    fun toText(value: List<String>): String = ICalValues.formatTextList(normalizeTags(value))
+
+    @TypeConverter
+    fun fromText(value: String): List<String> =
+        if (value.isEmpty()) emptyList() else normalizeTags(ICalValues.parseTextList(value))
 }

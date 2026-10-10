@@ -115,8 +115,8 @@ def seed(db: sqlite3.Connection) -> None:
             # data0 minutes before, data1 reference (1 = DUE), data3 alarm type.
             (1, 1, ALARM_MIMETYPE, "30", "1", None, "1"),
             (2, 9, ALARM_MIMETYPE, "1440", "1", "Ship it", "1"),
-            # A non-alarm property the import must skip.
-            (3, 1, "vnd.android.cursor.item/category", "Errands", None, None, None),
+            # A category: data0 the provider's category id, data1 the name. A tag, not an alarm.
+            (3, 1, "vnd.android.cursor.item/category", "1", "Errands", None, None),
         ],
     )
 

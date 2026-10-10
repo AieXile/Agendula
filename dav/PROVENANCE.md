@@ -144,11 +144,11 @@ app answered every registration with a 500. `parseDate` already used
 
 ## Build integration
 
-- `:dav`'s tests are a **plain JVM `test` task**. CI runs `testDebugUnitTest`,
+- `:dav`'s tests are a **plain JVM `test` task**. CI runs `testFullDebugUnitTest`,
   which exists only on Android variants, so `.forgejo/workflows/ci.yaml` names
   `:dav:test` explicitly. Without that the vendored suite is compiled by nobody
   and run by nobody, and the safety argument above is void.
-- `:app` declares `testImplementation(libs.xpp3)`. `compileOnly` is not
+- `:app` declares `testFullImplementation(libs.xpp3)`. `compileOnly` is not
   transitive, `:app`'s unit tests run on a plain JVM with no framework, and
   `isReturnDefaultValues = true` makes android.jar's stub factory return `null` —
   so anything touching `XmlUtils` would fail with an unrelated-looking NPE.

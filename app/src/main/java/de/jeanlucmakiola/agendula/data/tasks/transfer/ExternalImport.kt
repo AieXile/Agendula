@@ -16,6 +16,7 @@ import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.export.ExportTask
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import de.jeanlucmakiola.agendula.domain.toICal
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -213,6 +214,7 @@ class ExternalImport @Inject constructor(
         description = description,
         location = location,
         url = url,
+        categories = normalizeTags(tags),
         status = status,
         percentComplete = percentComplete,
         completedAt = completedAt,

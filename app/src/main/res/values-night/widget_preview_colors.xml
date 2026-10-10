@@ -6,4 +6,6 @@
     <color name="widget_preview_primary">#E2BAC9</color>
     <color name="widget_preview_primary_container">#583B49</color>
     <color name="widget_preview_on_primary_container">#F6D9E5</color>
+    <color name="widget_preview_surface_variant">#49454F</color>
+    <color name="widget_preview_on_primary">#402533</color>
 </resources>

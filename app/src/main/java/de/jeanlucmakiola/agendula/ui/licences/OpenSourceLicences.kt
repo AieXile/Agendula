@@ -1,5 +1,7 @@
 package de.jeanlucmakiola.agendula.ui.licences
 
+import de.jeanlucmakiola.agendula.BuildConfig
+
 /**
  * The third-party code Agendula ships, and what each licence obliges us to say.
  *
@@ -30,6 +32,8 @@ data class Attribution(
     val licence: Licence,
     /** Where the source can actually be obtained — MPL-2.0 §3.2(a)'s requirement. */
     val sourceUrl: String,
+    /** Only in the `full` flavor, which carries CalDAV sync and push. */
+    val syncOnly: Boolean = false,
 )
 
 enum class Licence(val spdxId: String, val url: String) {
@@ -54,30 +58,35 @@ object OpenSourceLicences {
             copyright = "© bitfire web engineering (Ricki Hirner, Bernhard Stockmann)",
             licence = Licence.MPL_2,
             sourceUrl = "https://github.com/bitfireAT/dav4jvm",
+            syncOnly = true,
         ),
         Attribution(
             name = "dnsjava",
             copyright = "© Brian Wellington and the dnsjava contributors",
             licence = Licence.BSD_3,
             sourceUrl = "https://github.com/dnsjava/dnsjava",
+            syncOnly = true,
         ),
         Attribution(
             name = "UnifiedPush Android connector",
             copyright = "© UnifiedPush contributors",
             licence = Licence.APACHE_2,
             sourceUrl = "https://codeberg.org/UnifiedPush/android-connector",
+            syncOnly = true,
         ),
         Attribution(
             name = "Tink",
             copyright = "© Google LLC",
             licence = Licence.APACHE_2,
             sourceUrl = "https://github.com/tink-crypto/tink-java",
+            syncOnly = true,
         ),
         Attribution(
             name = "OkHttp",
             copyright = "© Square, Inc.",
             licence = Licence.APACHE_2,
             sourceUrl = "https://github.com/square/okhttp",
+            syncOnly = true,
         ),
         Attribution(
             name = "Okio",
@@ -121,5 +130,5 @@ object OpenSourceLicences {
             licence = Licence.MIT,
             sourceUrl = "https://codeberg.org/jlmakiola/floret-kit",
         ),
-    )
+    ).filter { BuildConfig.SYNC_ENABLED || !it.syncOnly }
 }

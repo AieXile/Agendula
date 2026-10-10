@@ -1,0 +1,11 @@
+### Novo
+- Tags: adicione às tarefas, navegue pela tela inicial e filtre qualquer lista por elas.
+- Filtros: salve sua visão das tarefas abertas por data, lista, tag e prioridade, também em widget.
+- Novos widgets: Today, Up next, Lists e Week. Um widget pode mostrar várias listas.
+
+### Alterado
+- Linhas em estilo agenda no widget Tasks.
+- Listas sincronizadas podem ser renomeadas e excluídas.
+
+### Corrigido
+- Tarefas de dia inteiro não caem mais um dia errado a oeste do UTC.

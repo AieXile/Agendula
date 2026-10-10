@@ -44,4 +44,16 @@ class TaskFormTest {
         assertThat(TaskForm(title = "x", listId = 1, percentComplete = 30, parentId = 9).populatedFields())
             .containsExactly(TaskFormField.Progress, TaskFormField.Parent)
     }
+
+    @Test
+    fun `tags auto-reveal when the task has any`() {
+        assertThat(TaskForm(title = "x", listId = 1, tags = listOf("Work")).populatedFields())
+            .containsExactly(TaskFormField.Tags)
+    }
+
+    @Test
+    fun `tags are normalised to trimmed, non-blank, unique spellings in order`() {
+        assertThat(normalizeTags(listOf(" Work", "", "Home ", "Work", "work")))
+            .containsExactly("Work", "Home", "work").inOrder()
+    }
 }

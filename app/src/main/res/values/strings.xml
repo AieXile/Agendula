@@ -39,6 +39,9 @@
     <string name="lists_reorder_done">Done reordering</string>
     <string name="lists_reorder_handle">Drag to reorder</string>
     <string name="sort_title">Sort by</string>
+    <string name="view_options_title">Sort and filter</string>
+    <string name="view_filter_tags">Filter by tag</string>
+    <string name="view_filter_clear">Clear filter</string>
     <string name="sort_due">Due date</string>
     <string name="sort_priority">Priority</string>
     <string name="sort_title_alpha">Title</string>
@@ -185,6 +188,9 @@
     <string name="edit_location_label">Location</string>
     <string name="edit_url_label">Link</string>
     <string name="edit_url_hint">https://…</string>
+    <string name="edit_tags_label">Tags</string>
+    <string name="edit_tags_hint">Add a tag</string>
+    <string name="edit_tag_remove">Remove tag %1$s</string>
     <string name="edit_discard_title">Discard changes?</string>
     <string name="edit_discard_body">Your changes to this task haven’t been saved.</string>
     <string name="edit_discard_confirm">Discard</string>
@@ -212,6 +218,31 @@
 
     <!-- Lists overview -->
     <string name="lists_header">Lists</string>
+    <string name="tags_header">Tags</string>
+    <string name="filters_header">Filters</string>
+    <string name="filters_empty_hint">Combine due dates, lists, tags and priority into a view of your own</string>
+    <string name="filter_new_title">New filter</string>
+    <string name="filter_edit_title">Edit filter</string>
+    <string name="filter_name_hint">Filter name</string>
+    <string name="filter_section_due">Due</string>
+    <string name="filter_section_priority">Priority</string>
+    <string name="filter_section_lists">Lists</string>
+    <string name="filter_section_tags">Tags</string>
+    <string name="filter_any_due">Any due date</string>
+    <string name="filter_any_list">Any list</string>
+    <string name="filter_any_tag">Any tag, or none</string>
+    <string name="filter_priority_any">Any priority</string>
+    <string name="filter_priority_low">Low and higher</string>
+    <string name="filter_priority_medium">Medium and higher</string>
+    <string name="filter_priority_high">High only</string>
+    <string name="filter_match_all_tags">Match all tags</string>
+    <string name="filter_match_all_on">A task needs every tag you picked</string>
+    <string name="filter_match_all_off">A task needs one of the tags you picked</string>
+    <string name="filter_delete">Delete filter</string>
+    <string name="filter_delete_title">Delete “%1$s”?</string>
+    <string name="filter_delete_body">Only the filter goes. Its tasks stay where they are.</string>
+    <string name="filter_delete_confirm">Delete</string>
+    <string name="filter_missing">Filter deleted</string>
     <string name="new_task">New task</string>
     <string name="lists_failure">Could not read your tasks.</string>
     <string name="lists_empty">No task lists yet.</string>
@@ -305,6 +336,8 @@
     <string name="onboarding_welcome_reminders_body">A notification when something is due, on your schedule.</string>
     <string name="onboarding_welcome_sync_title">Your server, or none at all</string>
     <string name="onboarding_welcome_sync_body">Sync over CalDAV with a server you choose, or keep everything on this device.</string>
+    <string name="onboarding_welcome_offline_title">No internet, by design</string>
+    <string name="onboarding_welcome_offline_body">This version of Agendula has no network access, so it cannot sync or connect to anything itself.</string>
 
     <!-- First run: sync offer -->
     <string name="onboarding_sync_title">Sync with your own server?</string>
@@ -430,6 +463,8 @@
     <string name="settings_default_list_first">First available list</string>
     <string name="settings_add_subtask_row">Show \"add a subtask\" row</string>
     <string name="settings_add_subtask_row_hint">An add field at the end of an expanded task\'s subtasks</string>
+    <string name="settings_default_start_today">Default start to today</string>
+    <string name="settings_default_start_today_hint">Pre-fill a new task\'s start with today\'s date</string>
     <string name="settings_bottom_add_bar">Bottom quick-add bar</string>
     <string name="settings_bottom_add_bar_hint">Add tasks from a bar pinned to the bottom of a list, instead of the floating button</string>
 
@@ -755,9 +790,68 @@
     <!-- Home-screen widget -->
     <string name="widget_tasks_label">Tasks</string>
     <string name="widget_tasks_description">Today\'s tasks, or any list, with a tap to tick them off</string>
-    <string name="widget_empty">Nothing to do here</string>
+    <string name="widget_empty">All caught up</string>
+    <string name="widget_empty_hint">Nothing left to do, enjoy it</string>
     <string name="widget_unavailable">Open Agendula to finish setting up</string>
     <string name="widget_complete_task">Complete %1$s</string>
     <string name="widget_config_title">Show in widget</string>
     <string name="widget_config_smart_lists">Smart lists</string>
+    <string name="widget_config_group_by_list">Group by list</string>
+    <string name="widget_config_group_by_list_hint">Show each list\'s tasks under its own heading</string>
+    <string name="widget_section_overdue">Overdue</string>
+    <string name="widget_section_later">Later</string>
+    <string name="widget_section_no_date">No date</string>
+    <string name="widget_config_background">Background</string>
+    <string name="widget_config_background_solid">Solid</string>
+    <string name="widget_config_background_solid_hint">Fills the widget with the theme\'s surface colour</string>
+    <string name="widget_config_background_tinted">Tinted</string>
+    <string name="widget_config_background_tinted_hint">A softer, tonal fill</string>
+    <string name="widget_config_background_transparent">Transparent</string>
+    <string name="widget_config_background_transparent_hint">No fill — tasks stay readable in their own containers</string>
+    <string name="widget_config_theme">Theme</string>
+    <string name="widget_config_theme_follow_app">Follow app</string>
+    <string name="widget_config_theme_light">Light</string>
+    <string name="widget_config_theme_dark">Dark</string>
+    <string name="widget_config_row_color">Row colour</string>
+    <string name="widget_config_row_color_neutral">Neutral</string>
+    <string name="widget_config_row_color_neutral_hint">Every row uses the same tonal fill</string>
+    <string name="widget_config_row_color_by_list">By list</string>
+    <string name="widget_config_row_color_by_list_hint">Each row is tinted with its list\'s own colour</string>
+    <string name="widget_today_label">Today</string>
+    <string name="widget_today_description">A progress ring for today\'s tasks</string>
+    <string name="widget_today_all_done">All done</string>
+    <string name="widget_today_nothing_due">Nothing due today</string>
+    <plurals name="widget_today_progress_cd">
+        <item quantity="one">%1$d of %2$d done</item>
+        <item quantity="other">%1$d of %2$d done</item>
+    </plurals>
+    <string name="widget_up_next_label">Up next</string>
+    <string name="widget_up_next_description">Your single nearest due task</string>
+    <string name="widget_up_next_empty">Nothing due</string>
+    <string name="widget_up_next_soon">Soon</string>
+    <string name="widget_up_next_tomorrow">Tomorrow</string>
+    <string name="widget_up_next_then">Then</string>
+    <string name="widget_up_next_any_list">All lists</string>
+    <plurals name="widget_up_next_in_hours">
+        <item quantity="one">in %1$d h</item>
+        <item quantity="other">in %1$d h</item>
+    </plurals>
+    <plurals name="widget_up_next_in_days">
+        <item quantity="one">in %1$d d</item>
+        <item quantity="other">in %1$d d</item>
+    </plurals>
+    <plurals name="widget_up_next_overdue_hours">
+        <item quantity="one">%1$d h overdue</item>
+        <item quantity="other">%1$d h overdue</item>
+    </plurals>
+    <plurals name="widget_up_next_overdue_days">
+        <item quantity="one">%1$d d overdue</item>
+        <item quantity="other">%1$d d overdue</item>
+    </plurals>
+    <string name="widget_lists_label">Lists</string>
+    <string name="widget_lists_description">A shortcut tile per list, with its open count</string>
+    <string name="widget_lists_empty">No lists to show</string>
+    <string name="widget_lists_config_title">Lists to show</string>
+    <string name="widget_week_label">Week</string>
+    <string name="widget_week_description">A seven-day strip of task counts</string>
 </resources>

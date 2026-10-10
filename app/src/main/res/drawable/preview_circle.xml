@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Round badge for the widget-picker preview. Tinted at the use site. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="@color/widget_preview_primary_container" />
+    <solid android:color="@android:color/white" />
 </shape>

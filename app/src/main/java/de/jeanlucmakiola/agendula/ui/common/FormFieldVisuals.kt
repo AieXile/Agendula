@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Percent
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.Sell
 import androidx.compose.ui.graphics.vector.ImageVector
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.TaskFormField
@@ -23,6 +24,7 @@ fun TaskFormField.labelRes(): Int = when (this) {
     TaskFormField.Reminder -> R.string.edit_reminder_label
     TaskFormField.Location -> R.string.edit_location_label
     TaskFormField.Url -> R.string.edit_url_label
+    TaskFormField.Tags -> R.string.edit_tags_label
 }
 
 fun TaskFormField.icon(): ImageVector = when (this) {
@@ -34,4 +36,5 @@ fun TaskFormField.icon(): ImageVector = when (this) {
     TaskFormField.Reminder -> Icons.Rounded.Notifications
     TaskFormField.Location -> Icons.Rounded.LocationOn
     TaskFormField.Url -> Icons.Rounded.Link
+    TaskFormField.Tags -> Icons.Rounded.Sell
 }

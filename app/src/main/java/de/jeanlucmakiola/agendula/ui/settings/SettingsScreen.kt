@@ -40,13 +40,8 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import de.jeanlucmakiola.agendula.BuildConfig
 import de.jeanlucmakiola.agendula.R
-import de.jeanlucmakiola.agendula.ui.accounts.AccountDetailScreen
-import de.jeanlucmakiola.agendula.ui.accounts.AccountsScreen
-import de.jeanlucmakiola.agendula.ui.accounts.AccountsViewModel
-import de.jeanlucmakiola.agendula.data.tasks.room.AccountEntity
-import de.jeanlucmakiola.agendula.ui.accounts.add.AddAccountScreen
-import de.jeanlucmakiola.agendula.ui.accounts.add.AddAccountViewModel
 import de.jeanlucmakiola.agendula.ui.export.ExportScreen
 import de.jeanlucmakiola.agendula.ui.imports.ImportScreen
 import de.jeanlucmakiola.agendula.ui.licences.LicencesScreen
@@ -64,7 +59,7 @@ import de.jeanlucmakiola.floret.crash.submitCrashReport
 import de.jeanlucmakiola.floret.locale.AppLanguage
 
 /** The settings sub-screens reached from the hub's category rows. */
-private enum class SettingsSection {
+internal enum class SettingsSection {
     Appearance,
     TaskForm,
     Reminders,
@@ -111,16 +106,6 @@ fun SettingsScreen(
             else SettingsSection.entries.firstOrNull { it.name == initialSection },
         )
     }
-    // Hoisted so the add flow can refresh the list it returns to.
-    val accountsViewModel: AccountsViewModel = hiltViewModel()
-    // Shared with the add flow's own lookup, so "sign in again" can prefill it.
-    val addAccountViewModel: AddAccountViewModel = hiltViewModel()
-    val signInAgain: (AccountEntity) -> Unit = { account ->
-        addAccountViewModel.startReauthentication(account.id, account.principalUrl, account.username)
-        section = SettingsSection.AddAccount
-    }
-    // Which account the detail screen is showing; the section alone cannot say.
-    var openAccount by rememberSaveable(initialAccountId) { mutableStateOf(initialAccountId) }
 
     // Inside a sub-screen, system back (button or gesture) returns to the hub
     // rather than popping the whole Settings destination to the lists overview.
@@ -159,58 +144,19 @@ fun SettingsScreen(
         SlideInSection(visible = section == SettingsSection.Import) {
             ImportScreen(onBack = { section = SettingsSection.Storage })
         }
-        // Accounts stays composed under Add account, for the same reason Storage
-        // stays composed under Export: the deeper screen slides over it.
-        val accountsOpen = section == SettingsSection.Accounts ||
-            section?.parent == SettingsSection.Accounts
-        SlideInSection(visible = accountsOpen) {
-            AccountsScreen(
-                onAddAccount = {
-                    // A sign-in abandoned half-way must not turn this into one.
-                    if (addAccountViewModel.state.value.reauthenticating) addAccountViewModel.onStartOver()
-                    section = SettingsSection.AddAccount
-                },
-                onSignInAgain = signInAgain,
-                onOpenAccount = {
-                    openAccount = it
-                    section = SettingsSection.Account
-                },
-                onOpenStorage = { section = SettingsSection.Storage },
-                onBack = { section = null },
-                viewModel = accountsViewModel,
-            )
-        }
         SlideInSection(visible = section == SettingsSection.Licences) {
             LicencesScreen(onBack = { section = null })
         }
-        SlideInSection(visible = section == SettingsSection.Account) {
-            openAccount?.let { id ->
-                AccountDetailScreen(
-                    accountId = id,
-                    onBack = { section = SettingsSection.Accounts },
-                    onRemoved = { section = SettingsSection.Accounts },
-                    onSignInAgain = signInAgain,
-                    onOpenStorage = { section = SettingsSection.Storage },
-                    viewModel = accountsViewModel,
-                )
-            }
-        }
-        SlideInSection(visible = section == SettingsSection.AddAccount) {
-            AddAccountScreen(
-                // The list stays composed underneath, so nothing re-runs its
-                // init and OnResume never fires on a section change. It no longer
-                // needs to: the accounts come from an observed query, so a new
-                // account — and every later sync — arrives on its own.
-                onDone = { section = SettingsSection.Accounts },
-                onBack = { section = SettingsSection.Accounts },
-                viewModel = addAccountViewModel,
-            )
-        }
+        AccountSections(
+            section = section,
+            initialAccountId = initialAccountId,
+            onSection = { section = it },
+        )
     }
 }
 
 @Composable
-private fun SlideInSection(visible: Boolean, content: @Composable () -> Unit) {
+internal fun SlideInSection(visible: Boolean, content: @Composable () -> Unit) {
     AnimatedVisibility(
         visible = visible,
         enter = slideInHorizontally { it } + fadeIn(),
@@ -267,17 +213,19 @@ private fun SettingsHub(
 
         Spacer(Modifier.height(8.dp))
         GroupedSectionHeader(stringResource(R.string.settings_group_data))
-        GroupedRow(
-            title = stringResource(R.string.settings_section_accounts),
-            summary = stringResource(R.string.settings_accounts_subtitle),
-            position = Position.Top,
-            leading = { CategoryIcon(Icons.Rounded.CloudSync, ChipAccent.Tertiary) },
-            onClick = { onOpenSection(SettingsSection.Accounts) },
-        )
+        if (BuildConfig.SYNC_ENABLED) {
+            GroupedRow(
+                title = stringResource(R.string.settings_section_accounts),
+                summary = stringResource(R.string.settings_accounts_subtitle),
+                position = Position.Top,
+                leading = { CategoryIcon(Icons.Rounded.CloudSync, ChipAccent.Tertiary) },
+                onClick = { onOpenSection(SettingsSection.Accounts) },
+            )
+        }
         GroupedRow(
             title = stringResource(R.string.settings_section_storage),
             summary = stringResource(R.string.settings_storage_subtitle),
-            position = Position.Bottom,
+            position = if (BuildConfig.SYNC_ENABLED) Position.Bottom else Position.Alone,
             leading = { CategoryIcon(Icons.Rounded.Storage, ChipAccent.Secondary) },
             onClick = { onOpenSection(SettingsSection.Storage) },
         )

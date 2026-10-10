@@ -1,6 +1,7 @@
 package de.jeanlucmakiola.agendula.data.sync
 
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
+import de.jeanlucmakiola.agendula.data.sync.RemoteLists.Outcome
 import de.jeanlucmakiola.agendula.data.sync.push.PushStore
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.StorageMode
@@ -53,38 +54,7 @@ class RemoteListRepository @Inject constructor(
     private val resolver: ProviderResolver,
     private val push: PushStore,
     @IoDispatcher private val io: CoroutineDispatcher,
-) {
-
-    /** Why a collection write did not happen, in a form the UI can translate. */
-    sealed interface Outcome {
-        data object Done : Outcome
-
-        /** The server said no, and will say no again. */
-        data class Refused(val code: Int) : Outcome
-
-        /** The server could not be reached. Worth another try. */
-        data object Unreachable : Outcome
-
-        /** This account cannot make collections at all — iCloud, Posteo, Google. */
-        data object Unsupported : Outcome
-
-        /** Ours is a read-only share; the write belongs to whoever owns it. */
-        data object ReadOnly : Outcome
-
-        /** The account is gone, stopped, or has no credential we can decrypt. */
-        data object NoAccount : Outcome
-
-        /**
-         * The server answered something this call cannot make sense of.
-         *
-         * ⚠️ Not [Unreachable]. `CollectionOutcome` is one type across create,
-         * update and delete, so each of them has branches the other's method
-         * can return and its own cannot — and mapping those to [Unreachable]
-         * told someone sitting on wifi that they were offline. Unreachable is a
-         * claim about the network, and this is not one.
-         */
-        data object Unexpected : Outcome
-    }
+) : RemoteLists {
 
     /**
      * The accounts a new list may be created on, freshest answer first.
@@ -95,7 +65,7 @@ class RemoteListRepository @Inject constructor(
      * able to say so, and the only moment that costs nothing is while the user
      * is looking at the picker.
      */
-    suspend fun creatableAccounts(): List<AccountEntity> = withContext(io) {
+    override suspend fun creatableAccounts(): List<AccountEntity> = withContext(io) {
         // ⚠️ Empty in External mode, whatever the accounts table holds. The
         // lists on screen then come from a third-party provider, so a row
         // inserted into ours would exist, sync, and be visible to nobody.
@@ -120,7 +90,7 @@ class RemoteListRepository @Inject constructor(
      *
      * @return the new list's local id, or why there is none.
      */
-    suspend fun create(
+    override suspend fun create(
         accountId: Long,
         name: String,
         color: Int,
@@ -189,7 +159,7 @@ class RemoteListRepository @Inject constructor(
      * a row that has already been renamed locally by then reads as a rename that
      * worked and then quietly reverted on the next sync.
      */
-    suspend fun rename(listId: Long, name: String, color: Int): Outcome = withContext(io) {
+    override suspend fun rename(listId: Long, name: String, color: Int): Outcome = withContext(io) {
         val list = database.taskLists().entity(listId) ?: return@withContext Outcome.NoAccount
         if (list.isReadOnly) return@withContext Outcome.ReadOnly
         val url = list.href?.toHttpUrlOrNull() ?: return@withContext Outcome.NoAccount
@@ -227,7 +197,7 @@ class RemoteListRepository @Inject constructor(
      * grades 404 and 410 that way — because otherwise a collection someone
      * removed from another client leaves a row here that nothing can get rid of.
      */
-    suspend fun delete(listId: Long): Outcome = withContext(io) {
+    override suspend fun delete(listId: Long): Outcome = withContext(io) {
         val list = database.taskLists().entity(listId) ?: return@withContext Outcome.Done
         if (list.isReadOnly) return@withContext Outcome.ReadOnly
         val url = list.href?.toHttpUrlOrNull() ?: return@withContext Outcome.NoAccount

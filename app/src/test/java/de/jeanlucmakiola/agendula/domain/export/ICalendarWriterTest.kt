@@ -35,9 +35,10 @@ class ICalendarWriterTest {
         rrule: String? = null,
         rdate: String? = null,
         parentId: Long? = null,
+        tags: List<String> = emptyList(),
     ) = ExportTask(
         taskId, uid, title, description, location, url, priority, status, percentComplete,
-        start, due, isAllDay, completedAt, created, lastModified, rrule, rdate, parentId,
+        start, due, isAllDay, completedAt, created, lastModified, rrule, rdate, parentId, tags,
     )
 
     private fun write(vararg tasks: ExportTask, name: String = "Groceries"): String =
@@ -57,6 +58,13 @@ class ICalendarWriterTest {
             assertThat(lines.first()).isEqualTo("BEGIN:VCALENDAR")
             assertThat(lines.last()).isEqualTo("END:VCALENDAR")
             assertThat(lines).containsAtLeast("VERSION:2.0", "BEGIN:VTODO", "END:VTODO")
+        }
+
+        @Test
+        fun `writes the tags as one CATEGORIES line, escaped`() {
+            val lines = linesOf(write(task(tags = listOf("Work", "Home, Garden"))))
+            assertThat(lines).contains("CATEGORIES:Work,Home\\, Garden")
+            assertThat(linesOf(write(task())).none { it.startsWith("CATEGORIES") }).isTrue()
         }
 
         @Test

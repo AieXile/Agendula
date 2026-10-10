@@ -11,6 +11,12 @@ carries no APK assets.
 Codeberg is the canonical forge; Gitea is build infrastructure. See
 [Two forges, one repo](#two-forges-one-repo) for how the two are wired.
 
+The app has two product flavors. **`full`** is Agendula as described everywhere
+in this document. **`offline`** (`de.jeanlucmakiola.agendula.offline`, issue
+#39) has no CalDAV sync, no push and no network permission; every release and
+beta builds and signs it too, but it goes **only to Codeberg**, as an extra
+`agendula-offline_v<version>.apk` asset. It is not on F-Droid or Play.
+
 Before a stable release you can ship **betas** (`X.Y.Z-beta.N`) from the
 release branch. They go to **Codeberg only**, flagged as pre-releases; F-Droid
 and Play never see them. See [Cutting a beta](#cutting-a-beta).
@@ -56,7 +62,9 @@ retries).
 
 1. **Assemble the release branch.** Create `release/vX.Y.Z` and merge the
    feature/fix branches for this release into it. Everything below happens on
-   that branch, before it reaches `main`.
+   that branch, before it reaches `main`. To ship betas first, follow
+   [Cutting a beta](#cutting-a-beta) from here and come back to step 2 when
+   going stable.
 2. **Update `CHANGELOG.md`.** Move the `## [Unreleased]` items under a new
    `## [X.Y.Z]` heading (Keep a Changelog format). The text between that heading
    and the next `## [` becomes the Gitea and Codeberg release notes. The
@@ -65,7 +73,8 @@ retries).
    `scripts/version_info.sh` prints) in `app/build.gradle.kts`. **This bump is what triggers the release** when the
    branch merges to `main`.
    Then write this version's **"What's New"** by hand:
-   `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`, one per
+   `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt` (e.g.
+   `1010099.txt` for 1.1.0), one per
    shipped locale, each a short summary **under 500 characters** — F-Droid and
    Play both publish these files, and Play rejects a longer one. It is not a
    copy of the CHANGELOG.md section. `scripts/sync_changelog_to_fastlane.sh`
@@ -74,7 +83,8 @@ retries).
    committed `en-US` changelog.
 4. **Verify the release build on a real device** — the mandatory gate:
    ```sh
-   scripts/verify-release.sh
+   scripts/verify-release.sh            # full
+   scripts/verify-release.sh offline    # when the release touches the offline flavor
    ```
    It builds the `releaseTest` variant (same R8 config as `release`, debug-signed
    with a `.releasetest` suffix so it installs alongside the real app) and resets
@@ -108,7 +118,9 @@ and to the stable release.
    (`scripts/version_info.sh` prints it; `1.1.0-beta.1` → `1010001`).
    No What's New file — betas don't ship to the stores. Notes come from a
    `## [X.Y.Z-beta.N]` section of `CHANGELOG.md` if you write one, otherwise
-   from `## [Unreleased]`.
+   from `## [Unreleased]`. So keep the entries under `## [Unreleased]` while
+   betas are going out and only move them to `## [X.Y.Z]` when going stable:
+   once they're moved, a beta's notes come out empty.
 2. **Optionally verify it on a device** with `scripts/verify-release.sh`, as for
    a stable release.
 3. **Push the branch to Codeberg.** When it reaches Gitea, `beta.yaml` sees a
@@ -190,7 +202,11 @@ Releases aren't git objects and don't sync with the push mirror in either
 direction, so the pipeline pushes the `vX.Y.Z` tag straight to Codeberg, creates
 the release over the Codeberg API, and attaches `agendula_v<version>.apk` + its
 `.sha256`. It's the same APK the F-Droid repo serves (same **app key**), so it
-adds no trust surface. The logic lives in `scripts/publish_codeberg_release.sh`,
+adds no trust surface. The offline flavor rides along as
+`agendula-offline_v<version>.apk` + `.sha256`; the full APK keeps its old name
+because Obtainium filters point at it.
+Obtainium users who see both offered can pin one with *Filter APKs by regular
+expression* (`^agendula_v` or `^agendula-offline_v`). The logic lives in `scripts/publish_codeberg_release.sh`,
 which `beta.yaml` uses too (with the pre-release flag set). It skips cleanly if `CODEBERG_RELEASE_TOKEN` is unset,
 but it is **not** `continue-on-error`: through 0.2.1–0.3.2 this step reported
 green while never once publishing, which is how a crash-fix release reached
@@ -199,7 +215,7 @@ fails the release loudly.
 
 ### Google Play channel
 
-**Artifact.** Play gets an **App Bundle** (`bundleRelease`), never the APK. It is
+**Artifact.** Play gets an **App Bundle** (`bundleFullRelease`), never the APK. It is
 built from the same source and signing config at the very end of the `release`
 job, `continue-on-error`, and handed to the `play` job as a workflow artifact
 (via a commit-pinned fork of `upload-artifact`/`download-artifact`; the official

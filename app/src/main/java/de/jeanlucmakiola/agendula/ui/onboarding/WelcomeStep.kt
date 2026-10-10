@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material3.Button
@@ -14,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import de.jeanlucmakiola.agendula.BuildConfig
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.floret.components.BenefitRow
 import de.jeanlucmakiola.floret.components.OnboardingSpace
@@ -56,10 +58,18 @@ internal fun WelcomeStep(chrome: StepChrome, onContinue: () -> Unit) {
             body = stringResource(R.string.onboarding_welcome_reminders_body),
         )
         Spacer(Modifier.height(OnboardingSpace.sm))
-        BenefitRow(
-            icon = Icons.Rounded.CloudSync,
-            title = stringResource(R.string.onboarding_welcome_sync_title),
-            body = stringResource(R.string.onboarding_welcome_sync_body),
-        )
+        if (BuildConfig.SYNC_ENABLED) {
+            BenefitRow(
+                icon = Icons.Rounded.CloudSync,
+                title = stringResource(R.string.onboarding_welcome_sync_title),
+                body = stringResource(R.string.onboarding_welcome_sync_body),
+            )
+        } else {
+            BenefitRow(
+                icon = Icons.Rounded.CloudOff,
+                title = stringResource(R.string.onboarding_welcome_offline_title),
+                body = stringResource(R.string.onboarding_welcome_offline_body),
+            )
+        }
     }
 }

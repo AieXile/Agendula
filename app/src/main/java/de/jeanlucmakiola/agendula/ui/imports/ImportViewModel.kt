@@ -4,7 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import de.jeanlucmakiola.agendula.data.sync.SyncTrigger
+import de.jeanlucmakiola.agendula.data.sync.SyncRequests
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.StorageMode
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
@@ -76,7 +76,7 @@ class ImportViewModel @Inject constructor(
     repository: TasksRepository,
     private val resolver: ProviderResolver,
     private val importer: IcsImport,
-    private val syncTrigger: SyncTrigger,
+    private val syncRequests: SyncRequests,
 ) : ViewModel() {
 
     private val ownStore = MutableStateFlow(resolver.mode() == StorageMode.OWN)
@@ -161,7 +161,7 @@ class ImportViewModel @Inject constructor(
                 val result = importer.import(ready.parsed, target)
                 (chosen as? ImportChoice.Existing)?.list
                     ?.takeIf { it.accountId != null && result.imported > 0 }
-                    ?.let { runCatching { syncTrigger.enqueue(it.accountName) } }
+                    ?.let { runCatching { syncRequests.syncNow(it.accountName) } }
                 ImportStep.Done(
                     listName = listName,
                     imported = result.imported,

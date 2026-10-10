@@ -50,4 +50,12 @@ class ConvertersTest {
         }
         assertThat(Converters.alarmReferenceFrom("NONSENSE")).isEqualTo(AlarmReference.DUE)
     }
+
+    @Test
+    fun `categories round-trip with escaped commas and come back cleaned`() {
+        val stored = CategoriesConverter.toText(listOf("a,b", " c ", "", "c"))
+        assertThat(stored).isEqualTo("a\\,b,c")
+        assertThat(CategoriesConverter.fromText(stored)).containsExactly("a,b", "c").inOrder()
+        assertThat(CategoriesConverter.fromText("")).isEmpty()
+    }
 }

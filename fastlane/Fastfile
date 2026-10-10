@@ -22,7 +22,7 @@ IMAGE_LOCALE = "en-US"
 platform :android do
   desc "Upload an already-built, already-signed AAB to Play"
   lane :deploy do |options|
-    aab = File.expand_path(options[:aab] || "app/build/outputs/bundle/release/app-release.aab", ROOT)
+    aab = File.expand_path(options[:aab] || "app/build/outputs/bundle/fullRelease/app-full-release.aab", ROOT)
     UI.user_error!("AAB not found at #{aab}") unless File.exist?(aab)
 
     supply(

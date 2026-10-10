@@ -1,10 +1,10 @@
 package de.jeanlucmakiola.agendula.widget
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.qualifiers.ApplicationContext
 import de.jeanlucmakiola.agendula.data.di.ApplicationScope
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
+import de.jeanlucmakiola.floret.glance.WidgetRollover
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -36,7 +36,9 @@ class TaskWidgetUpdater @Inject constructor(
         scope.launch(Dispatchers.IO) {
             requests.receiveAsFlow().debounce(DEBOUNCE_MILLIS).collect { redraw() }
         }
-        scope.launch(Dispatchers.IO) { runCatching { WidgetRolloverScheduler.sync(context) } }
+        scope.launch(Dispatchers.IO) {
+            runCatching { WidgetRollover.sync(context, WIDGET_RECEIVER_CLASSES, ::widgetRolloverPendingIntent) }
+        }
         // The process may have been started by a change it never heard about.
         requestRefresh()
     }
@@ -48,7 +50,8 @@ class TaskWidgetUpdater @Inject constructor(
 
     private suspend fun redraw() {
         runCatching {
-            if (WidgetRolloverScheduler.hasPlacedWidgets(context)) TaskWidget().updateAll(context)
+            if (!WidgetRollover.hasPlacedWidgets(context, WIDGET_RECEIVER_CLASSES)) return@runCatching
+            updateAllWidgets(context)
         }
     }
 

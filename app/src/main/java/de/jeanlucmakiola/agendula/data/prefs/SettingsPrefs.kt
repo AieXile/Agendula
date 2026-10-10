@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.StorageMode
+import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskFormField
@@ -20,6 +21,7 @@ import de.jeanlucmakiola.floret.reminders.applyReminderOverride
 import de.jeanlucmakiola.floret.reminders.normalizeReminders
 import de.jeanlucmakiola.floret.reminders.reminderLeadsFor
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.DayOfWeek
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -95,6 +97,8 @@ data class Settings(
     val pushEnabled: Boolean = true,
     /** Lists of the current store whose tasks the smart lists (and their counts) leave out. */
     val hiddenFromSmartLists: Set<Long> = emptySet(),
+    /** Pre-fill a new task's start with today's date. */
+    val defaultStartToday: Boolean = false,
 ) {
     /** [tasks] as [filter] shows them: a smart list drops the lists kept out of it. */
     fun visibleIn(filter: TaskFilter, tasks: List<Task>): List<Task> =
@@ -153,6 +157,7 @@ class SettingsPrefs @Inject constructor(
                     .mapNotNull { entry -> entry.substringAfter("$mode:", "").toLongOrNull() }
                     .toSet()
             },
+            defaultStartToday = p[DEFAULT_START_TODAY] ?: false,
         )
     }
 
@@ -165,6 +170,8 @@ class SettingsPrefs @Inject constructor(
     suspend fun setPushEnabled(enabled: Boolean) = dataStore.edit { it[PUSH_ENABLED] = enabled }
 
     suspend fun setAutofocusTitle(enabled: Boolean) = dataStore.edit { it[AUTOFOCUS_TITLE] = enabled }
+
+    suspend fun setDefaultStartToday(enabled: Boolean) = dataStore.edit { it[DEFAULT_START_TODAY] = enabled }
 
     suspend fun setTimeFormat(pref: TimeFormatPref) = dataStore.edit { it[TIME_FORMAT] = pref.name }
 
@@ -254,6 +261,34 @@ class SettingsPrefs @Inject constructor(
         p[SMART_LIST_HIDDEN] = if (hidden) current + entry else current - entry
     }
 
+    /** The saved filters, oldest first, with the list ids of the current store. */
+    val savedFilters: Flow<List<SavedFilter>> =
+        dataStore.data.map { p -> p[SAVED_FILTERS] to p[STORAGE_MODE] }
+            .distinctUntilChanged()
+            .map { (raw, mode) -> SavedFilterCodec.decode(raw, (storedMode(mode) ?: resolver.autoMode()).name) }
+            .distinctUntilChanged()
+
+    /** One saved filter; `null` while it doesn't exist. */
+    fun savedFilter(id: Long): Flow<SavedFilter?> =
+        savedFilters.map { all -> all.firstOrNull { it.id == id } }.distinctUntilChanged()
+
+    /** Store [filter]; an id of 0 makes a new one. Returns the filter's id. */
+    suspend fun saveFilter(filter: SavedFilter): Long {
+        var id = filter.id
+        dataStore.edit { p ->
+            if (id <= 0) {
+                id = p[SAVED_FILTER_NEXT_ID] ?: 1L
+                p[SAVED_FILTER_NEXT_ID] = id + 1
+            }
+            p[SAVED_FILTERS] = SavedFilterCodec.upsert(p[SAVED_FILTERS], filter.copy(id = id), modeOf(p).name)
+        }
+        return id
+    }
+
+    suspend fun deleteFilter(id: Long) = dataStore.edit { p ->
+        p[SAVED_FILTERS] = SavedFilterCodec.remove(p[SAVED_FILTERS], id)
+    }
+
     suspend fun setDefaultEditFields(fields: Set<TaskFormField>) = dataStore.edit {
         it[DEFAULT_EDIT_FIELDS] = fields.mapTo(mutableSetOf()) { field -> field.name }
     }
@@ -282,6 +317,9 @@ class SettingsPrefs @Inject constructor(
         val SYNC_INTERVAL = intPreferencesKey("sync_interval_minutes")
         val PUSH_ENABLED = booleanPreferencesKey("push_enabled")
         val SMART_LIST_HIDDEN = stringSetPreferencesKey("smart_list_hidden")
+        val DEFAULT_START_TODAY = booleanPreferencesKey("default_start_today")
+        val SAVED_FILTERS = stringPreferencesKey("saved_filters")
+        val SAVED_FILTER_NEXT_ID = longPreferencesKey("saved_filter_next_id")
     }
 }
 

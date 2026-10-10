@@ -22,6 +22,7 @@ data class TaskForm(
     val reminders: List<Int> = emptyList(),
     val location: String? = null,
     val url: String? = null,
+    val tags: List<String> = emptyList(),
     /** The series' `RRULE` value; `null` = does not repeat. Ignored for a single-occurrence edit. */
     val rrule: String? = null,
 ) {
@@ -44,7 +45,7 @@ enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITH
  * a setting; the rest unfold on demand. Declaring these as an enum keeps the
  * disclosure generic, so adding a field later is one entry plus its card.
  */
-enum class TaskFormField { Description, Recurrence, Priority, Progress, Parent, Reminder, Location, Url }
+enum class TaskFormField { Description, Recurrence, Priority, Progress, Parent, Reminder, Location, Url, Tags }
 
 /** The optional fields that already carry a value — auto-revealed when editing. */
 fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
@@ -56,4 +57,5 @@ fun TaskForm.populatedFields(): Set<TaskFormField> = buildSet {
     if (rrule != null) add(TaskFormField.Recurrence)
     if (!location.isNullOrBlank()) add(TaskFormField.Location)
     if (!url.isNullOrBlank()) add(TaskFormField.Url)
+    if (tags.isNotEmpty()) add(TaskFormField.Tags)
 }

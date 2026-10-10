@@ -8,27 +8,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * The migration harness, proven against the committed schema in `app/schemas/`.
- *
- * There is one schema version today, so all there is to assert is that the helper
- * can build v1 from the exported JSON, seed it, and validate it back — i.e. the
- * export, the assets wiring and the identity hash all line up. That is the point:
- * the first real migration only has to add its own case.
- *
- * **Adding a v1 → v2 case.** When sync adds columns, bump [TasksDatabase]'s
- * `version`, let KSP export `2.json`, declare the `Migration(1, 2)` next to the
- * database, and add a test here shaped like this:
- *
- * ```
- * helper.createDatabase(TEST_DB, 1).use { db ->
- *     db.execSQL("INSERT INTO task_lists (name, color) VALUES ('Groceries', 0)")
- * }
- * helper.runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2).use { db ->
- *     // read the seeded rows back — validation proves the shape, not the data
- * }
- * ```
- */
+/** Migrations, proven against the committed schemas in `app/schemas/`. */
 @RunWith(AndroidJUnit4::class)
 class TasksDatabaseMigrationTest {
 
@@ -59,6 +39,39 @@ class TasksDatabaseMigrationTest {
         // what proves the harness rather than the schema.
         helper.runMigrationsAndValidate(TEST_DB, 1, true).use { db ->
             assertThat(db.version).isEqualTo(1)
+        }
+    }
+
+    @Test
+    fun liftsCategoriesOutOfTheResidueWithoutDirtyingTheTask() {
+        helper.createDatabase(TEST_DB, 1).use { db ->
+            db.execSQL("INSERT INTO task_lists (id, name, color) VALUES (1, 'Work', 0)")
+            db.execSQL(
+                "INSERT INTO tasks (id, list_id, uid, title, unknown_properties) VALUES (?, 1, ?, ?, ?)",
+                arrayOf<Any?>(1, "uid-1", "Claimed", "X-FOO:bar\r\nCATEGORIES:Work,Home\r\n"),
+            )
+            db.execSQL(
+                "INSERT INTO tasks (id, list_id, uid, title, unknown_properties) VALUES (?, 1, ?, ?, ?)",
+                arrayOf<Any?>(2, "uid-2", "Split", "CATEGORIES:a\r\nCATEGORIES:b\r\n"),
+            )
+            db.execSQL("INSERT INTO tasks (id, list_id, uid, title) VALUES (3, 1, 'uid-3', 'Untagged')")
+        }
+
+        helper.runMigrationsAndValidate(TEST_DB, 2, true, TasksDatabase.MIGRATION_1_2).use { db ->
+            db.query("SELECT categories, unknown_properties, is_dirty FROM tasks ORDER BY id").use { c ->
+                c.moveToNext()
+                assertThat(c.getString(0)).isEqualTo("Work,Home")
+                assertThat(c.getString(1)).doesNotContain("CATEGORIES")
+                assertThat(c.getString(1)).contains("X-FOO:bar")
+                assertThat(c.getInt(2)).isEqualTo(0)
+
+                c.moveToNext()
+                assertThat(c.getString(0)).isEqualTo("a,b")
+                assertThat(c.getString(1)).isEqualTo("CATEGORIES:a\r\nCATEGORIES:b\r\n")
+
+                c.moveToNext()
+                assertThat(c.getString(0)).isEmpty()
+            }
         }
     }
 

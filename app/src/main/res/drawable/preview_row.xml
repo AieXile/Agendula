@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static mock of WidgetGroupedRow (Position.Alone) for the widget-picker preview. Tinted at the use site. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/white" />
+    <corners android:radius="22dp" />
+</shape>

@@ -18,14 +18,20 @@ sealed interface NavRequest {
     /** One account's detail — where "sign in again" lives. */
     data class OpenAccount(val accountId: Long) : NavRequest
 
-    /** A new task, optionally titled with text shared from another app. */
-    data class NewTask(val title: String? = null) : NavRequest
+    /**
+     * A new task, optionally titled with text shared from another app, or
+     * preset to a list — a widget's own add button, when it shows one list.
+     */
+    data class NewTask(val title: String? = null, val listId: Long? = null) : NavRequest
 
     /** One of the smart lists — the launcher's "Today" shortcut, a widget header. */
     data class OpenSmart(val list: SmartList) : NavRequest
 
     /** One real list — a widget header. */
     data class OpenList(val listId: Long) : NavRequest
+
+    /** One saved filter — a widget header. */
+    data class OpenFilter(val filterId: Long) : NavRequest
 
     /** An `.ics` another app handed over. */
     data class Import(val uri: Uri) : NavRequest

@@ -52,6 +52,8 @@ data class Task(
     val description: String?,
     val location: String?,
     val url: String?,
+    /** `CATEGORIES`, as the task spells them. */
+    val tags: List<String> = emptyList(),
     val priority: Priority,
     val status: TaskStatus,
     val percentComplete: Int?,
@@ -161,3 +163,10 @@ fun TaskStatus.toInt(): Int = when (this) {
     TaskStatus.COMPLETED -> ICalStatus.COMPLETED
     TaskStatus.CANCELLED -> ICalStatus.CANCELLED
 }
+
+/** Tags as every writer stores them: trimmed, no blanks, each spelling once, order kept. */
+fun normalizeTags(tags: List<String>): List<String> = tags.map(String::trim).filter(String::isNotEmpty).distinct()
+
+/** Every tag on [tasks], each spelling once, alphabetically ignoring case. */
+fun tagsInUse(tasks: Iterable<Task>): List<String> =
+    tasks.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)

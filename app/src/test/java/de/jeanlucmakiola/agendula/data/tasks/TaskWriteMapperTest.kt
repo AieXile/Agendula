@@ -149,6 +149,17 @@ class TaskWriteMapperTest {
     }
 
     @Test
+    fun `category row carries only the name, so the provider resolves the category itself`() {
+        val values = TaskWriteMapper.categoryValues(taskId = 12L, name = "Work")
+
+        assertThat(values).containsExactly(
+            TasksContract.Properties.TASK_ID, 12L,
+            TasksContract.Properties.MIMETYPE, "vnd.android.cursor.item/category",
+            TasksContract.Category.NAME, "Work",
+        )
+    }
+
+    @Test
     fun `alarm carries every column the provider's validator demands`() {
         val values = TaskWriteMapper.alarmValues(taskId = 12L, minutesBeforeDue = 30)
 

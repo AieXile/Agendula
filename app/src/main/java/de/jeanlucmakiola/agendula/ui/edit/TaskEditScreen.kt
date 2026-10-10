@@ -1,9 +1,25 @@
 package de.jeanlucmakiola.agendula.ui.edit
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ScrollState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.text.style.TextOverflow
+import de.jeanlucmakiola.agendula.ui.common.TagChip
 import de.jeanlucmakiola.agendula.ui.common.LocalFirstDayOfWeek
 import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.rounded.Sell
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.ui.text.AnnotatedString
@@ -15,6 +31,7 @@ import de.jeanlucmakiola.agendula.ui.common.icon
 import de.jeanlucmakiola.agendula.ui.common.labelRes
 import de.jeanlucmakiola.agendula.ui.common.recurrenceText
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.floret.components.revealOnFocus
 import de.jeanlucmakiola.floret.components.FullScreenPicker
 import de.jeanlucmakiola.floret.components.GroupedListInset
 import de.jeanlucmakiola.floret.components.GroupedSectionHeader
@@ -153,11 +170,25 @@ fun TaskEditScreen(
     val requestBack = { if (state.isDirty && !state.saved) showDiscard = true else onBack() }
     BackHandler(enabled = state.isDirty && !state.saved) { showDiscard = true }
 
+    // Once the title field scrolls away it rides in the bar, so a long form never
+    // loses track of which task is being edited.
+    val scroll = rememberScrollState()
+    var titleBottom by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    val titleInBar by remember { derivedStateOf { scroll.value > titleBottom } }
+
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    AnimatedVisibility(
+                        visible = titleInBar && state.title.isNotBlank(),
+                        enter = fadeIn() + slideInVertically { it / 2 },
+                        exit = fadeOut() + slideOutVertically { it / 2 },
+                    ) {
+                        Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = requestBack) {
                         Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.close))
@@ -180,6 +211,8 @@ fun TaskEditScreen(
         EditContent(
             state = state,
             viewModel = viewModel,
+            scroll = scroll,
+            onTitleBottom = { titleBottom = it },
             modifier = Modifier.padding(inner),
         )
     }
@@ -220,6 +253,8 @@ private enum class PickerTarget { Start, Due }
 private fun EditContent(
     state: TaskEditUiState,
     viewModel: TaskEditViewModel,
+    scroll: ScrollState,
+    onTitleBottom: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dark = isSystemInDarkTheme()
@@ -250,7 +285,7 @@ private fun EditContent(
             // Shrink the scroll viewport by the keyboard so the focused field
             // scrolls into view above the IME instead of being hidden.
             .imePadding()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 40.dp),
     ) {
         // Title: borderless headline + accent bar, mirroring the detail screen.
@@ -259,7 +294,9 @@ private fun EditContent(
             onValueChange = viewModel::onTitleChange,
             placeholder = stringResource(R.string.edit_title_hint),
             textStyle = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
-            modifier = Modifier.focusRequester(titleFocus),
+            modifier = Modifier
+                .focusRequester(titleFocus)
+                .onPlaced { onTitleBottom(it.positionInParent().y.toInt() + it.size.height) },
         )
         Spacer(Modifier.height(10.dp))
         Box(
@@ -572,6 +609,19 @@ private fun EditContent(
             }
         }
 
+        OptionalFormSection(visible = TaskFormField.Tags in state.visibleFields) {
+            Spacer(Modifier.height(gap))
+            TagsCard(
+                tags = state.tags,
+                draft = state.tagDraft,
+                suggestions = state.tagSuggestions,
+                onDraftChange = viewModel::onTagDraftChange,
+                onCommitDraft = viewModel::commitTagDraft,
+                onAdd = viewModel::addTag,
+                onRemove = viewModel::removeTag,
+            )
+        }
+
         OptionalFormSection(visible = state.hiddenFields.isNotEmpty()) {
             Spacer(Modifier.height(20.dp))
             TextButton(
@@ -727,9 +777,9 @@ private fun EditCard(
         }
     }
     if (onClick != null) {
-        Surface(onClick = onClick, color = color, shape = shape, modifier = Modifier.fillMaxWidth()) { inner() }
+        Surface(onClick = onClick, color = color, shape = shape, modifier = Modifier.fillMaxWidth().revealOnFocus()) { inner() }
     } else {
-        Surface(color = color, shape = shape, modifier = Modifier.fillMaxWidth()) { inner() }
+        Surface(color = color, shape = shape, modifier = Modifier.fillMaxWidth().revealOnFocus()) { inner() }
     }
 }
 
@@ -1039,6 +1089,77 @@ private fun AddReminderCard(position: Position, label: String, onClick: () -> Un
         }
     }
 }
+
+/** The input sits beside the icon; the tags and any suggestions run below it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagsCard(
+    tags: List<String>,
+    draft: String,
+    suggestions: List<String>,
+    onDraftChange: (String) -> Unit,
+    onCommitDraft: () -> Unit,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    val query = draft.trim()
+    val matches = if (query.isEmpty()) {
+        emptyList()
+    } else {
+        suggestions.filter { it.contains(query, ignoreCase = true) && it !in tags }.take(MAX_TAG_SUGGESTIONS)
+    }
+    EditCard(
+        icon = Icons.Rounded.Sell,
+        iconContentDescription = stringResource(R.string.edit_tags_label),
+        header = {
+            InlineTextField(
+                value = draft,
+                onValueChange = onDraftChange,
+                placeholder = stringResource(R.string.edit_tags_hint),
+                capitalization = KeyboardCapitalization.None,
+                imeAction = ImeAction.Done,
+                onImeAction = onCommitDraft,
+            )
+        },
+    ) {
+        if (matches.isNotEmpty()) {
+            TagFlow(modifier = Modifier.padding(top = 8.dp)) {
+                matches.forEach { match ->
+                    TagChip(
+                        name = match,
+                        muted = true,
+                        icon = Icons.Rounded.Add,
+                        onClick = { onAdd(match) },
+                    )
+                }
+            }
+        }
+        if (tags.isNotEmpty()) {
+            TagFlow(modifier = Modifier.padding(top = 8.dp)) {
+                tags.forEach { tag ->
+                    TagChip(
+                        name = tag,
+                        icon = Icons.Rounded.Close,
+                        iconContentDescription = stringResource(R.string.edit_tag_remove, tag),
+                        onClick = { onRemove(tag) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagFlow(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) { content() }
+}
+
+private const val MAX_TAG_SUGGESTIONS = 8
 
 /** Picks one hidden optional section to add to the form. */
 @Composable

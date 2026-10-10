@@ -35,7 +35,11 @@ import kotlin.time.Duration.Companion.seconds
 @Singleton
 class SyncTrigger @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : SyncRequests {
+
+    override fun syncNow(accountName: String) {
+        enqueue(accountName)
+    }
 
     /**
      * Starts a sync now.

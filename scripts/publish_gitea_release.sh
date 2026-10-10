@@ -11,7 +11,8 @@
 #   TAG, SHA       vX.Y.Z[-beta.N] and the commit it marks
 #   PRERELEASE     true | false
 #   NOTES_FILE     release notes (scripts/release_notes.sh)
-#   MAPPING        optional path to R8's mapping.txt
+#   MAPPING        optional path to R8's mapping.txt (full flavor)
+#   MAPPING_OFFLINE optional path to the offline flavor's mapping.txt
 set -euo pipefail
 : "${TOKEN:?}" "${API:?}" "${TAG:?}" "${SHA:?}" "${PRERELEASE:?}" "${NOTES_FILE:?}"
 
@@ -57,8 +58,8 @@ echo "Created/updated Gitea release $TAG at $SHA"
 # so it fits the no-binaries rule for this release. Best-effort: never fail a
 # release over it.
 attach_mapping() {
-  local asset="mapping-${TAG#v}.txt.gz" old
-  gzip -c "$MAPPING" > "$WORK/$asset"
+  local mapping=$1 asset=$2 old
+  gzip -c "$mapping" > "$WORK/$asset"
   # Replace any prior asset of the same name (re-run safe).
   old=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/$ID/assets" \
     | jq -r --arg n "$asset" '.[] | select(.name==$n) | .id')
@@ -72,5 +73,10 @@ attach_mapping() {
 if [ -z "${MAPPING:-}" ] || [ ! -f "$MAPPING" ]; then
   echo "No mapping.txt (R8 off?) — skipping."
 else
-  attach_mapping || echo "warning: could not attach the R8 mapping to $TAG" >&2
+  attach_mapping "$MAPPING" "mapping-${TAG#v}.txt.gz" \
+    || echo "warning: could not attach the R8 mapping to $TAG" >&2
+fi
+if [ -n "${MAPPING_OFFLINE:-}" ] && [ -f "$MAPPING_OFFLINE" ]; then
+  attach_mapping "$MAPPING_OFFLINE" "mapping-offline-${TAG#v}.txt.gz" \
+    || echo "warning: could not attach the offline R8 mapping to $TAG" >&2
 fi

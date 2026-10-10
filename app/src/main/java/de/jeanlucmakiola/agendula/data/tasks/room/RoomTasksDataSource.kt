@@ -520,7 +520,7 @@ class RoomTasksDataSource @Inject constructor(
 
     /**
      * ⚠️ Device-only lists. An account-backed collection is renamed through
-     * [de.jeanlucmakiola.agendula.data.sync.RemoteListRepository], which sends
+     * [de.jeanlucmakiola.agendula.data.sync.RemoteLists], which sends
      * the PROPPATCH first and writes here only once the server has taken it.
      *
      * This used to set `is_dirty` for an account list instead, on the theory

@@ -30,7 +30,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,25 +39,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.ui.common.DefaultListColor
 import de.jeanlucmakiola.agendula.ui.common.ListColorChip
 import de.jeanlucmakiola.agendula.ui.common.ListPalette
+import de.jeanlucmakiola.agendula.ui.common.NameField
 import de.jeanlucmakiola.floret.components.FullScreenPicker
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.GroupedSurface
-import de.jeanlucmakiola.floret.components.InlineTextField
 import de.jeanlucmakiola.floret.components.OptionPicker
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.pastelize
@@ -153,7 +149,6 @@ fun ListEditorSheet(
             GroupedRow(
                 title = destination.label,
                 position = Position.Alone,
-                modifier = Modifier.padding(horizontal = 16.dp),
                 leading = { Icon(destinationIcon(destination), contentDescription = null) },
                 trailing = { Icon(Icons.Rounded.ChevronRight, contentDescription = null) },
                 onClick = { choosingDestination = true },
@@ -176,7 +171,6 @@ fun ListEditorSheet(
                 title = stringResource(R.string.list_in_smart_lists),
                 summary = stringResource(R.string.list_in_smart_lists_hint),
                 position = Position.Alone,
-                modifier = Modifier.padding(horizontal = 16.dp),
                 trailing = {
                     Switch(
                         checked = !hiddenFromSmartLists,
@@ -260,27 +254,14 @@ internal fun ListNameField(
     autoFocus: Boolean,
     onNameChange: (String) -> Unit,
     onImeAction: () -> Unit,
-) {
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(autoFocus) { if (autoFocus) focusRequester.requestFocus() }
-    GroupedSurface(position = Position.Alone, modifier = Modifier.padding(horizontal = 16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ListColorChip(color)
-            InlineTextField(
-                value = name,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.list_name_hint),
-                imeAction = ImeAction.Done,
-                onImeAction = onImeAction,
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-            )
-        }
-    }
-}
+) = NameField(
+    name = name,
+    placeholder = stringResource(R.string.list_name_hint),
+    autoFocus = autoFocus,
+    onNameChange = onNameChange,
+    onImeAction = onImeAction,
+    leading = { ListColorChip(color) },
+)
 
 /**
  * The palette as two rows of round swatches; the chosen one carries a check.

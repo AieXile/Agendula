@@ -2,7 +2,7 @@ name: Translations
 
 # Fast, SDK-free parity check for translation resources, so Weblate PRs (which
 # only touch values-*/strings.xml) get quick feedback without the full Android
-# build. The deeper checks still run in CI via lintDebug (ExtraTranslation).
+# build. The deeper checks still run in CI via lintFullDebug (ExtraTranslation).
 #
 # Runs on every PR (no path filter) so the required "Translations / check"
 # status is always reported — like the `ci` job. A path-filtered workflow is

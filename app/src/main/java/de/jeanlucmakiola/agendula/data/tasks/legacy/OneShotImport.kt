@@ -15,6 +15,7 @@ import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
 import de.jeanlucmakiola.agendula.domain.PRIORITY_NONE
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import de.jeanlucmakiola.agendula.domain.statusFromInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -221,12 +222,17 @@ class OneShotImport @Inject constructor(
             }
 
         val alarms = mutableListOf<LegacyAlarm>()
-        db.rawQuery("SELECT task_id, mimetype, data0, data1, data2 FROM Properties", null)
+        val categories = mutableMapOf<Long, MutableList<String>>()
+        db.rawQuery("SELECT task_id, mimetype, data0, data1, data2 FROM Properties ORDER BY property_id", null)
             .use { cursor ->
                 val r = CursorColumnReader(cursor)
                 while (cursor.moveToNext()) {
-                    if (r.getString("mimetype") != ALARM_MIMETYPE) continue
                     val taskId = r.getLong("task_id") ?: continue
+                    if (r.getString("mimetype") == CATEGORY_MIMETYPE) {
+                        r.getString("data1")?.let { categories.getOrPut(taskId, ::mutableListOf) += it }
+                        continue
+                    }
+                    if (r.getString("mimetype") != ALARM_MIMETYPE) continue
                     val minutes = r.getString("data0")?.trim()?.toIntOrNull() ?: continue
                     alarms += LegacyAlarm(
                         taskId = taskId,
@@ -241,7 +247,7 @@ class OneShotImport @Inject constructor(
                 }
             }
 
-        return LegacySnapshot(lists, rows, alarms)
+        return LegacySnapshot(lists, rows, alarms, categories.mapValues { normalizeTags(it.value) })
     }
 
     // --- writing into Room ----------------------------------------------------
@@ -276,7 +282,12 @@ class OneShotImport @Inject constructor(
             // the unique index; a fresh uid costs the row nothing it still has.
             val uid = row.entity.uid.takeIf { seen.add(Triple(listId, it, recurrenceId)) }
                 ?: UUID.randomUUID().toString()
-            val entity = row.entity.copy(listId = listId, uid = uid, recurrenceId = recurrenceId)
+            val entity = row.entity.copy(
+                listId = listId,
+                uid = uid,
+                recurrenceId = recurrenceId,
+                categories = snapshot.categories[row.id].orEmpty(),
+            )
             val newId = taskDao.insert(entity)
             taskIds[row.id] = newId
             inserted += row to entity.copy(id = newId)
@@ -379,6 +390,7 @@ class OneShotImport @Inject constructor(
         const val ARCHIVE_NAME = "tasks.db.imported"
 
         private const val ALARM_MIMETYPE = "vnd.android.cursor.item/alarm"
+        private const val CATEGORY_MIMETYPE = "vnd.android.cursor.item/category"
         private const val REFERENCE_START = "2"
         private val SIDECARS = listOf("-journal", "-wal", "-shm")
         private val IMPORT_DONE = booleanPreferencesKey("legacy_import_done")
@@ -391,6 +403,8 @@ private class LegacySnapshot(
     val lists: List<LegacyList>,
     val tasks: List<LegacyTaskRow>,
     val alarms: List<LegacyAlarm>,
+    /** Tags by legacy task `_id`. */
+    val categories: Map<Long, List<String>>,
 )
 
 private class LegacyList(val id: Long, val entity: TaskListEntity)

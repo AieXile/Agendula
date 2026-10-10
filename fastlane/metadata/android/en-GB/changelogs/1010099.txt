@@ -1,0 +1,11 @@
+### Added
+- Tags: add them to tasks, browse them from the home screen and filter any list by them. They sync as CATEGORIES.
+- Filters: save your own view of open tasks by due date, list, tag and priority, and show it in a widget.
+- New widgets: Today, Up next, Lists and Week. A widget can show several lists.
+
+### Changed
+- Agenda-style rows in the Tasks widget.
+- Synced lists can be renamed and deleted.
+
+### Fixed
+- All-day tasks no longer land a day off west of UTC.

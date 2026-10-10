@@ -7,69 +7,66 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/preview_widget_bg"
-    android:padding="12dp"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="4dp"
     tools:ignore="HardcodedText,UseCompoundDrawables,UseAppTint">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
+            android:maxLines="1"
             android:text="@string/smart_today"
+            android:fontFamily="sans-serif-medium"
             android:textColor="@color/widget_preview_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textSize="16sp" />
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:padding="9dp"
+            android:layout_width="36dp"
+            android:layout_height="28dp"
+            android:padding="5dp"
             android:contentDescription="@null"
-            android:background="@drawable/preview_add_bg"
-            android:src="@drawable/ic_widget_add"
-            android:tint="@color/widget_preview_on_primary_container" />
+            android:background="@drawable/preview_pill"
+            android:backgroundTint="@color/widget_preview_primary"
+            android:src="@drawable/floret_ic_widget_add"
+            android:tint="@color/widget_preview_on_primary" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:background="@drawable/preview_row"
+        android:backgroundTint="@color/widget_preview_surface_variant"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp">
         <ImageView
-            android:layout_width="4dp"
-            android:layout_height="32dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="6dp"
             android:contentDescription="@null"
-            android:background="@drawable/preview_stripe"
-            android:backgroundTint="#B48A9C" />
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="9dp"
-            android:layout_marginEnd="9dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_widget_checkbox"
+            android:src="@drawable/floret_ic_widget_check"
             android:tint="@color/widget_preview_variant" />
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:maxLines="1"
                 android:text="Water the plants"
+                android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Today"
-                android:textColor="@color/widget_preview_variant"
-                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -77,36 +74,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:background="@drawable/preview_row"
+        android:backgroundTint="@color/widget_preview_surface_variant"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp">
         <ImageView
-            android:layout_width="4dp"
-            android:layout_height="32dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="6dp"
             android:contentDescription="@null"
-            android:background="@drawable/preview_stripe"
-            android:backgroundTint="#7FA3C9" />
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="9dp"
-            android:layout_marginEnd="9dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_widget_checkbox"
+            android:src="@drawable/floret_ic_widget_check"
             android:tint="@color/widget_preview_variant" />
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:maxLines="1"
                 android:text="Call the dentist"
+                android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Today · 10:30"
+                android:maxLines="1"
+                android:text="10:30"
                 android:textColor="@color/widget_preview_variant"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -116,36 +115,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:minHeight="40dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:background="@drawable/preview_row"
+        android:backgroundTint="@color/widget_preview_surface_variant"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp">
         <ImageView
-            android:layout_width="4dp"
-            android:layout_height="32dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="6dp"
             android:contentDescription="@null"
-            android:background="@drawable/preview_stripe"
-            android:backgroundTint="#8FB58A" />
-        <ImageView
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="9dp"
-            android:layout_marginEnd="9dp"
-            android:contentDescription="@null"
-            android:src="@drawable/ic_widget_checkbox"
+            android:src="@drawable/floret_ic_widget_check"
             android:tint="@color/widget_preview_variant" />
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:orientation="vertical">
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:maxLines="1"
                 android:text="Pick up groceries"
+                android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Today · 18:00"
+                android:maxLines="1"
+                android:text="18:00"
                 android:textColor="@color/widget_preview_variant"
                 android:textSize="12sp" />
         </LinearLayout>

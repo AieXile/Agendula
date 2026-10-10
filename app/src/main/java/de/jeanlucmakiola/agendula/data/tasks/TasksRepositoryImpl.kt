@@ -1,7 +1,9 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
+import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.time.DayWindow
+import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.SeriesCollapse
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
@@ -17,7 +19,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -32,12 +37,26 @@ class TasksRepositoryImpl @Inject constructor(
     private val dataSource: TasksDataSource,
     private val providerResolver: ProviderResolver,
     private val startupGate: StartupGate,
+    private val settingsPrefs: SettingsPrefs,
     @IoDispatcher private val io: CoroutineDispatcher,
 ) : TasksRepository {
 
     override fun taskLists(): Flow<List<TaskList>> = observing { dataSource.taskLists() }
 
-    override fun tasks(filter: TaskFilter): Flow<List<Task>> = observing { loadTasks(filter) }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun filteredTasks(filter: TaskFilter): Flow<FilteredTasks> = when (filter) {
+        // A deleted filter shows nothing rather than failing the screen or widget on it.
+        is TaskFilter.Saved -> settingsPrefs.savedFilter(filter.id)
+            .flatMapLatest { saved ->
+                if (saved == null) flowOf(FilteredTasks(emptyList()))
+                else observing {
+                    // A deleted list's id would otherwise leave the filter quietly empty.
+                    val current = saved.withListsIn(dataSource.taskLists().mapTo(HashSet()) { it.id })
+                    FilteredTasks(loadTasks(filter, current), current)
+                }
+            }
+        else -> observing { FilteredTasks(loadTasks(filter)) }
+    }
 
     override fun subtasks(parentId: Long): Flow<List<Task>> = observing {
         SeriesCollapse.visible(dataSource.subtasks(parentId))
@@ -55,7 +74,7 @@ class TasksRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun loadTasks(filter: TaskFilter): List<Task> {
+    private fun loadTasks(filter: TaskFilter, saved: SavedFilter? = null): List<Task> {
         val query = when (filter) {
             is TaskFilter.OfList -> TaskQuery(listId = filter.listId, includeCompleted = true)
             // Read completed tasks too, then let [TaskFiltering.matches] enforce each
@@ -63,6 +82,11 @@ class TasksRepositoryImpl @Inject constructor(
             // parent's subtask-progress reflects ALL its children — completed ones
             // included — even on smart lists that hide completed tasks themselves.
             is TaskFilter.Smart -> TaskQuery(includeCompleted = true)
+            // Same over-read as Smart: TaskQuery.listId only narrows to one list, so
+            // several lists are read in full and membership is filtered in-memory.
+            is TaskFilter.OfLists -> TaskQuery(includeCompleted = true)
+            is TaskFilter.Tagged -> TaskQuery(includeCompleted = true)
+            is TaskFilter.Saved -> TaskQuery(includeCompleted = true)
         }
         val (todayStart, todayEnd) = DayWindow.today(Clock.System.now(), ZoneId.systemDefault())
         val all = SeriesCollapse.visible(dataSource.tasks(query))
@@ -74,7 +98,7 @@ class TasksRepositoryImpl @Inject constructor(
                 (if (t.isCompleted) done + 1 else done) to (total + 1)
             }
         return all
-            .filter { TaskFiltering.matches(it, filter, todayStart, todayEnd) }
+            .filter { TaskFiltering.matches(it, filter, todayStart, todayEnd, saved) }
             .map { task ->
                 progress[task.taskId]?.let { (done, total) ->
                     task.copy(subtaskDone = done, subtaskTotal = total)
@@ -109,6 +133,7 @@ class TasksRepositoryImpl @Inject constructor(
                 parentId = parentId,
                 location = task.location,
                 url = task.url,
+                tags = task.tags,
             ),
         )
         val reminders = dataSource.reminders()[task.taskId].orEmpty()

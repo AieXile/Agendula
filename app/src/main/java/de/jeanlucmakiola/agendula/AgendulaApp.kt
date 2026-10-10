@@ -10,10 +10,10 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
 import de.jeanlucmakiola.agendula.data.di.ApplicationScope
+import de.jeanlucmakiola.agendula.data.di.ChannelRefresher
 import de.jeanlucmakiola.agendula.data.reminders.ReminderMaintenanceWorker
 import de.jeanlucmakiola.agendula.data.reminders.ReminderScheduler
 import de.jeanlucmakiola.agendula.data.reminders.TaskNotifier
-import de.jeanlucmakiola.agendula.data.sync.SyncNoticeNotifier
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.StartupGate
 import de.jeanlucmakiola.agendula.data.tasks.room.DatabaseCheckpoint
@@ -105,7 +105,7 @@ class AgendulaApp : Application(), Configuration.Provider {
         val entryPoint = EntryPointAccessors.fromApplication(this, AppEntryPoint::class.java)
         runCatching {
             entryPoint.taskNotifier().refreshChannel()
-            entryPoint.syncNoticeNotifier().refreshChannel()
+            entryPoint.channelRefreshers().forEach { it.refreshChannel() }
         }
     }
 
@@ -120,7 +120,7 @@ class AgendulaApp : Application(), Configuration.Provider {
         fun applicationScope(): CoroutineScope
         fun databaseCheckpoint(): DatabaseCheckpoint
         fun taskNotifier(): TaskNotifier
-        fun syncNoticeNotifier(): SyncNoticeNotifier
+        fun channelRefreshers(): Set<@JvmSuppressWildcards ChannelRefresher>
         fun taskWidgetUpdater(): TaskWidgetUpdater
     }
 }

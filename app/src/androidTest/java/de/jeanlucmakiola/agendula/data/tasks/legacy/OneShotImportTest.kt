@@ -212,6 +212,15 @@ class OneShotImportTest {
         assertThat(db.alarms().all().map { it.message }).doesNotContain("Errands")
     }
 
+    @Test
+    fun importsCategoryPropertiesAsTags() {
+        importer.importFrom(fixture())
+        val tasks = taskRows()
+
+        assertThat(tasks.getValue("Buy milk").categories).containsExactly("Errands")
+        assertThat(tasks.getValue("Ship the release").categories).isEmpty()
+    }
+
     // --- running it -----------------------------------------------------------
 
     @Test

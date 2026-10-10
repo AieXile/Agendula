@@ -4,7 +4,7 @@
 # a pre-release, where Codeberg is the only channel.
 #
 # Env: TOKEN, API (.../api/v1/repos/<owner>/<repo>), TAG, SHA, PRERELEASE,
-#      NOTES_FILE, APK
+#      NOTES_FILE, APK, optional APK_OFFLINE (the offline flavor, #39)
 set -euo pipefail
 if [ -z "${TOKEN:-}" ]; then
   if [ "${PRERELEASE:-}" = true ]; then
@@ -20,10 +20,19 @@ if [ ! -f "$APK" ]; then echo "No release APK at $APK." >&2; exit 1; fi
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
+# The full APK keeps its historical name: Obtainium filters point at it.
 ASSET_APK="agendula_${TAG}.apk"
 ASSET_SUM="${ASSET_APK}.sha256"
 cp "$APK" "$WORK/$ASSET_APK"
 ( cd "$WORK" && sha256sum "$ASSET_APK" > "$ASSET_SUM" )
+ASSETS=("$ASSET_APK" "$ASSET_SUM")
+if [ -n "${APK_OFFLINE:-}" ]; then
+  if [ ! -f "$APK_OFFLINE" ]; then echo "No offline APK at $APK_OFFLINE." >&2; exit 1; fi
+  ASSET_OFFLINE="agendula-offline_${TAG}.apk"
+  cp "$APK_OFFLINE" "$WORK/$ASSET_OFFLINE"
+  ( cd "$WORK" && sha256sum "$ASSET_OFFLINE" > "$ASSET_OFFLINE.sha256" )
+  ASSETS+=("$ASSET_OFFLINE" "$ASSET_OFFLINE.sha256")
+fi
 
 # Push the tag first and create the release without target_commitish: a POST
 # naming a commit Codeberg hasn't received yet 500s.
@@ -66,7 +75,8 @@ for attempt in 1 2 3 4 5 6; do
 done
 if [ -z "$ID" ]; then echo "Could not create or update the Codeberg release." >&2; exit 1; fi
 
-for A in "$ASSET_APK" "$ASSET_SUM"; do
+# Attach APKs + checksums, replacing any prior asset of the same name.
+for A in "${ASSETS[@]}"; do
   OLD=$(curl -s -H "Authorization: token $TOKEN" "$API/releases/$ID/assets" \
     | jq -r --arg n "$A" '.[]? | select(.name==$n) | .id' 2>/dev/null || true)
   for O in $OLD; do

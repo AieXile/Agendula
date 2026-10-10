@@ -70,10 +70,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Java
+        # JetBrains 21 is what gradle-daemon-jvm.properties asks for; installing it
+        # here keeps Gradle from downloading it via foojay.
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: 'jetbrains'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -126,7 +128,7 @@ jobs:
           grep -E 'versionName|versionCode' app/build.gradle.kts
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testFullDebugUnitTest
 
       # The real app key, same as a stable release: a beta has to update in
       # place to the next beta and to the stable version.
@@ -145,7 +147,8 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      - name: Build release APK
+      # Both flavors; the offline one goes to Codeberg only (issue #39).
+      - name: Build release APKs
         run: ./gradlew assembleRelease
 
       # Notes = a `## [X.Y.Z-beta.N]` section if there is one, else
@@ -160,7 +163,8 @@ jobs:
           bash scripts/release_notes.sh "$VERSION" > release-notes.md
           cat release-notes.md
           TAG="v$VERSION" PRERELEASE=true NOTES_FILE=release-notes.md \
-            MAPPING=app/build/outputs/mapping/release/mapping.txt \
+            MAPPING=app/build/outputs/mapping/fullRelease/mapping.txt \
+            MAPPING_OFFLINE=app/build/outputs/mapping/offlineRelease/mapping.txt \
             bash scripts/publish_gitea_release.sh
 
       # The point of the whole workflow, so NOT continue-on-error.
@@ -172,5 +176,6 @@ jobs:
         run: |
           set -e
           TAG="v$VERSION" PRERELEASE=true NOTES_FILE=release-notes.md \
-            APK=app/build/outputs/apk/release/app-release.apk \
+            APK=app/build/outputs/apk/full/release/app-full-release.apk \
+            APK_OFFLINE=app/build/outputs/apk/offline/release/app-offline-release.apk \
             bash scripts/publish_codeberg_release.sh

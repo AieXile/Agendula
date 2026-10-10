@@ -100,6 +100,18 @@ internal fun TaskFormScreen(
             onClick = { viewModel.setShowAddSubtaskRow(!state.settings.showAddSubtaskRow) },
         )
         GroupedRow(
+            title = stringResource(R.string.settings_default_start_today),
+            summary = stringResource(R.string.settings_default_start_today_hint),
+            position = Position.Middle,
+            trailing = {
+                Switch(
+                    checked = state.settings.defaultStartToday,
+                    onCheckedChange = viewModel::setDefaultStartToday,
+                )
+            },
+            onClick = { viewModel.setDefaultStartToday(!state.settings.defaultStartToday) },
+        )
+        GroupedRow(
             title = stringResource(R.string.settings_bottom_add_bar),
             summary = stringResource(R.string.settings_bottom_add_bar_hint),
             position = Position.Bottom,

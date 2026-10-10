@@ -7,6 +7,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -42,6 +44,7 @@ import android.net.Uri
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Sell
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Repeat
@@ -60,6 +63,7 @@ import de.jeanlucmakiola.agendula.domain.TaskStatus
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
 import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
 import de.jeanlucmakiola.agendula.ui.common.RecurringScopeDialog
+import de.jeanlucmakiola.agendula.ui.common.TagChip
 import de.jeanlucmakiola.agendula.ui.common.linkified
 import de.jeanlucmakiola.agendula.ui.common.recurrenceText
 import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
@@ -97,6 +101,7 @@ import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.domain.readableDescription
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
+import de.jeanlucmakiola.floret.components.revealOnFocus
 import de.jeanlucmakiola.floret.components.GroupedSurface
 import de.jeanlucmakiola.agendula.ui.common.PriorityChip
 import de.jeanlucmakiola.floret.time.formatDate
@@ -240,6 +245,7 @@ fun TaskDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DetailBody(
     detail: TaskDetail,
@@ -453,6 +459,19 @@ private fun DetailBody(
                 }
             }
 
+            if (task.tags.isNotEmpty()) {
+                add {
+                    DetailCard(icon = Icons.Rounded.Sell, iconContentDescription = stringResource(R.string.edit_tags_label)) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            task.tags.forEach { TagChip(it) }
+                        }
+                    }
+                }
+            }
+
             // Description — selectable, with its links tappable.
             task.description?.readableDescription()?.takeIf { it.isNotBlank() }?.let { description ->
                 add {
@@ -606,7 +625,7 @@ private fun AddSubtaskField(onAdd: (String) -> Unit) {
     }
     val accentOn = MaterialTheme.colorScheme.onPrimaryContainer
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(start = 8.dp, end = 8.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).revealOnFocus().padding(start = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {

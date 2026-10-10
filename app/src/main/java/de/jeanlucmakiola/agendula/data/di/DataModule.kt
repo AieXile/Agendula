@@ -12,13 +12,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import de.jeanlucmakiola.agendula.data.sync.AccountCreator
-import de.jeanlucmakiola.agendula.data.sync.AccountRepository
-import de.jeanlucmakiola.agendula.data.sync.CalDavGateway
-import de.jeanlucmakiola.agendula.data.sync.LoginFlowRecord
-import de.jeanlucmakiola.agendula.data.sync.PendingLoginFlowStore
-import de.jeanlucmakiola.agendula.data.sync.SyncOnEdit
-import de.jeanlucmakiola.agendula.data.sync.OkHttpCalDavGateway
 import de.jeanlucmakiola.agendula.data.tasks.AndroidProviderEnvironment
 import de.jeanlucmakiola.agendula.data.tasks.AndroidTasksDataSource
 import de.jeanlucmakiola.agendula.data.tasks.ModeRoutingTasksDataSource
@@ -27,7 +20,6 @@ import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepositoryImpl
-import de.jeanlucmakiola.agendula.data.tasks.room.LocalWriteListener
 import de.jeanlucmakiola.agendula.data.tasks.room.RoomTasksDataSource
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -51,36 +43,12 @@ import javax.inject.Singleton
  * reconciled", and the credential store to accounts that ask to be signed in
  * again — all states the app already knows how to be in, unlike a launch loop.
  */
-private fun replaceCorrupted() = ReplaceFileCorruptionHandler { emptyPreferences() }
+internal fun replaceCorrupted() = ReplaceFileCorruptionHandler { emptyPreferences() }
 
 private val Context.agendulaDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "agendula_prefs",
     corruptionHandler = replaceCorrupted(),
 )
-
-/** See [CredentialsDataStore] for why this is a separate file. */
-private val Context.credentialsDataStore: DataStore<Preferences> by preferencesDataStore(
-    name = CREDENTIALS_DATASTORE,
-    corruptionHandler = replaceCorrupted(),
-)
-
-/** See [SyncStateDataStore] for why this is a separate file. */
-private val Context.syncStateDataStore: DataStore<Preferences> by preferencesDataStore(
-    name = SYNC_STATE_DATASTORE,
-    corruptionHandler = replaceCorrupted(),
-)
-
-/**
- * Named here and in `backup_rules.xml` / `data_extraction_rules.xml`, which
- * exclude `datastore/$CREDENTIALS_DATASTORE.preferences_pb` by this name.
- */
-const val CREDENTIALS_DATASTORE = "agendula_credentials"
-
-/**
- * Named here and in `backup_rules.xml` / `data_extraction_rules.xml`, which
- * exclude `datastore/$SYNC_STATE_DATASTORE.preferences_pb` by this name.
- */
-const val SYNC_STATE_DATASTORE = "agendula_sync_state"
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -93,22 +61,6 @@ abstract class DataBindModule {
     @Binds
     @Singleton
     abstract fun bindProviderEnvironment(impl: AndroidProviderEnvironment): ProviderEnvironment
-
-    @Binds
-    @Singleton
-    abstract fun bindCalDavGateway(impl: OkHttpCalDavGateway): CalDavGateway
-
-    @Binds
-    @Singleton
-    abstract fun bindAccountCreator(impl: AccountRepository): AccountCreator
-
-    @Binds
-    @Singleton
-    abstract fun bindLoginFlowRecord(impl: PendingLoginFlowStore): LoginFlowRecord
-
-    @Binds
-    @Singleton
-    abstract fun bindLocalWriteListener(impl: SyncOnEdit): LocalWriteListener
 
     // Deliberately unqualified-free of the routing above: this is the external
     // store itself, for the one caller that has to read it while another store is
@@ -130,18 +82,6 @@ object DataProvideModule {
 
     @Provides
     @Singleton
-    @CredentialsDataStore
-    fun provideCredentialsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
-        context.credentialsDataStore
-
-    @Provides
-    @Singleton
-    @SyncStateDataStore
-    fun provideSyncStateDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
-        context.syncStateDataStore
-
-    @Provides
-    @Singleton
     fun provideTasksDatabase(@ApplicationContext context: Context): TasksDatabase =
         Room.databaseBuilder(context, TasksDatabase::class.java, TasksDatabase.NAME)
             // Room's default, stated rather than assumed: Auto Backup copies files
@@ -149,6 +89,7 @@ object DataProvideModule {
             // backed-up `.db` does not. The backup rules carry all three files and
             // the app checkpoints on ON_STOP.
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(TasksDatabase.MIGRATION_1_2)
             .build()
 
     /**

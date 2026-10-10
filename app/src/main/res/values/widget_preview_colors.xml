@@ -8,4 +8,6 @@
     <color name="widget_preview_primary">#6A4E5B</color>
     <color name="widget_preview_primary_container">#F6D9E5</color>
     <color name="widget_preview_on_primary_container">#2A101C</color>
+    <color name="widget_preview_surface_variant">#E7E0EC</color>
+    <color name="widget_preview_on_primary">#FFFFFF</color>
 </resources>

@@ -241,6 +241,7 @@ class SettingsViewModel @Inject constructor(
     fun setSnoozeMinutes(minutes: Int) = viewModelScope.launch { prefs.setSnoozeMinutes(minutes) }
     fun setShowAddSubtaskRow(show: Boolean) = viewModelScope.launch { prefs.setShowAddSubtaskRow(show) }
     fun setBottomAddBar(enabled: Boolean) = viewModelScope.launch { prefs.setBottomAddBar(enabled) }
+    fun setDefaultStartToday(enabled: Boolean) = viewModelScope.launch { prefs.setDefaultStartToday(enabled) }
 
     /** Toggle whether [field] shows by default on a new task's edit form. */
     fun setFormFieldDefault(field: TaskFormField, enabled: Boolean) = viewModelScope.launch {

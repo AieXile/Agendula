@@ -1,0 +1,11 @@
+### Neu
+- Tags: an Aufgaben vergeben, auf dem Startbildschirm durchsuchen, jede Liste danach filtern.
+- Filter: eigene Ansicht offener Aufgaben nach Fälligkeit, Liste, Tag und Priorität, auch im Widget.
+- Neue Widgets: Today, Up next, Lists und Week. Ein Widget kann mehrere Listen zeigen.
+
+### Geändert
+- Agenda-Zeilen im Aufgaben-Widget.
+- Synchronisierte Listen lassen sich umbenennen und löschen.
+
+### Behoben
+- Ganztägige Aufgaben landen westlich von UTC nicht mehr einen Tag daneben.

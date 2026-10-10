@@ -26,14 +26,14 @@ Which of these ran green, and anything you exercised by hand. On-device notes
 are especially useful for UI changes, and for anything touching the provider
 read/write paths (OpenTasks / tasks.org installed).
 
-  ./gradlew lintDebug :app:testDebugUnitTest :app:assembleDebug
+  ./gradlew lintFullDebug lintOfflineDebug :app:testFullDebugUnitTest :app:testOfflineDebugUnitTest :app:assembleDebug
   python3 scripts/check_translations.py
 -->
 
 
 ### Checklist
 
-- [ ] `./gradlew lintDebug :app:testDebugUnitTest :app:assembleDebug` passes locally
+- [ ] `./gradlew lintFullDebug lintOfflineDebug :app:testFullDebugUnitTest :app:testOfflineDebugUnitTest :app:assembleDebug` passes locally
 - [ ] New domain logic comes with JVM unit tests under `app/src/test/`
 - [ ] Provider details stay inside `data/tasks/`
 - [ ] No `values-*/strings.xml` touched (Weblate owns those; new English strings in `values/` are fine)

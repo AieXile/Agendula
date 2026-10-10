@@ -304,6 +304,65 @@ class VTodoMapperTest {
     }
 
     @Nested
+    inner class Categories {
+
+        @Test
+        fun `a single plain line is claimed into the column`() {
+            val mapped = VTodoMapper.read(vtodo("CATEGORIES:Work,Home\\, Garden"))
+            assertThat(mapped.entity.categories).containsExactly("Work", "Home, Garden").inOrder()
+            assertThat(mapped.entity.unknownProperties.orEmpty()).doesNotContain("CATEGORIES")
+        }
+
+        @Test
+        fun `several lines are read but round-trip from the residue`() {
+            val mapped = VTodoMapper.read(vtodo("CATEGORIES:Work", "CATEGORIES:Errands"))
+            assertThat(mapped.entity.categories).containsExactly("Work", "Errands").inOrder()
+
+            val written = VTodoMapper.write(mapped.entity).properties("CATEGORIES").map { it.value }
+            assertThat(written).containsExactly("Work", "Errands")
+        }
+
+        @Test
+        fun `a line the column would not reproduce exactly stays in the residue`() {
+            val mapped = VTodoMapper.read(vtodo("CATEGORIES;LANGUAGE=de:Arbeit", "SUMMARY:x"))
+            assertThat(mapped.entity.categories).containsExactly("Arbeit")
+            assertThat(VTodoMapper.read(vtodo("CATEGORIES:a, b")).entity.unknownProperties)
+                .contains("CATEGORIES:a, b")
+
+            val written = VTodoMapper.write(mapped.entity).properties("CATEGORIES")
+            assertThat(written.single().param("LANGUAGE")).isEqualTo("de")
+        }
+
+        @Test
+        fun `editing the tags evicts the residue copies and authors one line`() {
+            val mapped = VTodoMapper.read(vtodo("CATEGORIES:Work", "CATEGORIES:Errands"))
+            val edited = mapped.entity.copy(categories = listOf("Work", "Home"))
+
+            val written = VTodoMapper.write(edited).properties("CATEGORIES")
+            assertThat(written.single().value).isEqualTo("Work,Home")
+            assertThat(written.single().params).isEmpty()
+        }
+
+        @Test
+        fun `no tags writes no line`() {
+            assertThat(VTodoMapper.write(entity()).properties("CATEGORIES")).isEmpty()
+        }
+
+        @Test
+        fun `a duplicated or blank tag is dropped and the line stays in the residue`() {
+            val mapped = VTodoMapper.read(vtodo("CATEGORIES:Work, ,Work"))
+            assertThat(mapped.entity.categories).containsExactly("Work")
+            assertThat(VTodoMapper.write(mapped.entity).properties("CATEGORIES").single().value).isEqualTo("Work, ,Work")
+        }
+
+        @Test
+        fun `an unclean column is cleaned on the way out`() {
+            val written = VTodoMapper.write(entity().copy(categories = listOf(" a ", "", "a", "b")))
+            assertThat(written.properties("CATEGORIES").single().value).isEqualTo("a,b")
+        }
+    }
+
+    @Nested
     inner class Validation {
 
         @Test

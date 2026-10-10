@@ -28,9 +28,9 @@ layer.
 ## Build, test, lint
 
 ```sh
-./gradlew :app:assembleDebug        # build the debug APK
-./gradlew :app:testDebugUnitTest    # JVM unit tests (JUnit5 + Truth + Turbine)
-./gradlew lintDebug                 # Android lint (CI runs this on every PR)
+./gradlew :app:assembleDebug            # build the debug APKs (full + offline)
+./gradlew :app:testFullDebugUnitTest    # JVM unit tests (JUnit5 + Truth + Turbine)
+./gradlew lintFullDebug lintOfflineDebug  # Android lint (CI runs this on every PR)
 ```
 
 CI (`.forgejo/workflows/ci.yaml`, on Codeberg) runs a reproducible-release invariant check,

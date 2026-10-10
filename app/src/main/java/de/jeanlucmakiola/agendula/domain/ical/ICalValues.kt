@@ -49,6 +49,37 @@ object ICalValues {
         return out.toString()
     }
 
+    /**
+     * A multi-valued TEXT property (`CATEGORIES`, §3.8.1.2): split on the
+     * commas that are not escaped, then unescape each value.
+     */
+    fun parseTextList(value: String): List<String> {
+        val values = mutableListOf<String>()
+        val current = StringBuilder()
+        var i = 0
+        while (i < value.length) {
+            val c = value[i]
+            when {
+                c == '\\' && i + 1 < value.length -> {
+                    current.append(c).append(value[i + 1])
+                    i += 2
+                    continue
+                }
+                c == ',' -> {
+                    values += unescapeText(current.toString())
+                    current.clear()
+                }
+                else -> current.append(c)
+            }
+            i++
+        }
+        values += unescapeText(current.toString())
+        return values
+    }
+
+    /** The inverse of [parseTextList]. */
+    fun formatTextList(values: List<String>): String = values.joinToString(",", transform = ::escapeText)
+
     /** How a DATE / DATE-TIME property was written, and whether we can reproduce it. */
     sealed interface TimeValue {
         /** `VALUE=DATE` — date-only. */

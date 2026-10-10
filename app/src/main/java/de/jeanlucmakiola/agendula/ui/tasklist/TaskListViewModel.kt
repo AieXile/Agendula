@@ -4,11 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
-import de.jeanlucmakiola.agendula.data.sync.RemoteListRepository
+import de.jeanlucmakiola.agendula.data.sync.RemoteLists
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.data.tasks.recoveringFromProviderFailure
+import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
+import de.jeanlucmakiola.agendula.domain.TaskFiltering
+import de.jeanlucmakiola.agendula.domain.tagsInUse
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.TaskSortOrder
@@ -55,6 +58,14 @@ sealed interface TaskListUiState {
         val sortOrder: TaskSortOrder = TaskSortOrder.DUE,
         /** This real list is kept out of the smart lists. */
         val hiddenFromSmartLists: Boolean = false,
+        /** Tags the unnarrowed view carries, offered as filter chips. */
+        val availableTags: List<String> = emptyList(),
+        /** The tags [tasks] is narrowed to; a task must carry all of them. */
+        val selectedTags: Set<String> = emptySet(),
+        /** The definition behind a [TaskFilter.Saved]; `null` once it's deleted. */
+        val savedFilter: SavedFilter? = null,
+        /** The filter this content was built for; a reused screen briefly holds the previous one's. */
+        val filter: TaskFilter? = null,
     ) : TaskListUiState
 }
 
@@ -77,11 +88,13 @@ private const val UNDO_WINDOW_MS = 4_000L
 class TaskListViewModel @Inject constructor(
     private val repository: TasksRepository,
     private val settingsPrefs: SettingsPrefs,
-    private val remoteLists: RemoteListRepository,
+    private val remoteLists: RemoteLists,
     @ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow<TaskFilter?>(null)
+
+    private val tagFilter = MutableStateFlow<Set<String>>(emptySet())
 
     /** Occurrences swiped to delete but not yet committed — hidden until the undo lapses. */
     private val pendingDeletes = MutableStateFlow<Map<String, Task>>(emptyMap())
@@ -101,18 +114,33 @@ class TaskListViewModel @Inject constructor(
                         combine(tasks, repository.taskLists()) { rows, lists ->
                             TaskListUiState.Content(rows, lists.firstOrNull { it.id == f.listId })
                         }
-                    is TaskFilter.Smart ->
+                    is TaskFilter.Smart, is TaskFilter.Tagged ->
                         tasks.map { TaskListUiState.Content(it) }
+                    is TaskFilter.Saved ->
+                        repository.filteredTasks(f).map {
+                            TaskListUiState.Content(it.tasks, savedFilter = it.savedFilter)
+                        }
+                    // Several lists at once only exists for the widget, which never routes here.
+                    is TaskFilter.OfLists -> error("OfLists has no task-list screen")
                 }
                 // Drop rows pending an undoable delete so the row vanishes on swipe
                 // while the actual provider delete waits for the snackbar to commit,
                 // and fold in the live UI settings (add-subtask row, bottom add bar).
-                combine(content, pendingDeletes, settingsPrefs.settings) { st, pending, settings ->
+                combine(content, pendingDeletes, settingsPrefs.settings, tagFilter) { st, pending, settings, tags ->
                     if (st is TaskListUiState.Content) {
+                        val visible = settings.visibleIn(f, st.tasks).filter { it.occurrenceKey !in pending }
+                        val available = tagsInUse(visible) - setOfNotNull((f as? TaskFilter.Tagged)?.tag)
+                        // A tag that vanished can no longer be unticked, so it is dropped
+                        // for good rather than narrowing again when it comes back.
+                        val selected = tags.filterTo(LinkedHashSet()) { it in available }
+                        if (selected.size != tags.size) tagFilter.value = selected
                         st.copy(
-                            tasks = settings.visibleIn(f, st.tasks)
-                                .filter { it.occurrenceKey !in pending }
+                            filter = f,
+                            tasks = visible
+                                .filter { TaskFiltering.hasAllTags(it, selected) }
                                 .sortedWith(settings.sortOrder.comparator()),
+                            availableTags = available,
+                            selectedTags = selected,
                             showAddSubtaskRow = settings.showAddSubtaskRow,
                             bottomAddBar = settings.bottomAddBar,
                             sortOrder = settings.sortOrder,
@@ -160,6 +188,12 @@ class TaskListViewModel @Inject constructor(
     fun setLazyChildParents(ids: Set<Long>) { lazyChildParents.value = ids }
 
     fun bind(taskFilter: TaskFilter) { filter.value = taskFilter }
+
+    fun toggleTagFilter(tag: String) {
+        tagFilter.value = if (tag in tagFilter.value) tagFilter.value - tag else tagFilter.value + tag
+    }
+
+    fun clearTagFilter() { tagFilter.value = emptySet() }
 
     fun toggleComplete(task: Task) {
         if (task.isCompleted) {
@@ -298,7 +332,7 @@ class TaskListViewModel @Inject constructor(
                 return@launch
             }
             val outcome = runCatching { remoteLists.rename(listId, name.trim(), color) }
-                .getOrElse { RemoteListRepository.Outcome.Unreachable }
+                .getOrElse { RemoteLists.Outcome.Unreachable }
             _listWriteFailure.value = outcome.asFailure(ListWriteFailure.SAVE)
         }
 
@@ -320,7 +354,7 @@ class TaskListViewModel @Inject constructor(
         // existing for every other client, and could only be got back by
         // re-adding the whole account.
         val outcome = runCatching { remoteLists.delete(listId) }
-            .getOrElse { RemoteListRepository.Outcome.Unreachable }
+            .getOrElse { RemoteLists.Outcome.Unreachable }
         val failure = outcome.asFailure(ListWriteFailure.DELETE)
         if (failure == null) _listDeleted.value = true else _listWriteFailure.value = failure
     }

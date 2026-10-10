@@ -177,6 +177,7 @@ floret-core-locale = { group = "de.jeanlucmakiola.floret", name = "core-locale" 
 floret-core-crash = { group = "de.jeanlucmakiola.floret", name = "core-crash" }
 floret-identity = { group = "de.jeanlucmakiola.floret", name = "identity" }
 floret-components = { group = "de.jeanlucmakiola.floret", name = "components" }
+floret-glance = { group = "de.jeanlucmakiola.floret", name = "glance" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -7,9 +7,8 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.Multibinds
 
 /**
- * Something a build variant wants to run when the app is launched with [Intent].
- * Release builds contribute none; the debug source set adds the demo seeder, so
- * that class never ships.
+ * Something a build variant runs on a genuine app open (not on a configuration
+ * change): sync in the `full` flavor, the demo seeder in debug builds.
  */
 fun interface LaunchHook {
     suspend fun onLaunch(intent: Intent)

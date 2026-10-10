@@ -39,6 +39,8 @@ class VTodoRoundTripTest {
         "mixed-value-types",
         "malformed-scalars",
         "two-timezones",
+        "categories-shapes",
+        "categories-split",
     )
 
     @TestFactory

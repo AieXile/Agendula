@@ -1,3 +1,4 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.util.Properties
 import java.io.FileInputStream
 
@@ -32,8 +33,8 @@ android {
         // (1.0.x: 1.0.0 -> 10000; from 1.1.0: 1.1.0-beta.1 -> 1010001,
         // 1.1.0 -> 1010099), and CI fails if the committed one doesn't match.
         // See docs/RELEASING.md.
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = 1010099
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -44,6 +45,20 @@ android {
         // accounts colliding. Must stay in step with SyncContract.
         resValue("string", "account_type", "de.jeanlucmakiola.agendula.caldav")
         resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.sync")
+    }
+
+    // `offline` (#39): no sync code, network libraries or network permission.
+    flavorDimensions += "network"
+    productFlavors {
+        create("full") {
+            dimension = "network"
+            buildConfigField("boolean", "SYNC_ENABLED", "true")
+        }
+        create("offline") {
+            dimension = "network"
+            applicationIdSuffix = ".offline"
+            buildConfigField("boolean", "SYNC_ENABLED", "false")
+        }
     }
 
     signingConfigs {
@@ -208,26 +223,26 @@ dependencies {
     // @HiltWorker plumbing.
     implementation(libs.androidx.work.runtime.ktx)
     // Custom Tabs: the Nextcloud login flow hands the browser an approval page.
-    implementation(libs.androidx.browser)
+    "fullImplementation"(libs.androidx.browser)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     // Push sync: a UnifiedPush distributor delivers the server's WebDAV-Push messages.
-    implementation(libs.unifiedpush.connector)
+    "fullImplementation"(libs.unifiedpush.connector)
 
     // RFC 5545 recurrence expansion, in-process; see the catalog for the pin.
     implementation(libs.dmfs.lib.recur)
 
     // Vendored dav4jvm — the CalDAV protocol layer. See dav/PROVENANCE.md.
-    implementation(project(":dav"))
+    "fullImplementation"(project(":dav"))
     // Discovery, auth and Nextcloud Login Flow v2.
-    implementation(project(":caldav"))
+    "fullImplementation"(project(":caldav"))
     // :dav gets org.xmlpull.v1 from the Android framework at runtime and declares
     // xpp3 compileOnly, which is not transitive. Unit tests run on a plain JVM
     // with no framework, and android.jar's stub factory returns null under
     // isReturnDefaultValues — so anything touching XmlUtils would NPE without a
     // real implementation here.
-    testImplementation(libs.xpp3)
+    "testFullImplementation"(libs.xpp3)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -246,6 +261,7 @@ dependencies {
     implementation(libs.floret.core.crash)
     implementation(libs.floret.identity)
     implementation(libs.floret.components)
+    implementation(libs.floret.glance)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
@@ -264,4 +280,35 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+}
+
+/** Fails the build if the offline flavor's merged manifest asks for the network. */
+abstract class VerifyNoNetworkPermissions : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val manifest: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val text = manifest.get().asFile.readText()
+        val found = listOf("INTERNET", "ACCESS_NETWORK_STATE", "ACCESS_WIFI_STATE", "CHANGE_NETWORK_STATE")
+            .filter { "\"android.permission.$it\"" in text }
+        if (found.isNotEmpty()) {
+            throw GradleException(
+                "The offline flavor's merged manifest declares ${found.joinToString()}. " +
+                    "Remove it in app/src/offline/AndroidManifest.xml with tools:node=\"remove\".",
+            )
+        }
+    }
+}
+
+androidComponents {
+    onVariants(selector().withFlavor("network" to "offline")) { variant ->
+        val name = variant.name.replaceFirstChar { it.uppercase() }
+        val verify = tasks.register<VerifyNoNetworkPermissions>("verify${name}Manifest") {
+            manifest.set(variant.artifacts.get(SingleArtifact.MERGED_MANIFEST))
+        }
+        tasks.matching { it.name in setOf("package$name", "package${name}Bundle", "check") }
+            .configureEach { dependsOn(verify) }
+    }
 }

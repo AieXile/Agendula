@@ -20,6 +20,8 @@ import de.jeanlucmakiola.agendula.ui.detail.TaskDetailScreen
 import de.jeanlucmakiola.agendula.ui.detail.TaskDetailViewModel
 import de.jeanlucmakiola.agendula.ui.edit.TaskEditScreen
 import de.jeanlucmakiola.agendula.ui.edit.TaskEditViewModel
+import de.jeanlucmakiola.agendula.ui.filters.FilterEditScreen
+import de.jeanlucmakiola.agendula.ui.filters.FilterEditViewModel
 import de.jeanlucmakiola.agendula.ui.imports.ImportScreen
 import de.jeanlucmakiola.agendula.ui.lists.ListsScreen
 import de.jeanlucmakiola.agendula.ui.settings.SettingsScreen
@@ -52,11 +54,15 @@ fun AgendulaNavHost(
                 nav.navigate(Dest.Settings.build(Dest.Settings.SECTION_ACCOUNTS)) { launchSingleTop = true }
             is NavRequest.OpenAccount ->
                 nav.navigate(Dest.Settings.buildAccount(navRequest.accountId)) { launchSingleTop = true }
-            is NavRequest.NewTask -> nav.navigate(Dest.TaskEdit.buildNew(title = navRequest.title))
+            is NavRequest.NewTask ->
+                nav.navigate(Dest.TaskEdit.buildNew(presetListId = navRequest.listId, title = navRequest.title))
             is NavRequest.OpenSmart -> nav.navigate(Dest.TaskList.build(TaskFilter.Smart(navRequest.list))) {
                 launchSingleTop = true
             }
             is NavRequest.OpenList -> nav.navigate(Dest.TaskList.build(TaskFilter.OfList(navRequest.listId))) {
+                launchSingleTop = true
+            }
+            is NavRequest.OpenFilter -> nav.navigate(Dest.TaskList.build(TaskFilter.Saved(navRequest.filterId))) {
                 launchSingleTop = true
             }
             is NavRequest.Import -> nav.navigate(Dest.Import.build(navRequest.uri))
@@ -84,6 +90,7 @@ fun AgendulaNavHost(
                     onOpenFilter = { filter -> nav.navigate(Dest.TaskList.build(filter)) },
                     onOpenTask = { task -> nav.navigate(task.detailRoute()) },
                     onNewTask = { nav.navigate(Dest.TaskEdit.buildNew()) },
+                    onNewFilter = { nav.navigate(Dest.FilterEdit.build()) },
                     onOpenSettings = { nav.navigate(Dest.SETTINGS) },
                 )
             }
@@ -113,6 +120,8 @@ fun AgendulaNavHost(
             val filter = Dest.TaskList.filterOf(
                 smart = args?.getString(Dest.TaskList.ARG_SMART),
                 listId = args?.getLong(Dest.TaskList.ARG_LIST_ID) ?: Dest.NO_ID,
+                tag = args?.getString(Dest.TaskList.ARG_TAG),
+                filterId = args?.getLong(Dest.TaskList.ARG_FILTER_ID) ?: Dest.NO_ID,
             )
             val vm: TaskListViewModel = hiltViewModel()
             LaunchedEffect(filter) { vm.bind(filter) }
@@ -123,9 +132,15 @@ fun AgendulaNavHost(
                     viewModel = vm,
                     onOpenTask = onOpenTask,
                     onNewTask = {
-                        val presetListId = (filter as? TaskFilter.OfList)?.listId
-                        nav.navigate(Dest.TaskEdit.buildNew(presetListId = presetListId))
+                        nav.navigate(
+                            Dest.TaskEdit.buildNew(
+                                presetListId = (filter as? TaskFilter.OfList)?.listId,
+                                tag = (filter as? TaskFilter.Tagged)?.tag,
+                                filterId = (filter as? TaskFilter.Saved)?.id,
+                            ),
+                        )
                     },
+                    onEditFilter = { id -> nav.navigate(Dest.FilterEdit.build(id)) },
                     onBack = { nav.popBackStack() },
                 )
             }
@@ -135,6 +150,32 @@ fun AgendulaNavHost(
                 } else {
                     ReadableWidth { taskList { task -> nav.navigate(task.detailRoute()) } }
                 }
+            }
+        }
+
+        composable(Dest.FilterEdit.route, arguments = Dest.FilterEdit.arguments) { entry ->
+            val filterId = entry.arguments?.getLong(Dest.FilterEdit.ARG_FILTER_ID)?.takeIf { it != Dest.NO_ID }
+            val vm: FilterEditViewModel = hiltViewModel()
+            LaunchedEffect(filterId) { vm.bind(filterId) }
+
+            ReadableWidth {
+                FilterEditScreen(
+                    viewModel = vm,
+                    isNew = filterId == null,
+                    onSaved = { id ->
+                        // A different id means the edited filter was gone and a new one was made.
+                        if (id != filterId) {
+                            // A new filter opens straight away, with the editor off the stack.
+                            nav.navigate(Dest.TaskList.build(TaskFilter.Saved(id))) {
+                                popUpTo(Dest.FilterEdit.route) { inclusive = true }
+                            }
+                        } else {
+                            nav.popBackStack()
+                        }
+                    },
+                    onDeleted = { nav.popBackStack(Dest.LISTS, inclusive = false) },
+                    onBack = { nav.popBackStack() },
+                )
             }
         }
 
@@ -165,6 +206,8 @@ fun AgendulaNavHost(
             val parentId = args?.getLong(Dest.TaskEdit.ARG_PARENT_ID) ?: Dest.NO_ID
             val occurrence = args?.getLong(Dest.TaskEdit.ARG_OCCURRENCE)?.takeIf { it != Dest.NO_ID }
             val title = args?.getString(Dest.TaskEdit.ARG_TITLE)
+            val tag = args?.getString(Dest.TaskEdit.ARG_TAG)
+            val filterId = args?.getLong(Dest.TaskEdit.ARG_FILTER_ID)?.takeIf { it != Dest.NO_ID }
             val vm: TaskEditViewModel = hiltViewModel()
             LaunchedEffect(taskId, presetListId, parentId) {
                 if (taskId != Dest.NO_ID) {
@@ -174,6 +217,8 @@ fun AgendulaNavHost(
                         presetListId = presetListId.takeIf { it != Dest.NO_ID },
                         parentId = parentId.takeIf { it != Dest.NO_ID },
                         initialTitle = title,
+                        presetTag = tag,
+                        presetFilterId = filterId,
                     )
                 }
             }

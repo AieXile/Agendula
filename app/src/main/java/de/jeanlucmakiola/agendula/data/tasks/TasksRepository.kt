@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
+import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
 import de.jeanlucmakiola.agendula.domain.TaskFilter
@@ -12,6 +13,9 @@ import kotlin.time.Instant
 
 /** Whether Agendula can use the tasks provider right now. Drives onboarding. */
 enum class ProviderStatus { READY, NEEDS_PERMISSION, NO_PROVIDER }
+
+/** Tasks for a filter; [savedFilter] is a saved filter's definition, `null` once it's deleted. */
+data class FilteredTasks(val tasks: List<Task>, val savedFilter: SavedFilter? = null)
 
 /**
  * The single entry point the UI layer uses. Flows re-emit automatically when the
@@ -27,7 +31,10 @@ interface TasksRepository {
      */
     fun writableTaskLists(): Flow<List<TaskList>> =
         taskLists().map { lists -> lists.filter { it.acceptsWrites } }
-    fun tasks(filter: TaskFilter): Flow<List<Task>>
+    fun tasks(filter: TaskFilter): Flow<List<Task>> = filteredTasks(filter).map { it.tasks }
+
+    /** [tasks] together with the definition behind a [TaskFilter.Saved]. */
+    fun filteredTasks(filter: TaskFilter): Flow<FilteredTasks>
 
     /**
      * The direct children of [parentId], re-emitting live like the other flows.

@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -24,8 +23,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.jeanlucmakiola.agendula.R
-import de.jeanlucmakiola.agendula.ui.accounts.add.AddAccountScreen
-import de.jeanlucmakiola.agendula.ui.accounts.add.AddAccountViewModel
 import de.jeanlucmakiola.floret.components.OnboardingProgress
 import de.jeanlucmakiola.floret.components.OnboardingScaffold
 import de.jeanlucmakiola.floret.components.OnboardingSpace
@@ -47,23 +44,7 @@ fun OnboardingFlow(
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     if (state.step == OnboardingStep.Account) {
-        // The same instance the wizard resolves for itself, so its length can be
-        // read here without keeping a second copy of its state.
-        val account: AddAccountViewModel = hiltViewModel()
-        val accountState by account.state.collectAsStateWithLifecycle()
-        // ⚠️ The wizard grows a step for a provider that needs an app password
-        // minted first, and the outer bar has to grow with it — otherwise first
-        // run counts one flow while the screen inside it counts another.
-        LaunchedEffect(accountState.totalSteps) {
-            viewModel.onAccountStepsChanged(accountState.totalSteps)
-        }
-        AddAccountScreen(
-            onDone = { viewModel.onAccountFinished(added = true) },
-            onBack = { viewModel.onAccountFinished(added = false) },
-            stepOffset = state.position - 1,
-            totalSteps = state.total,
-            viewModel = account,
-        )
+        AccountStep(state, viewModel)
         return
     }
 

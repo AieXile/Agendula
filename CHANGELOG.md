@@ -7,6 +7,43 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-10
+
+### Added
+- Four new home-screen widgets: Today, Up next, Lists and Week.
+- A widget can show tasks from several lists at once, optionally grouped by
+  list.
+- A setting under Settings → Task form pre-fills a new task's start with today.
+- An offline version of Agendula with no sync and no network access at all,
+  published as a separate APK on Codeberg (#39).
+- Tags. Add them while editing a task, see them on the task and in lists,
+  browse them from the home screen and filter any list by them. They are saved
+  as `CATEGORIES`, so they sync with Nextcloud Tasks, tasks.org and DAVx⁵ (#35).
+- Filters. Save your own view of the open tasks by due date (overdue, today,
+  upcoming, no date, in any combination), lists, tags and minimum priority.
+  They live on the home screen and can be shown in the Tasks widget, so today
+  and overdue tasks can now share one widget (#47).
+
+### Changed
+- The Tasks widget has agenda-style rows, an optional row colour and an "All
+  caught up" state. Ticking a task in any widget shows it as done for a moment
+  before it disappears.
+- The "At a glance" widget is gone; the Tasks and Today widgets cover what it
+  showed.
+- Synced lists can be renamed and deleted, not only device-only ones. A
+  read-only share shows the edit button greyed out and explains why on tap.
+- The sort button in task lists now opens "Sort and filter", which can also
+  filter by tag.
+- While editing a task, its title moves into the top bar once you scroll past
+  it.
+
+### Fixed
+- The list editor's Where and smart-lists rows no longer have double padding.
+- A field you tap now scrolls fully above the keyboard, and the "add subtask"
+  row in task lists no longer ends up hidden behind it.
+- All-day tasks west of UTC no longer show up a day early in Overdue, Today
+  and Upcoming.
+
 ## [1.0.0] - 2026-09-21
 
 ### Added

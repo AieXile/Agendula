@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -48,22 +49,30 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.Sell
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.ui.res.pluralStringResource
 import de.jeanlucmakiola.agendula.domain.TaskSortOrder
+import de.jeanlucmakiola.floret.components.revealOnFocus
 import de.jeanlucmakiola.floret.components.InlineTextField
-import de.jeanlucmakiola.floret.components.OptionPicker
+import de.jeanlucmakiola.floret.components.FullScreenPicker
+import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.GroupedSectionHeader
+import de.jeanlucmakiola.floret.components.SelectedCheck
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -131,6 +140,7 @@ fun TaskListScreen(
     onNewTask: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onEditFilter: (Long) -> Unit = {},
     viewModel: TaskListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -139,17 +149,29 @@ fun TaskListScreen(
     val list = content?.list
     val listName = list?.name
     val listId = (filter as? TaskFilter.OfList)?.listId
-    // Editing is offered for a device-only list. A collection that belongs to an
-    // account is the server's to rename or remove, not ours.
+    // Editing is offered for any writable list, device or synced — renaming and
+    // recolouring a synced collection is a server write the same sheet already
+    // handles. A read-only share keeps the icon but disables it: tapping it
+    // explains why rather than the button silently not being there.
     var editingList by rememberSaveable { mutableStateOf(false) }
+    var readOnlyHint by rememberSaveable { mutableStateOf(false) }
     val listWriteFailure by viewModel.listWriteFailure.collectAsStateWithLifecycle()
     val listDeleted by viewModel.listDeleted.collectAsStateWithLifecycle()
     // The list this screen is about is gone; there is nothing left to show.
     LaunchedEffect(listDeleted) { if (listDeleted) onBack() }
+    val savedFilter = content?.savedFilter
+    val filterGone = filter is TaskFilter.Saved && content?.filter == filter && savedFilter == null
+    LaunchedEffect(filterGone) { if (filterGone) onBack() }
     LaunchedEffect(listWriteFailure) {
         if (listWriteFailure != null) {
             delay(4_000)
             viewModel.clearListWriteFailure()
+        }
+    }
+    LaunchedEffect(readOnlyHint) {
+        if (readOnlyHint) {
+            delay(4_000)
+            readOnlyHint = false
         }
     }
     // One add affordance, never two: a real list with the setting on gets a pinned
@@ -168,7 +190,7 @@ fun TaskListScreen(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             MediumTopAppBar(
-                title = { Text(titleFor(filter, listName)) },
+                title = { Text(titleFor(filter, listName ?: savedFilter?.name)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -179,13 +201,29 @@ fun TaskListScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSort = true }, enabled = content != null) {
-                        Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort_title))
+                        BadgedBox(badge = { if (content?.selectedTags?.isNotEmpty() == true) Badge() }) {
+                            Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.view_options_title))
+                        }
                     }
-                    if (list != null && list.isLocal) {
-                        IconButton(onClick = { editingList = true }) {
+                    if (savedFilter != null) {
+                        IconButton(onClick = { onEditFilter(savedFilter.id) }) {
+                            Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.filter_edit_title))
+                        }
+                    }
+                    if (list != null) {
+                        IconButton(
+                            onClick = {
+                                if (list.isReadOnly) readOnlyHint = true else editingList = true
+                            },
+                        ) {
                             Icon(
                                 Icons.Rounded.Edit,
                                 contentDescription = stringResource(R.string.list_edit_title),
+                                tint = if (list.isReadOnly) {
+                                    LocalContentColor.current.copy(alpha = 0.38f)
+                                } else {
+                                    LocalContentColor.current
+                                },
                             )
                         }
                     }
@@ -230,22 +268,27 @@ fun TaskListScreen(
                     .height(SnackChipHeight),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                // One chip, one anchor: the undo receipt takes precedence, and a
-                // refused list write reports itself once the undo window is clear.
+                // One chip, one anchor, in priority order: the undo receipt first,
+                // then a refused list write once the undo window is clear, then the
+                // read-only edit hint — the quietest of the three, so it never
+                // outranks something the other two are actually reporting.
                 val failure = listWriteFailure
-                if (undo != null || failure == null) {
-                    SnackChip(
-                        visible = undo != null,
+                when {
+                    undo != null -> SnackChip(
+                        visible = true,
                         message = stringResource(
                             if (undo is UndoReceipt.Completed) R.string.task_completed else R.string.task_deleted,
                         ),
                         actionLabel = stringResource(R.string.undo),
                         onAction = viewModel::undo,
                     )
-                } else {
-                    SnackChip(
+                    failure != null -> SnackChip(
                         visible = true,
                         message = stringResource(listWriteFailureMessage(failure)),
+                    )
+                    else -> SnackChip(
+                        visible = readOnlyHint,
+                        message = stringResource(R.string.list_read_only),
                     )
                 }
             }
@@ -253,12 +296,13 @@ fun TaskListScreen(
     }
 
     if (showSort && content != null) {
-        OptionPicker(
-            title = stringResource(R.string.sort_title),
-            options = TaskSortOrder.entries,
-            selected = content.sortOrder,
-            label = { stringResource(sortLabel(it)) },
-            onSelect = { viewModel.setSortOrder(it); showSort = false },
+        ViewOptionsPicker(
+            sortOrder = content.sortOrder,
+            tags = content.availableTags,
+            selectedTags = content.selectedTags,
+            onSortOrder = viewModel::setSortOrder,
+            onToggleTag = viewModel::toggleTagFilter,
+            onClearTags = viewModel::clearTagFilter,
             onDismiss = { showSort = false },
         )
     }
@@ -300,7 +344,7 @@ fun TaskListScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun TaskListBody(
     state: TaskListUiState.Content,
@@ -325,7 +369,8 @@ private fun TaskListBody(
     val listId = (filter as? TaskFilter.OfList)?.listId
     // In a mixed view (a smart list) the list colour bar + name disambiguate
     // rows; inside a single real list both are redundant.
-    val showListName = filter is TaskFilter.Smart
+    val showListName = filter is TaskFilter.Smart || filter is TaskFilter.Tagged ||
+        (filter is TaskFilter.Saved && state.savedFilter?.listIds?.size != 1)
     // Completed tasks collapse away by default to keep the active list in focus.
     var completedExpanded by rememberSaveable { mutableStateOf(false) }
     // Parents the user expanded to reveal their subtasks inline. Children are
@@ -355,8 +400,16 @@ private fun TaskListBody(
     // When the bottom quick-add bar is shown it already lives in the scaffold's
     // bottomBar (so `inner` covers it); otherwise reserve room to clear the FAB.
     val bottomBarShown = state.bottomAddBar && listId != null
+    // While typing, the viewport ends at the keyboard (or at the quick-add bar
+    // riding on it), so a focused add-subtask row can scroll fully above it.
+    val imeVisible = WindowInsets.isImeVisible
+    val viewport = when {
+        !imeVisible -> Modifier
+        bottomBarShown -> Modifier.padding(bottom = inner.calculateBottomPadding())
+        else -> Modifier.imePadding()
+    }
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().then(viewport),
         contentPadding = PaddingValues(
             top = inner.calculateTopPadding() + 8.dp,
             bottom = inner.calculateBottomPadding() + if (bottomBarShown) 16.dp else 96.dp,
@@ -635,7 +688,7 @@ internal fun TaskRowContent(
     val listName = task.listName?.takeIf { showListName && it.isNotBlank() }
     // Everything secondary collapses into one quiet supporting line below the title.
     val hasMeta = task.priority != Priority.NONE || due != null || subtaskTotal > 0 ||
-        listName != null || task.isOccurrence
+        listName != null || task.isOccurrence || task.tags.isNotEmpty()
 
     Surface(
         onClick = onClick,
@@ -690,6 +743,7 @@ internal fun TaskRowContent(
                         subtaskTotal = subtaskTotal,
                         listName = listName,
                         listColor = task.effectiveColor,
+                        tags = task.tags,
                         dark = dark,
                     )
                 }
@@ -721,6 +775,7 @@ private fun TaskMetaLine(
     subtaskTotal: Int,
     listName: String?,
     listColor: Int,
+    tags: List<String>,
     dark: Boolean,
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -776,6 +831,28 @@ private fun TaskMetaLine(
                 }
             }
         }
+        if (tags.isNotEmpty()) {
+            add {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Icon(
+                        Icons.Rounded.Sell,
+                        contentDescription = stringResource(R.string.edit_tags_label),
+                        tint = muted,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        tags.joinToString(", "),
+                        style = style,
+                        color = muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
         if (listName != null) {
             add {
                 Text(
@@ -828,7 +905,7 @@ private fun AddSubtaskRow(
         shape = cardShape(position, 22.dp, 6.dp),
         // Same tone as the subtask rows it closes, so the group reads as one unit.
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp).then(gap).revealOnFocus(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 12.dp, end = 8.dp),
@@ -1145,9 +1222,65 @@ private fun CenteredMessage(text: String, inner: PaddingValues) {
     }
 }
 
+/**
+ * Sort and tag filter in one place. Stays open while choosing, since several
+ * tags can be ticked; back leaves. A task must carry every ticked tag.
+ */
 @Composable
-private fun titleFor(filter: TaskFilter, listName: String?): String = when (filter) {
-    is TaskFilter.OfList -> listName ?: stringResource(R.string.tasks_title)
+private fun ViewOptionsPicker(
+    sortOrder: TaskSortOrder,
+    tags: List<String>,
+    selectedTags: Set<String>,
+    onSortOrder: (TaskSortOrder) -> Unit,
+    onToggleTag: (String) -> Unit,
+    onClearTags: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    FullScreenPicker(
+        title = stringResource(R.string.view_options_title),
+        onDismiss = onDismiss,
+        actions = {
+            if (selectedTags.isNotEmpty()) {
+                TextButton(onClick = onClearTags) { Text(stringResource(R.string.view_filter_clear)) }
+            }
+        },
+    ) {
+        GroupedSectionHeader(stringResource(R.string.sort_title))
+        TaskSortOrder.entries.forEachIndexed { index, order ->
+            val isSelected = order == sortOrder
+            GroupedRow(
+                title = stringResource(sortLabel(order)),
+                position = positionOf(index, TaskSortOrder.entries.size),
+                selected = isSelected,
+                trailing = if (isSelected) ({ SelectedCheck() }) else null,
+                onClick = { onSortOrder(order) },
+            )
+        }
+        if (tags.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            GroupedSectionHeader(stringResource(R.string.view_filter_tags))
+            tags.forEachIndexed { index, tag ->
+                val isSelected = tag in selectedTags
+                GroupedRow(
+                    title = tag,
+                    position = positionOf(index, tags.size),
+                    selected = isSelected,
+                    leading = { Icon(Icons.Rounded.Sell, contentDescription = null) },
+                    trailing = if (isSelected) ({ SelectedCheck() }) else null,
+                    onClick = { onToggleTag(tag) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun titleFor(filter: TaskFilter, name: String?): String = when (filter) {
+    is TaskFilter.OfList -> name ?: stringResource(R.string.tasks_title)
+    is TaskFilter.Saved -> name.orEmpty()
+    // Several lists at once only exists for the widget, which never routes here.
+    is TaskFilter.OfLists -> error("OfLists has no task-list screen")
+    is TaskFilter.Tagged -> filter.tag
     is TaskFilter.Smart -> stringResource(
         when (filter.list) {
             SmartList.TODAY -> R.string.smart_today

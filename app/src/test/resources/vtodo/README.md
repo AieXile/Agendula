@@ -30,3 +30,5 @@ VTIMEZONE bodies, fold positions, parameter quoting).
 | `malformed-scalars.ics` | `PRIORITY:11`, `PERCENT-COMPLETE:150`, `SEQUENCE:x`, `STATUS:X-DEFERRED`, `CLASS:X-INTERNAL` — values no spec allows. Clamping or defaulting any of them is a silent rewrite of somebody's data |
 | `two-timezones.ics` | `DTSTART` and `DUE` in different zones. One `timezone` column cannot author both |
 | `folded-utf8.ics` | A line folded mid-emoji-adjacent, to prove folding counts octets and splits on character boundaries |
+| `categories-shapes.ics` | One `CATEGORIES` line with an escaped comma inside a value — the one shape the column claims, so it is re-authored and must come out identical |
+| `categories-split.ics` | One line per tag, a `LANGUAGE` parameter and a space after a comma. Read for display, but none of it is ours to rewrite |

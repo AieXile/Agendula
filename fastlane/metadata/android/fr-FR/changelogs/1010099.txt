@@ -1,0 +1,11 @@
+### Nouveautés
+- Étiquettes : ajoutez-les aux tâches, parcourez-les depuis l'accueil, filtrez toute liste.
+- Filtres : votre vue des tâches ouvertes par échéance, liste, étiquette et priorité, aussi en widget.
+- Widgets Today, Up next, Lists et Week. Un widget peut montrer plusieurs listes.
+
+### Modifié
+- Lignes façon agenda dans le widget Tâches.
+- Listes synchronisées : renommer et supprimer.
+
+### Corrigé
+- Les tâches sur la journée ne sont plus décalées d'un jour à l'ouest d'UTC.

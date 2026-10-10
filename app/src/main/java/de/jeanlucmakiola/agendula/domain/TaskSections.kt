@@ -29,11 +29,11 @@ object TaskSections {
 
     fun sectionOf(task: Task, todayStart: Instant, todayEnd: Instant): TaskSection {
         if (task.isCompleted) return TaskSection.COMPLETED
-        val due = task.due ?: return TaskSection.NO_DATE
-        return when {
-            due < todayStart -> TaskSection.OVERDUE
-            due < todayEnd -> TaskSection.TODAY
-            else -> TaskSection.UPCOMING
+        return when (dueWindowOf(task, todayStart, todayEnd)) {
+            DueWindow.OVERDUE -> TaskSection.OVERDUE
+            DueWindow.TODAY -> TaskSection.TODAY
+            DueWindow.UPCOMING -> TaskSection.UPCOMING
+            DueWindow.NO_DATE -> TaskSection.NO_DATE
         }
     }
 }

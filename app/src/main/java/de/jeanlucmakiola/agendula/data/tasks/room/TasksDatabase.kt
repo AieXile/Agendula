@@ -3,6 +3,8 @@ package de.jeanlucmakiola.agendula.data.tasks.room
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Agendula's own task store. Four tables, designed from
@@ -18,7 +20,7 @@ import androidx.room.TypeConverters
         TaskEntity::class,
         TaskAlarmEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -30,5 +32,36 @@ abstract class TasksDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "agendula-tasks.db"
+
+        /**
+         * v2 adds `categories`. Until then `CATEGORIES` lived in the residue, and
+         * an unchanged task is never downloaded again, so the values are lifted
+         * out here. Not marked dirty: nothing changed on the server's side.
+         */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tasks ADD COLUMN categories TEXT NOT NULL DEFAULT ''")
+                val lifted = mutableListOf<Pair<Long, CategoriesLift.Result>>()
+                db.query(
+                    "SELECT id, unknown_properties FROM tasks WHERE unknown_properties LIKE '%CATEGORIES%'",
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        val result = CategoriesLift.lift(cursor.getString(1))
+                        if (result.categories.isNotEmpty()) lifted += cursor.getLong(0) to result
+                    }
+                }
+                lifted.forEach { (id, result) ->
+                    val categories = CategoriesConverter.toText(result.categories)
+                    if (result.claimed) {
+                        db.execSQL(
+                            "UPDATE tasks SET categories = ?, unknown_properties = ? WHERE id = ?",
+                            arrayOf<Any?>(categories, result.residue, id),
+                        )
+                    } else {
+                        db.execSQL("UPDATE tasks SET categories = ? WHERE id = ?", arrayOf<Any?>(categories, id))
+                    }
+                }
+            }
+        }
     }
 }

@@ -16,29 +16,6 @@
     <uses-permission android:name="org.tasks.permission.READ_TASKS" />
     <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
 
-    <!-- CalDAV sync. ACCESS_NETWORK_STATE is merged in by work-runtime anyway,
-         but it shows in F-Droid's permission diff, so declare it deliberately
-         rather than letting it appear from nowhere.
-
-         READ_SYNC_SETTINGS / WRITE_SYNC_SETTINGS are what the ContentResolver
-         sync APIs need. No FOREGROUND_SERVICE: sync is a plain worker, and the
-         dataSync FGS type would bring the Android 15 six-hours-per-24 budget
-         (whose failure mode is a fatal RemoteServiceException) and a Play
-         requirement for a video demo.
-
-         Two more permissions appear in the merged manifest without being
-         declared here, and both come from work-runtime: WAKE_LOCK, and
-         FOREGROUND_SERVICE. The latter is not us taking the FGS route — below
-         API 31 WorkManager implements expedited work with a foreground service,
-         and minSdk is 29, so it is load-bearing for the "Sync now" button.
-         Removing it with tools:node="remove" would break expedited work on
-         exactly the older devices that need it most. Noted because it shows in
-         F-Droid's permission diff and would otherwise look unexplained. -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
-    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
-
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Exact due-time reminders. User-granted: USE_EXACT_ALARM is reserved for
@@ -55,12 +32,6 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
-        <!-- Custom Tabs provider detection. Without this entry it silently finds
-             nothing on API 30+, and the Nextcloud login flow falls back to an
-             external browser for no visible reason. -->
-        <intent>
-            <action android:name="android.support.customtabs.action.CustomTabsService" />
-        </intent>
     </queries>
 
     <application
@@ -71,7 +42,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
-        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Agendula"
@@ -185,6 +155,58 @@
                 android:resource="@xml/appwidget_info_tasks" />
         </receiver>
 
+        <!-- "Today" home-screen widget (Glance): a progress ring for today's tasks. -->
+        <receiver
+            android:name=".widget.TodayWidgetReceiver"
+            android:label="@string/widget_today_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_today" />
+        </receiver>
+
+        <!-- "Up next" home-screen widget (Glance): the single nearest due task. -->
+        <receiver
+            android:name=".widget.UpNextWidgetReceiver"
+            android:label="@string/widget_up_next_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_up_next" />
+        </receiver>
+
+        <!-- "Lists" home-screen widget (Glance): one shortcut tile per list. -->
+        <receiver
+            android:name=".widget.ListsWidgetReceiver"
+            android:label="@string/widget_lists_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_lists" />
+        </receiver>
+
+        <!-- "Week" home-screen widget (Glance): a seven-day strip of task counts. -->
+        <receiver
+            android:name=".widget.WeekWidgetReceiver"
+            android:label="@string/widget_week_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/appwidget_info_week" />
+        </receiver>
+
         <!-- Per-widget list picker, launched by the host on placement / reconfigure. -->
         <activity
             android:name=".widget.TaskWidgetConfigActivity"
@@ -210,54 +232,6 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
-        <!-- Sync plumbing. The stub provider exists only to give the sync
-             adapter an authority to register against: Agendula publishes no real
-             ContentProvider since :provider was deleted, and without an authority
-             ContentService.hasAuthorityAccess() makes every ContentResolver sync
-             call a silent no-op at targetSdk >= 34. -->
-        <provider
-            android:name=".data.sync.SyncStubProvider"
-            android:authorities="${applicationId}.sync"
-            android:exported="false"
-            android:syncable="true" />
-
-        <!-- Exported and guarded by ACCOUNT_MANAGER. Note that
-             android.permission.ACCOUNT_AUTHENTICATOR does not exist. -->
-        <service
-            android:name=".data.sync.AuthenticatorService"
-            android:exported="true"
-            android:permission="android.permission.ACCOUNT_MANAGER">
-            <intent-filter>
-                <action android:name="android.accounts.AccountAuthenticator" />
-            </intent-filter>
-            <meta-data
-                android:name="android.accounts.AccountAuthenticator"
-                android:resource="@xml/authenticator" />
-        </service>
-
-        <service
-            android:name=".data.sync.SyncAdapterService"
-            android:exported="true"
-            android:permission="android.permission.BIND_SYNC_ADAPTER">
-            <intent-filter>
-                <action android:name="android.content.SyncAdapter" />
-            </intent-filter>
-            <meta-data
-                android:name="android.content.SyncAdapter"
-                android:resource="@xml/sync_adapter" />
-        </service>
-
-        <!-- UnifiedPush: the connector binds this to deliver endpoints and
-             WebDAV-Push messages. Not exported; the connector's own receiver is
-             what distributors talk to. -->
-        <service
-            android:name=".data.sync.push.AgendulaPushService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="org.unifiedpush.android.connector.PUSH_EVENT" />
-            </intent-filter>
-        </service>
 
         <!-- WorkManager's on-demand initialisation. Removing the default
              initializer is what lets AgendulaApp supply a HiltWorkerFactory, so

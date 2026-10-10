@@ -4,15 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
-import de.jeanlucmakiola.agendula.data.sync.RemoteListRepository
+import de.jeanlucmakiola.agendula.data.sync.RemoteLists
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.data.tasks.recoveringFromProviderFailure
 import de.jeanlucmakiola.floret.time.DayWindow
+import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskFiltering
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.agendula.domain.tagsInUse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -54,25 +56,27 @@ enum class ListWriteFailure {
 }
 
 /** Maps a remote outcome onto the wording the screens already know how to show. */
-internal fun RemoteListRepository.Outcome.asFailure(local: ListWriteFailure): ListWriteFailure? =
+internal fun RemoteLists.Outcome.asFailure(local: ListWriteFailure): ListWriteFailure? =
     when (this) {
-        RemoteListRepository.Outcome.Done -> null
-        is RemoteListRepository.Outcome.Refused -> ListWriteFailure.SERVER_REFUSED
-        RemoteListRepository.Outcome.Unreachable -> ListWriteFailure.OFFLINE
-        RemoteListRepository.Outcome.Unsupported -> ListWriteFailure.UNSUPPORTED
-        RemoteListRepository.Outcome.ReadOnly -> ListWriteFailure.READ_ONLY
+        RemoteLists.Outcome.Done -> null
+        is RemoteLists.Outcome.Refused -> ListWriteFailure.SERVER_REFUSED
+        RemoteLists.Outcome.Unreachable -> ListWriteFailure.OFFLINE
+        RemoteLists.Outcome.Unsupported -> ListWriteFailure.UNSUPPORTED
+        RemoteLists.Outcome.ReadOnly -> ListWriteFailure.READ_ONLY
         // The account is gone, stopped or undecryptable, or the server said
         // something this call cannot place. Nothing specific to say beyond
         // "that did not save", which is what [local] is — and specifically not
         // "you are offline", which neither of them is a claim about.
-        RemoteListRepository.Outcome.NoAccount,
-        RemoteListRepository.Outcome.Unexpected,
+        RemoteLists.Outcome.NoAccount,
+        RemoteLists.Outcome.Unexpected,
         -> local
     }
 
 data class ListOverview(val list: TaskList, val openCount: Int)
 data class AccountGroup(val accountName: String, val lists: List<ListOverview>)
 data class SmartCount(val smart: SmartList, val count: Int)
+data class TagOverview(val tag: String, val openCount: Int)
+data class FilterOverview(val filter: SavedFilter, val openCount: Int)
 
 sealed interface ListsUiState {
     data object Loading : ListsUiState
@@ -87,6 +91,10 @@ sealed interface ListsUiState {
         val upcoming: List<Task>,
         /** Every task (open and completed) — the corpus the home search filters. */
         val allTasks: List<Task>,
+        /** Each tag on an open task, alphabetically. */
+        val tags: List<TagOverview> = emptyList(),
+        /** The saved filters, oldest first. */
+        val filters: List<FilterOverview> = emptyList(),
     ) : ListsUiState
 }
 
@@ -96,7 +104,7 @@ private const val UPCOMING_PREVIEW = 3
 @HiltViewModel
 class ListsViewModel @Inject constructor(
     private val repository: TasksRepository,
-    private val remoteLists: RemoteListRepository,
+    private val remoteLists: RemoteLists,
     settingsPrefs: SettingsPrefs,
 ) : ViewModel() {
 
@@ -125,8 +133,9 @@ class ListsViewModel @Inject constructor(
             // ones already ticked off to show "x of y done", so read them too.
             repository.tasks(TaskFilter.Smart(SmartList.COMPLETED)),
             settingsPrefs.settings.map { it.hiddenFromSmartLists }.distinctUntilChanged(),
-        ) { lists, openTasks, completedTasks, hidden ->
-            buildContent(lists, openTasks, completedTasks, hidden) as ListsUiState
+            settingsPrefs.savedFilters,
+        ) { lists, openTasks, completedTasks, hidden, filters ->
+            buildContent(lists, openTasks, completedTasks, hidden, filters) as ListsUiState
         }.recoveringFromProviderFailure { ListsUiState.Failure }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListsUiState.Loading)
 
@@ -135,6 +144,7 @@ class ListsViewModel @Inject constructor(
         openTasks: List<Task>,
         completedTasks: List<Task>,
         hidden: Set<Long>,
+        savedFilters: List<SavedFilter>,
     ): ListsUiState.Content {
         val (todayStart, todayEnd) = DayWindow.today(Clock.System.now(), ZoneId.systemDefault())
         // Count only top-level tasks: a subtask is represented by its parent (and
@@ -177,13 +187,29 @@ class ListsViewModel @Inject constructor(
                 )
             }
             .sortedBy { it.accountName.lowercase() }
+        // Counts the open rows the tag's own screen shows: a subtask folds under a
+        // parent carrying the same tag, and stands on its own otherwise.
+        val allTasks = openTasks + completedTasks
+        val tags = tagsInUse(openTasks).map { tag ->
+            val tagged = allTasks.filter { tag in it.tags }
+            val ids = tagged.mapTo(HashSet()) { it.taskId }
+            TagOverview(tag, tagged.count { !it.isClosed && (!it.isSubtask || it.parentId !in ids) })
+        }
+        // Same folding as the tags: a subtask counts only when its parent isn't in the filter too.
+        val filters = savedFilters.map { filter ->
+            val matching = openTasks.filter { filter.matches(it, todayStart, todayEnd) }
+            val ids = matching.mapTo(HashSet()) { it.taskId }
+            FilterOverview(filter, matching.count { !it.isSubtask || it.parentId !in ids })
+        }
         return ListsUiState.Content(
             smartCounts = smartCounts,
+            filters = filters,
             groups = groups,
             todayDone = completedDueToday,
             todayTotal = todayTotal,
             upcoming = upcoming,
-            allTasks = openTasks + completedTasks,
+            allTasks = allTasks,
+            tags = tags,
         )
     }
 
@@ -215,7 +241,7 @@ class ListsViewModel @Inject constructor(
         // ⚠️ Server first. A row written before the MKCALENDAR would be a list
         // that exists on the phone and nowhere else, with nothing to say so.
         val outcome = runCatching { remoteLists.create(accountId, name.trim(), color) }
-            .getOrElse { RemoteListRepository.Outcome.Unreachable }
+            .getOrElse { RemoteLists.Outcome.Unreachable }
         _writeFailure.value = outcome.asFailure(ListWriteFailure.SAVE)
     }
 }

@@ -9,6 +9,7 @@ import de.jeanlucmakiola.agendula.domain.ical.ICalParser
 import de.jeanlucmakiola.agendula.domain.ical.ICalProperty
 import de.jeanlucmakiola.agendula.domain.ical.ICalSerializer
 import de.jeanlucmakiola.agendula.domain.ical.ICalValues
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import java.time.ZoneId
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -81,6 +82,8 @@ object VTodoMapper {
         // Parameterised copies stay in the residue verbatim; authoring the
         // column beside them would emit the same exclusions twice.
         "RDATE", "EXDATE",
+        // Several lines, or one the column would not re-serialise exactly.
+        "CATEGORIES",
     )
 
     /** What a VTODO yields. Row identity ([TaskEntity.id], `listId`) is the caller's. */
@@ -200,6 +203,9 @@ object VTodoMapper {
             CLASS_NAMES.indexOf(classProperty?.value?.trim()?.uppercase()).takeIf { it >= 0 },
         )
 
+        val (categories, categoriesProperty) = readCategories(vtodo)
+        claim(categoriesProperty)
+
         val sequenceProperty = vtodo.property("SEQUENCE")
         val sequence = take(
             sequenceProperty,
@@ -225,6 +231,7 @@ object VTodoMapper {
             title = take(vtodo.property("SUMMARY"), vtodo.property("SUMMARY")?.text()),
             description = take(vtodo.property("DESCRIPTION"), vtodo.property("DESCRIPTION")?.text()),
             location = take(vtodo.property("LOCATION"), vtodo.property("LOCATION")?.text()),
+            categories = categories,
             // URI, not TEXT — escaping it would corrupt a query string.
             url = take(vtodo.property("URL"), vtodo.property("URL")?.value?.trim()),
             status = status,
@@ -284,8 +291,9 @@ object VTodoMapper {
         now: Instant = Clock.System.now(),
     ): ICalComponent {
         val residue = parseResidue(entity.unknownProperties)
+        val residueCategories = normalizeTags(residue.properties("CATEGORIES").flatMap(::categoryValues))
         val keptResidue =
-            residue.properties.filterNot { contradictsResidue(it, residue, entity, parentUid) }
+            residue.properties.filterNot { contradictsResidue(it, residue, residueCategories, entity, parentUid) }
         val suppressed = keptResidue
             .map { it.name.uppercase() }
             .filterTo(mutableSetOf()) { it in SUPPRESSED_BY_RESIDUE }
@@ -307,6 +315,7 @@ object VTodoMapper {
         add("DESCRIPTION", entity.description?.let(ICalValues::escapeText))
         add("LOCATION", entity.location?.let(ICalValues::escapeText))
         add("URL", entity.url)
+        add("CATEGORIES", normalizeTags(entity.categories).takeIf { it.isNotEmpty() }?.let(ICalValues::formatTextList))
 
         add("STATUS", entity.status.toICalName())
         add("PERCENT-COMPLETE", entity.percentComplete?.toString())
@@ -386,6 +395,7 @@ object VTodoMapper {
     private fun contradictsResidue(
         property: ICalProperty,
         residue: ICalComponent,
+        residueCategories: List<String>,
         entity: TaskEntity,
         parentUid: String?,
     ): Boolean {
@@ -433,6 +443,7 @@ object VTodoMapper {
             "PRIORITY" -> entity.priority != PRIORITY_NONE
             "PERCENT-COMPLETE" -> entity.percentComplete != null
             "CLASS" -> entity.classification != null
+            "CATEGORIES" -> entity.categories != residueCategories
             // Not SEQUENCE: it is the organiser's counter and never ours to bump,
             // so the column stays at its fallback and the residue always wins.
             else -> false
@@ -474,6 +485,23 @@ object VTodoMapper {
     }
 
     // -------------------------------------------------------------- helpers
+
+    /**
+     * Every `CATEGORIES` copy's values, merged, and the one line to claim — only
+     * when it is the sole, parameterless copy and the column re-serialises it
+     * byte for byte. Anything else is read for display and stays in the residue.
+     */
+    private fun readCategories(vtodo: ICalComponent): Pair<List<String>, ICalProperty?> {
+        val copies = vtodo.properties("CATEGORIES")
+        val values = normalizeTags(copies.flatMap(::categoryValues))
+        val claimable = copies.singleOrNull()?.takeIf {
+            it.params.isEmpty() && values.isNotEmpty() && ICalValues.formatTextList(values) == it.value
+        }
+        return values to claimable
+    }
+
+    private fun categoryValues(property: ICalProperty): List<String> =
+        normalizeTags(ICalValues.parseTextList(property.value))
 
     private val CLASS_NAMES = listOf("PUBLIC", "PRIVATE", "CONFIDENTIAL")
 

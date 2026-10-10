@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
 import de.jeanlucmakiola.agendula.domain.PRIORITY_NONE
 import de.jeanlucmakiola.agendula.domain.TaskStatus
 import kotlin.time.Instant
@@ -71,7 +72,7 @@ data class TaskListEntity(
      *
      * ⚠️ It was set by a rename and read by nobody. A collection's name and
      * colour are now written server-first by
-     * [de.jeanlucmakiola.agendula.data.sync.RemoteListRepository], so there is
+     * [de.jeanlucmakiola.agendula.data.sync.RemoteLists], so there is
      * no local edit left waiting to be pushed — and a flag that means "owed to
      * the server" while nothing ever pays it is worse than no flag at all.
      */
@@ -143,6 +144,10 @@ data class TaskEntity(
     @ColumnInfo(name = "url") val url: String? = null,
     /** ARGB override for the list colour. */
     @ColumnInfo(name = "color") val color: Int? = null,
+    /** RFC 5545 `CATEGORIES` — the tags — in the spelling each task carries them. */
+    @ColumnInfo(name = "categories", defaultValue = "")
+    @field:TypeConverters(CategoriesConverter::class)
+    val categories: List<String> = emptyList(),
 
     // state
     @ColumnInfo(name = "status", defaultValue = "0") val status: TaskStatus = TaskStatus.NEEDS_ACTION,

@@ -5,10 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import de.jeanlucmakiola.agendula.BuildConfig
 import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.data.tasks.recoveringFromProviderFailure
-import de.jeanlucmakiola.agendula.ui.accounts.add.ADD_ACCOUNT_STEPS
 import de.jeanlucmakiola.agendula.ui.common.canScheduleExactAlarms
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -93,7 +93,7 @@ class OnboardingViewModel @Inject constructor(
      * provider is chosen, so the bar is honest from the first frame and stays
      * honest when the choice makes the flow longer.
      */
-    private val accountSlots = MutableStateFlow(ADD_ACCOUNT_STEPS)
+    private val accountSlots = MutableStateFlow(ACCOUNT_STEP_SLOTS)
 
     fun onAccountStepsChanged(count: Int) {
         accountSlots.value = count
@@ -145,11 +145,11 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.setRemindersEnabled(enabled)
             needsExactAlarms.value = enabled && !context.canScheduleExactAlarms()
-            advanceTo(if (needsExactAlarms.value) OnboardingStep.ExactAlarms else OnboardingStep.SyncOffer)
+            advanceTo(if (needsExactAlarms.value) OnboardingStep.ExactAlarms else afterReminders())
         }
     }
 
-    fun onExactAlarmsDone() = advanceTo(OnboardingStep.SyncOffer)
+    fun onExactAlarmsDone() = advanceTo(afterReminders())
 
     fun onSyncAnswered(connect: Boolean) {
         connectsAccount.value = connect
@@ -192,11 +192,9 @@ class OnboardingViewModel @Inject constructor(
         step.value = when (step.value) {
             OnboardingStep.Reminders -> OnboardingStep.Welcome
             OnboardingStep.ExactAlarms -> OnboardingStep.Reminders
-            // Once granted there is nothing left to ask, so back skips the step.
-            OnboardingStep.SyncOffer ->
-                if (needsExactAlarms.value && !context.canScheduleExactAlarms()) OnboardingStep.ExactAlarms
-                else OnboardingStep.Reminders
-            OnboardingStep.FirstList -> OnboardingStep.SyncOffer
+            OnboardingStep.SyncOffer -> beforeSyncOffer()
+            OnboardingStep.FirstList ->
+                if (BuildConfig.SYNC_ENABLED) OnboardingStep.SyncOffer else beforeSyncOffer()
             else -> return
         }
     }
@@ -230,6 +228,15 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    /** Without sync built in there is nothing to offer, and reminders lead straight on. */
+    private fun afterReminders(): OnboardingStep =
+        if (BuildConfig.SYNC_ENABLED) OnboardingStep.SyncOffer else OnboardingStep.FirstList
+
+    /** Once granted there is nothing left to ask, so back skips the exact-alarm step. */
+    private fun beforeSyncOffer(): OnboardingStep =
+        if (needsExactAlarms.value && !context.canScheduleExactAlarms()) OnboardingStep.ExactAlarms
+        else OnboardingStep.Reminders
+
     private fun afterFirstList() {
         step.value = stepAfterFirstList()
     }
@@ -241,7 +248,7 @@ class OnboardingViewModel @Inject constructor(
         add(OnboardingStep.Welcome)
         add(OnboardingStep.Reminders)
         if (needsExact) add(OnboardingStep.ExactAlarms)
-        add(OnboardingStep.SyncOffer)
+        if (BuildConfig.SYNC_ENABLED) add(OnboardingStep.SyncOffer)
         if (sync) add(OnboardingStep.Account)
         if (needsList) add(OnboardingStep.FirstList)
         if (!sync) add(OnboardingStep.Backup)

@@ -25,7 +25,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
 import de.jeanlucmakiola.agendula.data.di.LaunchHook
-import de.jeanlucmakiola.agendula.data.sync.SyncNoticeNotifier
 import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.ui.imports.importIntentUri
 import de.jeanlucmakiola.agendula.ui.navigation.AppShortcuts
@@ -33,10 +32,6 @@ import de.jeanlucmakiola.agendula.data.prefs.ThemeMode
 import de.jeanlucmakiola.agendula.ui.RootScreen
 import de.jeanlucmakiola.agendula.ui.crash.CrashReportActivity
 import de.jeanlucmakiola.agendula.ui.navigation.NavRequest
-import de.jeanlucmakiola.agendula.data.sync.AccountRepository
-import de.jeanlucmakiola.agendula.data.sync.PendingLoginFlowStore
-import de.jeanlucmakiola.agendula.data.sync.SyncTrigger
-import de.jeanlucmakiola.agendula.data.sync.push.PushRegistrar
 import de.jeanlucmakiola.agendula.ui.settings.SettingsViewModel
 import de.jeanlucmakiola.agendula.ui.theme.AgendulaTheme
 import de.jeanlucmakiola.floret.crash.CrashReportDialog
@@ -54,14 +49,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var launchHooks: Set<@JvmSuppressWildcards LaunchHook>
-
-    @Inject lateinit var accounts: AccountRepository
-
-    @Inject lateinit var syncTrigger: SyncTrigger
-
-    @Inject lateinit var pendingLoginFlows: PendingLoginFlowStore
-
-    @Inject lateinit var push: PushRegistrar
 
     // A captured crash report awaiting the user's decision, surfaced as a dialog
     // over the app on the next launch (the single-crash path). A startup
@@ -94,34 +81,9 @@ class MainActivity : ComponentActivity() {
         // Surface a single captured crash as a dialog on the next launch.
         if (CrashReporter.shouldPrompt(this)) pendingCrashReport = CrashReporter.pendingReport(this)
 
-        // Sync hard on app open: the periodic worker's interval is a floor, and
-        // in the `rare` and `restricted` App Standby buckets it may not have run
-        // at all. `KEEP` makes rescheduling idempotent, so this also repairs a
-        // schedule lost to "clear app data" or to a restore.
-        //
-        // ⚠️ Only on a genuine open. This activity declares no `configChanges`,
-        // so onCreate runs again on every rotation, theme switch, locale change
-        // and font-scale change — each of which would otherwise start a fresh
-        // network sync the moment the previous one finished.
+        // Each hook on its own, so one waiting on the network holds up no other.
         if (savedInstanceState == null) {
-            lifecycleScope.launch {
-                runCatching {
-                    accounts.rescheduleAll()
-                    accounts.syncable().forEach { syncTrigger.enqueue(it.displayName) }
-                    // A login flow the previous process died in the middle of.
-                    // Its password, if the user approved, exists nowhere else.
-                    pendingLoginFlows.reclaim()
-                }
-                // Last and on its own: it waits on the network, and must not
-                // hold up the reclaim above. Re-registering on open is what
-                // the connector recommends.
-                runCatching { push.updateAll() }
-            }
-        }
-
-        // Variant hooks: the demo seeder in debug builds, nothing in release.
-        if (savedInstanceState == null) {
-            lifecycleScope.launch { launchHooks.forEach { runCatching { it.onLaunch(intent) } } }
+            launchHooks.forEach { hook -> lifecycleScope.launch { runCatching { hook.onLaunch(intent) } } }
         }
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
@@ -180,12 +142,18 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_TASK_ID = "de.jeanlucmakiola.agendula.extra.TASK_ID"
         const val EXTRA_OCCURRENCE_START = "de.jeanlucmakiola.agendula.extra.OCCURRENCE_START"
         private const val EXTRA_OPEN_ACCOUNTS = "de.jeanlucmakiola.agendula.extra.OPEN_ACCOUNTS"
+
+        /** The account a sign-in notification is about, on the intent it opens. */
+        const val EXTRA_SIGN_IN_ACCOUNT_ID = "de.jeanlucmakiola.agendula.extra.SIGN_IN_ACCOUNT_ID"
         const val ACTION_NEW_TASK = "de.jeanlucmakiola.agendula.action.NEW_TASK"
         const val ACTION_TODAY = "de.jeanlucmakiola.agendula.action.TODAY"
         private const val ACTION_OPEN_SMART = "de.jeanlucmakiola.agendula.action.OPEN_SMART"
         private const val ACTION_OPEN_LIST = "de.jeanlucmakiola.agendula.action.OPEN_LIST"
+        private const val ACTION_OPEN_FILTER = "de.jeanlucmakiola.agendula.action.OPEN_FILTER"
+        private const val EXTRA_FILTER_ID = "de.jeanlucmakiola.agendula.extra.FILTER_ID"
         private const val EXTRA_SMART_LIST = "de.jeanlucmakiola.agendula.extra.SMART_LIST"
         private const val EXTRA_LIST_ID = "de.jeanlucmakiola.agendula.extra.LIST_ID"
+        private const val EXTRA_PRESET_LIST_ID = "de.jeanlucmakiola.agendula.extra.PRESET_LIST_ID"
         private const val SHARED_TITLE_LIMIT = 500
         private const val NO_OCCURRENCE = -1L
 
@@ -206,9 +174,14 @@ class MainActivity : ComponentActivity() {
                 .putExtra(EXTRA_OPEN_ACCOUNTS, true)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-        /** The launcher shortcut's and Quick Settings tile's "New task". */
-        fun newTaskIntent(context: Context): Intent =
-            Intent(ACTION_NEW_TASK, null, context, MainActivity::class.java)
+        /**
+         * The launcher shortcut's, Quick Settings tile's and a widget's "New
+         * task". [listId] preset the list when it names exactly one; the data
+         * URI keeps each widget's PendingIntent apart from the others.
+         */
+        fun newTaskIntent(context: Context, listId: Long? = null): Intent =
+            Intent(ACTION_NEW_TASK, listId?.let { "agendula://newtask/$it".toUri() }, context, MainActivity::class.java)
+                .putExtra(EXTRA_PRESET_LIST_ID, listId ?: -1L)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
         fun todayIntent(context: Context): Intent =
@@ -227,19 +200,31 @@ class MainActivity : ComponentActivity() {
                 .putExtra(EXTRA_LIST_ID, listId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
+        /** Opens one saved filter. */
+        fun filterIntent(context: Context, filterId: Long): Intent =
+            Intent(ACTION_OPEN_FILTER, "agendula://filter/$filterId".toUri(), context, MainActivity::class.java)
+                .putExtra(EXTRA_FILTER_ID, filterId)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
         internal fun navRequestOf(intent: Intent?): NavRequest? {
             if (intent == null) return null
-            intent.getLongExtra(SyncNoticeNotifier.EXTRA_SIGN_IN_ACCOUNT_ID, -1L).takeIf { it > 0L }
-                ?.let { return NavRequest.OpenAccount(it) }
-            if (intent.getBooleanExtra(EXTRA_OPEN_ACCOUNTS, false)) return NavRequest.OpenAccounts
+            if (BuildConfig.SYNC_ENABLED) {
+                intent.getLongExtra(EXTRA_SIGN_IN_ACCOUNT_ID, -1L).takeIf { it > 0L }
+                    ?.let { return NavRequest.OpenAccount(it) }
+                if (intent.getBooleanExtra(EXTRA_OPEN_ACCOUNTS, false)) return NavRequest.OpenAccounts
+            }
             when (intent.action) {
-                ACTION_NEW_TASK -> return NavRequest.NewTask()
+                ACTION_NEW_TASK -> return NavRequest.NewTask(
+                    listId = intent.getLongExtra(EXTRA_PRESET_LIST_ID, -1L).takeIf { it > 0L },
+                )
                 ACTION_TODAY -> return NavRequest.OpenSmart(SmartList.TODAY)
                 ACTION_OPEN_SMART -> intent.getStringExtra(EXTRA_SMART_LIST)
                     ?.let { name -> SmartList.entries.firstOrNull { it.name == name } }
                     ?.let { return NavRequest.OpenSmart(it) }
                 ACTION_OPEN_LIST -> intent.getLongExtra(EXTRA_LIST_ID, -1L).takeIf { it > 0L }
                     ?.let { return NavRequest.OpenList(it) }
+                ACTION_OPEN_FILTER -> intent.getLongExtra(EXTRA_FILTER_ID, -1L).takeIf { it > 0L }
+                    ?.let { return NavRequest.OpenFilter(it) }
             }
             importIntentUri(intent)?.let { return NavRequest.Import(it) }
             if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/plain") == true) {

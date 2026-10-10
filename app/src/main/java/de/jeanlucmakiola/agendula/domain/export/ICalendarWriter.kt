@@ -88,6 +88,7 @@ object ICalendarWriter {
         task.location?.takeIf { it.isNotBlank() }?.let { property("LOCATION", it) }
         // URL is a URI, not TEXT: it must not be escaped like one.
         task.url?.takeIf { it.isNotBlank() }?.let { rawProperty("URL", it) }
+        task.tags.takeIf { it.isNotEmpty() }?.let { rawProperty("CATEGORIES", ICalValues.formatTextList(it)) }
 
         task.start?.let { dateProperty("DTSTART", it, task.isAllDay) }
         task.due?.let { dateProperty("DUE", it, task.isAllDay) }

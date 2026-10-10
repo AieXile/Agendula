@@ -5,8 +5,8 @@ class ProviderUnavailableException :
     IllegalStateException("No tasks provider installed")
 
 /** A ContentResolver write returned no URI or affected no rows. */
-class TaskWriteFailedException(operation: String) :
-    RuntimeException("Task write failed: $operation")
+class TaskWriteFailedException(operation: String, cause: Throwable? = null) :
+    RuntimeException("Task write failed: $operation", cause)
 
 /**
  * The task changed (e.g. a DAVx5 sync or another app) since the edit form loaded

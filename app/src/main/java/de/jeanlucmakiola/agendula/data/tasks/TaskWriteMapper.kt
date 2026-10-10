@@ -113,6 +113,12 @@ object TaskWriteMapper {
         Alarm.ALARM_TYPE to Alarm.TYPE_MESSAGE,
     )
 
+    fun categoryValues(taskId: Long, name: String): Map<String, Any?> = mapOf(
+        Properties.TASK_ID to taskId,
+        Properties.MIMETYPE to TasksContract.Category.MIMETYPE,
+        TasksContract.Category.NAME to name,
+    )
+
     /** The user-owned columns of a list — what an edit is allowed to change. */
     fun listValues(name: String, color: Int): Map<String, Any?> = mapOf(
         Lists.NAME to name.trim(),

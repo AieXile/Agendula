@@ -8,15 +8,20 @@ import de.jeanlucmakiola.agendula.data.reminders.ReminderScheduler
 import de.jeanlucmakiola.agendula.data.tasks.TaskConflictException
 import de.jeanlucmakiola.agendula.data.tasks.TasksRepository
 import de.jeanlucmakiola.agendula.domain.Priority
+import de.jeanlucmakiola.agendula.domain.SmartList
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskFormError
 import de.jeanlucmakiola.agendula.domain.TaskFormField
+import de.jeanlucmakiola.agendula.domain.allDayInstantOf
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.populatedFields
 import de.jeanlucmakiola.agendula.domain.htmlToPlainText
 import de.jeanlucmakiola.agendula.domain.looksLikeHtml
+import de.jeanlucmakiola.agendula.domain.newTaskPreset
+import de.jeanlucmakiola.agendula.domain.normalizeTags
+import de.jeanlucmakiola.agendula.domain.tagsInUse
 import de.jeanlucmakiola.agendula.domain.rebasedForAllDay
 import de.jeanlucmakiola.agendula.domain.readableDescription
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
@@ -25,7 +30,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 /**
@@ -50,6 +57,11 @@ data class TaskEditUiState(
     val reminders: List<Int> = emptyList(),
     val location: String = "",
     val url: String = "",
+    val tags: List<String> = emptyList(),
+    /** What is typed in the tag field and not added yet. Saving still takes it. */
+    val tagDraft: String = "",
+    /** Every tag already in use, for completing what the user types. */
+    val tagSuggestions: List<String> = emptyList(),
     val rrule: String? = null,
     /** Editing one occurrence of a series: saving asks how far the edit reaches. */
     val isOccurrence: Boolean = false,
@@ -113,7 +125,13 @@ class TaskEditViewModel @Inject constructor(
     private var defaultFields: Set<TaskFormField> = emptySet()
 
     /** Start a fresh task, optionally pre-selecting a list / parent. */
-    fun bindNew(presetListId: Long? = null, parentId: Long? = null, initialTitle: String? = null) {
+    fun bindNew(
+        presetListId: Long? = null,
+        parentId: Long? = null,
+        initialTitle: String? = null,
+        presetTag: String? = null,
+        presetFilterId: Long? = null,
+    ) {
         if (bound) return
         bound = true
         editingTaskId = null
@@ -122,11 +140,16 @@ class TaskEditViewModel @Inject constructor(
             val settings = settingsPrefs.settings.first()
             defaultFields = settings.defaultEditFields
             val lists = runCatching { repository.taskLists().first() }.getOrElse { emptyList() }
-            // A read-only or vanished default would give the task a list it
+            val preset = presetFilterId?.let { settingsPrefs.savedFilter(it).first() }
+                ?.newTaskPreset(LocalDate.now())
+            // A read-only or vanished default — or a widget's preset list, if it was
+            // since deleted or turned read-only — would give the task a list it
             // cannot be saved to.
             val writable = lists.filter { it.acceptsWrites }
-            val defaultList = presetListId
-                ?: settings.defaultListId?.takeIf { id -> writable.any { it.id == id } }
+            val filterLists = preset?.listIds.orEmpty()
+            val defaultList = presetListId?.takeIf { id -> writable.any { it.id == id } }
+                ?: settings.defaultListId?.takeIf { id -> writable.any { it.id == id } && (filterLists.isEmpty() || id in filterLists) }
+                ?: writable.firstOrNull { it.id in filterLists }?.id
                 ?: writable.firstOrNull { !it.isLocal }?.id
                 ?: writable.firstOrNull()?.id
             _state.value = withFields(
@@ -135,10 +158,22 @@ class TaskEditViewModel @Inject constructor(
                     isNew = true,
                     autofocusTitle = settings.autofocusTitle,
                     listId = defaultList,
+                    // A preset due is all-day, so a default start has to be too, or
+                    // today's start would land after a due of today.
+                    start = when {
+                        !settings.defaultStartToday -> null
+                        preset?.dueDate != null -> allDayInstantOf(LocalDate.now())
+                        else -> Clock.System.now()
+                    },
+                    // The same all-day value picking the date in the date field gives.
+                    due = preset?.dueDate?.let(::allDayInstantOf),
+                    isAllDay = preset?.dueDate != null,
+                    priority = preset?.priority ?: Priority.NONE,
                     parentId = parentId,
                     lists = lists,
                     parentCandidates = loadParents(defaultList, selfId = null),
                     title = initialTitle.orEmpty(),
+                    tags = (listOfNotNull(presetTag) + preset?.tags.orEmpty()).distinct(),
                 ),
             ).also { baseline = it.toForm().copy(title = "") }
         }
@@ -176,6 +211,7 @@ class TaskEditViewModel @Inject constructor(
                     reminders = repository.remindersFor(taskId).filter { !it.fromStart }.map { it.minutesBefore },
                     location = task.location.orEmpty(),
                     url = task.url.orEmpty(),
+                    tags = task.tags,
                     rrule = task.recurrenceRule,
                     originalRule = task.recurrenceRule,
                     isOccurrence = task.isOccurrence,
@@ -197,6 +233,18 @@ class TaskEditViewModel @Inject constructor(
         if (listId == null) return emptyList()
         val tasks = runCatching { repository.tasks(TaskFilter.OfList(listId)).first() }.getOrElse { emptyList() }
         return tasks.filter { !it.isClosed && !it.isSubtask && it.taskId != selfId }
+    }
+
+    private var suggestionsRequested = false
+
+    /** Tags on open tasks, read once the user starts typing one rather than on every bind. */
+    private fun loadTagSuggestions() {
+        if (suggestionsRequested) return
+        suggestionsRequested = true
+        viewModelScope.launch {
+            val tasks = runCatching { repository.tasks(TaskFilter.Smart(SmartList.ALL)).first() }.getOrElse { emptyList() }
+            _state.value = _state.value.copy(tagSuggestions = tagsInUse(tasks))
+        }
     }
 
     /** Reveal an optional section (one tap from the "More fields" picker). */
@@ -254,6 +302,18 @@ class TaskEditViewModel @Inject constructor(
     fun removeReminder(minutesBeforeDue: Int) = update { it.copy(reminders = it.reminders - minutesBeforeDue) }
     fun onLocationChange(value: String) = update { it.copy(location = value) }
     fun onUrlChange(value: String) = update { it.copy(url = value) }
+    fun addTag(name: String) = update { it.copy(tags = normalizeTags(it.tags + name), tagDraft = "") }
+
+    /** A typed comma adds what came before it. */
+    fun onTagDraftChange(value: String) {
+        loadTagSuggestions()
+        update {
+            if (',' in value) it.copy(tags = it.withDraft(value), tagDraft = "") else it.copy(tagDraft = value)
+        }
+    }
+
+    fun commitTagDraft() = update { it.copy(tags = it.withDraft(it.tagDraft), tagDraft = "") }
+    fun removeTag(name: String) = update { it.copy(tags = it.tags - name) }
     fun onRecurrenceChange(rrule: String?) = update { it.copy(rrule = rrule, errors = emptySet()) }
 
     /** Dismiss the conflict prompt without saving (the user keeps editing). */
@@ -336,5 +396,8 @@ private fun TaskEditUiState.toForm(): TaskForm = TaskForm(
     reminders = reminders,
     location = location.ifBlank { null },
     url = url.ifBlank { null },
+    tags = withDraft(tagDraft),
     rrule = rrule,
 )
+
+private fun TaskEditUiState.withDraft(draft: String): List<String> = normalizeTags(tags + draft.split(','))

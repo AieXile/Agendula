@@ -3,6 +3,8 @@ package de.jeanlucmakiola.agendula.ui.lists
 import de.jeanlucmakiola.floret.components.ReorderableColumn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.FilterList
+import androidx.compose.material.icons.rounded.Sell
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -86,6 +89,7 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.ui.common.ActionShapes
 import de.jeanlucmakiola.floret.components.GroupedRow
+import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.SnackChip
 import de.jeanlucmakiola.floret.components.SnackChipHeight
 import de.jeanlucmakiola.floret.components.SnackChipMargin
@@ -114,6 +118,7 @@ fun ListsScreen(
     onNewTask: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onNewFilter: () -> Unit = {},
     viewModel: ListsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -179,6 +184,7 @@ fun ListsScreen(
                         onOpenFilter = onOpenFilter,
                         onOpenTask = onOpenTask,
                         onNewList = { newList = true },
+                        onNewFilter = onNewFilter,
                         onReorder = viewModel::reorderLists,
                         topPadding = 0.dp,
                         bottomPadding = inner.calculateBottomPadding() + 96.dp,
@@ -252,6 +258,7 @@ private fun ListsContent(
     onOpenFilter: (TaskFilter) -> Unit,
     onOpenTask: (Task) -> Unit,
     onNewList: () -> Unit,
+    onNewFilter: () -> Unit,
     onReorder: (List<Long>) -> Unit,
     topPadding: androidx.compose.ui.unit.Dp,
     bottomPadding: androidx.compose.ui.unit.Dp,
@@ -370,6 +377,90 @@ private fun ListsContent(
                 }
             }
         }
+
+        if (state.tags.isNotEmpty()) {
+            item(key = "tags-header") { SectionHeader(stringResource(R.string.tags_header)) }
+            itemsIndexed(state.tags, key = { _, t -> "tag-${t.tag}" }) { index, overview ->
+                GroupedRow(
+                    title = overview.tag,
+                    position = positionOf(index, state.tags.size),
+                    leading = {
+                        Icon(
+                            Icons.Rounded.Sell,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    trailing = {
+                        Text(
+                            overview.openCount.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    onClick = { onOpenFilter(TaskFilter.Tagged(overview.tag)) },
+                )
+            }
+        }
+
+        if (state.groups.isNotEmpty()) {
+            filtersSection(state.filters, onOpenFilter, onNewFilter)
+        }
+    }
+}
+
+/** The saved filters, or a single row offering the first one. */
+private fun LazyListScope.filtersSection(
+    filters: List<FilterOverview>,
+    onOpenFilter: (TaskFilter) -> Unit,
+    onNewFilter: () -> Unit,
+) {
+    item(key = "filters-header") {
+        SectionHeader(
+            text = stringResource(R.string.filters_header),
+            action = if (filters.isEmpty()) {
+                null
+            } else {
+                {
+                    IconButton(onClick = onNewFilter) {
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.filter_new_title))
+                    }
+                }
+            },
+        )
+    }
+    if (filters.isEmpty()) {
+        item(key = "filters-empty") {
+            GroupedRow(
+                title = stringResource(R.string.filter_new_title),
+                summary = stringResource(R.string.filters_empty_hint),
+                position = Position.Alone,
+                leading = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                onClick = onNewFilter,
+            )
+        }
+        return
+    }
+    itemsIndexed(filters, key = { _, f -> "filter-${f.filter.id}" }) { index, overview ->
+        GroupedRow(
+            title = overview.filter.name,
+            position = positionOf(index, filters.size),
+            leading = {
+                Icon(
+                    Icons.Rounded.FilterList,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            trailing = {
+                Text(
+                    overview.openCount.toString(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            onClick = { onOpenFilter(TaskFilter.Saved(overview.filter.id)) },
+        )
     }
 }
 

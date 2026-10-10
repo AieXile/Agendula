@@ -58,4 +58,32 @@ class TaskFilteringTest {
         assertThat(TaskFiltering.matches(task, TaskFilter.OfList(7), todayStart, todayEnd)).isTrue()
         assertThat(TaskFiltering.matches(task, TaskFilter.OfList(8), todayStart, todayEnd)).isFalse()
     }
+
+    @Test
+    fun `Tagged matches open and completed tasks carrying the tag`() {
+        val filter = TaskFilter.Tagged("Work")
+        assertThat(TaskFiltering.matches(testTask(tags = listOf("Home", "Work")), filter, todayStart, todayEnd)).isTrue()
+        assertThat(
+            TaskFiltering.matches(testTask(tags = listOf("Work"), status = TaskStatus.COMPLETED), filter, todayStart, todayEnd),
+        ).isTrue()
+        assertThat(TaskFiltering.matches(testTask(tags = listOf("work")), filter, todayStart, todayEnd)).isFalse()
+    }
+
+    @Test
+    fun `narrowing by tags needs every one of them`() {
+        val task = testTask(tags = listOf("Home", "Work"))
+        assertThat(TaskFiltering.hasAllTags(task, emptySet())).isTrue()
+        assertThat(TaskFiltering.hasAllTags(task, setOf("Work"))).isTrue()
+        assertThat(TaskFiltering.hasAllTags(task, setOf("Work", "Home"))).isTrue()
+        assertThat(TaskFiltering.hasAllTags(task, setOf("Work", "Errands"))).isFalse()
+    }
+
+    @Test
+    fun `tags in use are listed once each, alphabetically ignoring case`() {
+        val tasks = listOf(
+            testTask(id = 1, tags = listOf("work", "Home")),
+            testTask(id = 2, tags = listOf("Home", "errands")),
+        )
+        assertThat(tagsInUse(tasks)).containsExactly("errands", "Home", "work").inOrder()
+    }
 }

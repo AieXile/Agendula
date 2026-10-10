@@ -29,6 +29,7 @@ private fun form(
     start: Instant? = null,
     due: Instant? = null,
     isAllDay: Boolean = false,
+    tags: List<String> = emptyList(),
 ) = TaskForm(
     title = title,
     listId = 1,
@@ -36,6 +37,7 @@ private fun form(
     start = start,
     due = due,
     isAllDay = isAllDay,
+    tags = tags,
 )
 
 class TaskFormWriterTest {
@@ -49,6 +51,12 @@ class TaskFormWriterTest {
         assertThat(entity.createdAt).isEqualTo(NOW)
         assertThat(entity.lastModified).isEqualTo(NOW)
         assertThat(entity.isDirty).isTrue()
+    }
+
+    @Test
+    fun `tags are trimmed and blanks dropped`() {
+        val entity = TaskFormWriter.apply(task(), form(tags = listOf(" Work ", "", "  ", "Home")), NOW, ZONE)
+        assertThat(entity.categories).containsExactly("Work", "Home").inOrder()
     }
 
     @Test

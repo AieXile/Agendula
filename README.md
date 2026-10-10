@@ -76,6 +76,16 @@ back to a full comparison where it does not. Everything the store does not model
 is kept verbatim and sent back unchanged, so passing your tasks through Agendula
 does not quietly lose fields another client wrote.
 
+### Tested With
+
+The following CalDAV Services have been Tested
+
+
+
+| Service | Version | Date | Status | User |
+|---|---|---|---|---|
+| **Nextcloud** | 25.0.0 | Oct 9th 2026 | ✅ | [@jlmakiola](https://codeberg.org/jlmakiola) [@Schanbro](https://codeberg.org/Schanbro)
+
 ## Where your tasks live
 
 |  | Where | Sync | Needs |
@@ -119,8 +129,20 @@ APK and a `.sha256` checksum attached — the same APK the F-Droid repository
 serves. For automatic updates from there, use
 **[Obtainium](https://github.com/ImranR98/Obtainium)** and
 **[add Agendula in one tap](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula)**.
+Each release carries two APKs (see [Offline version](#offline-version)), so set
+*Filter APKs by regular expression* to `^agendula_v` to always get the regular
+app.
 Betas of upcoming versions are published there too, as pre-releases; to test
 them, switch on *Include prereleases* for Agendula in Obtainium.
+
+### Offline version
+
+Each Codeberg release also carries `agendula-offline_v<version>.apk`: Agendula
+without CalDAV sync and **without the network permission**, so it cannot
+connect to anything. It installs alongside the regular app rather than replacing
+it; move tasks between the two with Settings → Storage → Export / Import. In
+Obtainium, pick it with *Filter APKs by regular expression* set to
+`^agendula-offline_v`.
 
 ### Build from source
 

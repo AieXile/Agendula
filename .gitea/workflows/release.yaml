@@ -120,10 +120,12 @@ jobs:
           submodules: recursive
 
       - name: Setup Java
+        # JetBrains 21 is what gradle-daemon-jvm.properties asks for; installing it
+        # here keeps Gradle from downloading it via foojay.
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: 'jetbrains'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -182,7 +184,7 @@ jobs:
       # Test the exact commit being shipped (only on a real release).
       - name: Unit tests
         if: env.IS_RELEASE == 'true'
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew testFullDebugUnitTest
 
       - name: Setup Android Keystore
         if: env.IS_RELEASE == 'true'
@@ -200,7 +202,9 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      - name: Build release APK
+      # Both flavors. Only full goes to F-Droid and Play; the offline one
+      # (issue #39) is a Codeberg release asset and nothing else.
+      - name: Build release APKs
         if: env.IS_RELEASE == 'true'
         run: ./gradlew assembleRelease
 
@@ -256,7 +260,7 @@ jobs:
         run: |
           set -e
           mkdir -p fdroid/repo
-          cp app/build/outputs/apk/release/app-release.apk "fdroid/repo/agendula_v${VERSION}.apk"
+          cp app/build/outputs/apk/full/release/app-full-release.apk "fdroid/repo/agendula_v${VERSION}.apk"
 
       # Per-version "What's New": ensure this version's changelog exists in the
       # fastlane tree (committed at release-cut time for the official repo; this
@@ -318,7 +322,8 @@ jobs:
           set -e
           bash scripts/release_notes.sh "$VERSION" > release-notes.md
           TAG="v$VERSION" NOTES_FILE=release-notes.md \
-            MAPPING=app/build/outputs/mapping/release/mapping.txt \
+            MAPPING=app/build/outputs/mapping/fullRelease/mapping.txt \
+            MAPPING_OFFLINE=app/build/outputs/mapping/offlineRelease/mapping.txt \
             bash scripts/publish_gitea_release.sh
 
       # Publish the release on Codeberg, which is canonical for tags and
@@ -341,7 +346,8 @@ jobs:
           set -e
           [ -s release-notes.md ] || bash scripts/release_notes.sh "$VERSION" > release-notes.md
           TAG="v$VERSION" NOTES_FILE=release-notes.md \
-            APK=app/build/outputs/apk/release/app-release.apk \
+            APK=app/build/outputs/apk/full/release/app-full-release.apk \
+            APK_OFFLINE=app/build/outputs/apk/offline/release/app-offline-release.apk \
             bash scripts/publish_codeberg_release.sh
 
       # Play takes an App Bundle, not the APK: a second artifact from the same
@@ -356,7 +362,7 @@ jobs:
       - name: Build release AAB
         if: env.IS_RELEASE == 'true'
         continue-on-error: true
-        run: ./gradlew bundleRelease
+        run: ./gradlew bundleFullRelease
 
       # NOT actions/upload-artifact@v4: its client refuses any non-github.com
       # server as unsupported GHES (go-gitea/gitea#36024). This fork drops that
@@ -368,7 +374,7 @@ jobs:
         uses: https://github.com/ChristopherHX/gitea-upload-artifact@81f940d004763f986ba3582c007fd842dd5cb0d7 # v4
         with:
           name: release-aab-${{ needs.detect.outputs.version }}
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: app/build/outputs/bundle/fullRelease/app-full-release.aab
           if-no-files-found: error
           retention-days: 14
 
@@ -462,7 +468,7 @@ jobs:
         run: |
           set -euo pipefail
           # Absolute: a lane body runs from fastlane/, not the workspace root.
-          AAB="$GITHUB_WORKSPACE/dist/app-release.aab"
+          AAB="$GITHUB_WORKSPACE/dist/app-full-release.aab"
           test -f "$AAB" || { echo "No AAB at $AAB — the artifact handoff failed." >&2; ls -la dist || true; exit 1; }
           bundle exec fastlane deploy \
             aab:"$AAB" \

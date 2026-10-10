@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
+import android.content.ContentProviderOperation
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
@@ -19,6 +20,7 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskList
 import de.jeanlucmakiola.agendula.domain.export.ExportTask
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import de.jeanlucmakiola.agendula.domain.recurrence.ExpansionWindow
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurrenceExpander
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurrenceSpec
@@ -90,11 +92,14 @@ class AndroidTasksDataSource @Inject constructor(
         // `is_recurring` / `distance_from_current`). The by-name mapper reads
         // whatever is present and nulls the rest; the repository re-sorts, so we
         // don't depend on a provider sort column either.
-        return resolver.query(uri, null, selection, args, null)
+        val tasks = resolver.query(uri, null, selection, args, null)
             ?.use { c ->
                 val reader = CursorColumnReader(c)
                 buildList { while (c.moveToNext()) add(TaskMapper.task(reader)) }
             } ?: emptyList()
+        if (tasks.isEmpty()) return tasks
+        val tags = categories(tasks.map { it.taskId })
+        return tasks.map { task -> tags[task.taskId]?.let { task.copy(tags = it) } ?: task }
     }
 
     override fun exportTasks(listId: Long): List<ExportTask> {
@@ -102,7 +107,7 @@ class AndroidTasksDataSource @Inject constructor(
         // table's shape varies across provider versions, and the by-name mapper
         // reads what's there.
         val uri = TasksContract.tasksUri(authority())
-        return resolver.query(
+        val tasks = resolver.query(
             uri,
             null,
             // _deleted marks a row awaiting a sync round-trip. It's gone as far as
@@ -115,21 +120,39 @@ class AndroidTasksDataSource @Inject constructor(
             val reader = CursorColumnReader(c)
             buildList { while (c.moveToNext()) add(TaskMapper.exportTask(reader)) }
         } ?: emptyList()
+        if (tasks.isEmpty()) return tasks
+        val tags = categories(tasks.map { it.taskId })
+        return tasks.map { task -> tags[task.taskId]?.let { task.copy(tags = it) } ?: task }
     }
 
     // --- writes ---------------------------------------------------------------
 
     override fun insertTask(form: TaskForm): Long {
         val values = TaskWriteMapper.seriesValues(form, ZoneId.systemDefault().id)
-        val uri = resolver.insert(TasksContract.tasksUri(authority()), values.toContentValues())
-            ?: throw TaskWriteFailedException("insert task")
-        return uri.lastPathSegment?.toLongOrNull() ?: throw TaskWriteFailedException("insert task: no id")
+        // One batch, so a refused tag leaves no task behind for a retry to duplicate.
+        val authority = authority()
+        val ops = arrayListOf(
+            ContentProviderOperation.newInsert(TasksContract.tasksUri(authority))
+                .withValues(values.toContentValues())
+                .build(),
+        )
+        normalizeTags(form.tags).forEach { tag ->
+            ops += ContentProviderOperation.newInsert(TasksContract.propertiesUri(authority))
+                .withValues(TaskWriteMapper.categoryValues(0, tag).toContentValues().apply { remove(Properties.TASK_ID) })
+                .withValueBackReference(Properties.TASK_ID, 0)
+                .build()
+        }
+        val results = runCatching { resolver.applyBatch(authority, ops) }
+            .getOrElse { throw TaskWriteFailedException("insert task", it) }
+        return results.firstOrNull()?.uri?.lastPathSegment?.toLongOrNull()
+            ?: throw TaskWriteFailedException("insert task: no id")
     }
 
     override fun updateTask(taskId: Long, form: TaskForm) {
         val values = TaskWriteMapper.seriesValues(form, ZoneId.systemDefault().id)
         val rows = resolver.update(taskUri(authority(), taskId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update task $taskId")
+        setCategories(taskId, form.tags)
     }
 
     override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm) {
@@ -151,6 +174,7 @@ class AndroidTasksDataSource @Inject constructor(
             (Tasks.DUE to shifted(anchors?.second, occurrence?.due, form.due))
         val rows = resolver.update(taskUri(authority(), seriesId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update series $seriesId")
+        setCategories(seriesId, form.tags)
     }
 
     /**
@@ -243,8 +267,28 @@ class AndroidTasksDataSource @Inject constructor(
             ?: throw TaskWriteFailedException("update instance $taskId@$occurrenceStart: no such occurrence")
         val values = TaskWriteMapper.instanceValues(form, ZoneId.systemDefault().id)
         val uri = TasksContract.instanceUri(authority(), instanceId)
-        val rows = resolver.update(uri, values.toContentValues(), null, null)
-        if (rows == 0) throw TaskWriteFailedException("update instance $instanceId")
+        // The fork copies the series' properties onto the override, so the tags
+        // go onto the series first and are put back once the override exists.
+        // Unchanged tags are inherited as they are, and the series is left alone.
+        val seriesTags = categories(listOf(taskId))[taskId].orEmpty()
+        val retag = normalizeTags(form.tags) != seriesTags
+        if (retag) setCategories(taskId, form.tags)
+        var failure: Throwable? = null
+        try {
+            val rows = resolver.update(uri, values.toContentValues(), null, null)
+            if (rows == 0) throw TaskWriteFailedException("update instance $instanceId")
+        } catch (e: Throwable) {
+            failure = e
+            throw e
+        } finally {
+            if (retag) {
+                try {
+                    setCategories(taskId, seriesTags)
+                } catch (e: Throwable) {
+                    failure?.addSuppressed(e) ?: throw e
+                }
+            }
+        }
     }
 
     /**
@@ -346,6 +390,58 @@ class AndroidTasksDataSource @Inject constructor(
                 }
             }
         } ?: emptyList()
+    }
+
+    /** Tags by task id for [taskIds], in stored order. */
+    private fun categories(taskIds: Collection<Long>): Map<Long, List<String>> {
+        val rows = taskIds.distinct().chunked(MAX_SQL_ARGS - 1).flatMap { chunk ->
+            val selection = "${Properties.MIMETYPE} = ? AND ${Properties.TASK_ID} IN (${chunk.joinToString(",") { "?" }})"
+            val args = (listOf(TasksContract.Category.MIMETYPE) + chunk.map(Long::toString)).toTypedArray()
+            resolver.query(
+                TasksContract.propertiesUri(authority()),
+                arrayOf(Properties.TASK_ID, TasksContract.Category.NAME),
+                selection,
+                args,
+                Properties.PROPERTY_ID,
+            )?.use { c ->
+                val reader = CursorColumnReader(c)
+                buildList {
+                    while (c.moveToNext()) {
+                        val id = reader.getLong(Properties.TASK_ID) ?: continue
+                        val name = reader.getString(TasksContract.Category.NAME) ?: continue
+                        add(id to name)
+                    }
+                }
+            } ?: emptyList()
+        }
+        return rows.groupBy({ it.first }, { it.second }).mapValues { normalizeTags(it.value) }
+    }
+
+    /**
+     * Replaces [taskId]'s category rows in one batch, so a refused insert cannot
+     * leave half the tags, and leaves them alone when nothing changed so the task
+     * isn't dirtied.
+     */
+    private fun setCategories(taskId: Long, tags: List<String>) {
+        val wanted = normalizeTags(tags)
+        if (categories(listOf(taskId))[taskId].orEmpty() == wanted) return
+        val authority = authority()
+        val uri = TasksContract.propertiesUri(authority)
+        val ops = arrayListOf(
+            ContentProviderOperation.newDelete(uri)
+                .withSelection(
+                    "${Properties.TASK_ID} = ? AND ${Properties.MIMETYPE} = ?",
+                    arrayOf(taskId.toString(), TasksContract.Category.MIMETYPE),
+                )
+                .build(),
+        )
+        wanted.forEach {
+            ops += ContentProviderOperation.newInsert(uri)
+                .withValues(TaskWriteMapper.categoryValues(taskId, it).toContentValues())
+                .build()
+        }
+        runCatching { resolver.applyBatch(authority, ops) }
+            .getOrElse { throw TaskWriteFailedException("set categories for task $taskId", it) }
     }
 
     override fun setCancelled(taskId: Long, cancelled: Boolean) {
@@ -460,3 +556,6 @@ class AndroidTasksDataSource @Inject constructor(
         return cv
     }
 }
+
+/** SQLite's default bound-argument limit on older Android releases. */
+private const val MAX_SQL_ARGS = 999

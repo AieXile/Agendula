@@ -48,5 +48,11 @@ off the official repo; keep that pattern if the recipe ever changes. Only a chan
 recipe itself (a new submodule, a build flag) needs an MR, pinned to a full
 commit hash, never a tag.
 
+⚠️ **Product flavors (from 1.1.0).** The app now has `full` and `offline`
+flavors, and `gradle: - yes` would build both. The first build entry for a
+flavored version must say `gradle: - full`, and `AutoUpdateMode` copies the
+last entry forward, so it is a one-time recipe MR before that tag lands. The
+offline flavor is not submitted to F-Droid.
+
 The recipe says `License: MIT`; `:dav` is vendored MPL-2.0 (`dav/PROVENANCE.md`).
 If the reviewer asks, change it to `MIT AND MPL-2.0`.

@@ -154,6 +154,18 @@ object TasksContract {
         const val TYPE_MESSAGE = 1
     }
 
+    /**
+     * A category property row — one tag. DAVx5 maps these to and from
+     * `CATEGORIES`. Inserting with only [NAME] is enough: the provider looks the
+     * category up in the task's account, or creates it, and fills in `data0`.
+     */
+    object Category {
+        const val MIMETYPE = "vnd.android.cursor.item/category"
+
+        /** `data1` — the tag as spelled. */
+        const val NAME = "data1"
+    }
+
     fun propertiesUri(authority: String): Uri = "content://$authority/${Properties.PATH}".toUri()
 
     // --- status values (TaskColumns.STATUS_*) --------------------------------

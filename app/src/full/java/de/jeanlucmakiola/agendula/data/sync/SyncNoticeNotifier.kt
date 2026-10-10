@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import de.jeanlucmakiola.agendula.MainActivity
+import de.jeanlucmakiola.agendula.data.di.ChannelRefresher
 import de.jeanlucmakiola.agendula.R
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +34,7 @@ import javax.inject.Singleton
 @Singleton
 class SyncNoticeNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
-) {
+) : ChannelRefresher {
 
     fun canPost(): Boolean {
         val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -123,7 +124,7 @@ class SyncNoticeNotifier @Inject constructor(
      * extra names the account for routing to Settings → Accounts → it.
      */
     private fun signInIntent(accountId: Long): Intent =
-        MainActivity.openIntent(context).putExtra(EXTRA_SIGN_IN_ACCOUNT_ID, accountId)
+        MainActivity.openIntent(context).putExtra(MainActivity.EXTRA_SIGN_IN_ACCOUNT_ID, accountId)
 
     private fun ensureSignInChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -170,16 +171,13 @@ class SyncNoticeNotifier @Inject constructor(
     }
 
     /** Re-create the channel, if it exists, in the current language. */
-    fun refreshChannel() {
+    override fun refreshChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(CHANNEL_ID) != null) ensureChannel()
     }
 
     companion object {
-        /** The account a sign-in notification is about, on the intent it opens. */
-        const val EXTRA_SIGN_IN_ACCOUNT_ID = "de.jeanlucmakiola.agendula.extra.SIGN_IN_ACCOUNT_ID"
-
         private const val CHANNEL_ID = "sync_notices"
         private const val NOTIFICATION_ID = 2
         private const val SIGN_IN_CHANNEL_ID = "account_sign_in"

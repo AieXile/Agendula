@@ -11,16 +11,22 @@
 # unminified debug build — or a device that already holds the permission —
 # silently hides.
 #
-# Usage: scripts/verify-release.sh
+# Usage: scripts/verify-release.sh [full|offline]   (default: full)
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-PKG="de.jeanlucmakiola.agendula.releasetest"
-APK="app/build/outputs/apk/releaseTest/app-releaseTest.apk"
+FLAVOR="${1:-full}"
+case "$FLAVOR" in
+  full) PKG="de.jeanlucmakiola.agendula.releasetest" ;;
+  offline) PKG="de.jeanlucmakiola.agendula.offline.releasetest" ;;
+  *) echo "Unknown flavor '$FLAVOR' (full|offline)." >&2; exit 2 ;;
+esac
+TASK="assemble${FLAVOR^}ReleaseTest"
+APK="app/build/outputs/apk/$FLAVOR/releaseTest/app-$FLAVOR-releaseTest.apk"
 
-echo "==> Building release-candidate APK (releaseTest, R8 minified)…"
-./gradlew :app:assembleReleaseTest
+echo "==> Building release-candidate APK ($FLAVOR releaseTest, R8 minified)…"
+./gradlew ":app:$TASK"
 
 echo "==> Installing $PKG …"
 adb install -r "$APK"

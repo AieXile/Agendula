@@ -3,6 +3,7 @@ package de.jeanlucmakiola.agendula.data.tasks.room
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskStatus
 import de.jeanlucmakiola.agendula.domain.ical.ICalValues
+import de.jeanlucmakiola.agendula.domain.normalizeTags
 import de.jeanlucmakiola.agendula.domain.toICal
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
@@ -50,6 +51,7 @@ object TaskFormWriter {
             description = form.description?.trim()?.ifBlank { null },
             location = form.location?.trim()?.ifBlank { null },
             url = form.url?.trim()?.ifBlank { null },
+            categories = normalizeTags(form.tags),
             priority = form.priority.toICal(),
             percentComplete = percent,
             status = statusFor(percent, current.status),
