@@ -445,4 +445,5 @@
     <string name="filter_delete">حذف عامل التصفية</string>
     <string name="filter_missing">تم حذف عامل التصفية</string>
     <string name="view_filter_tags">تصفية حسب الوسم</string>
+    <string name="filter_section_lists">القوائم</string>
 </resources>
