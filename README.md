@@ -15,6 +15,8 @@ required.</p>
 </p>
 
 <p>
+<a href="https://f-droid.org/packages/de.jeanlucmakiola.agendula/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="56"></a>
+&nbsp;
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula"><img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png?raw=true" alt="Get it on Obtainium" height="56"></a>
 &nbsp;
 <a href="https://ko-fi.com/jeanlucmakiola"><img src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_badge_beige.png" alt="Support me on Ko-fi" height="56"></a>
@@ -107,10 +109,20 @@ proprietary, and open standards — CalDAV and iCalendar — are the lane.
 
 ## Install
 
-### F-Droid repository
+### F-Droid (recommended)
 
-Every release is built, signed and published to a self-hosted F-Droid
-repository. Add it once and your F-Droid client handles updates from then on:
+Agendula is in the official [F-Droid](https://f-droid.org) repository. Search
+for Agendula in any F-Droid client, or
+[install it from f-droid.org](https://f-droid.org/packages/de.jeanlucmakiola.agendula/).
+
+F-Droid builds from source on its own schedule, so a new version usually shows
+up there a few days after release.
+
+### Self-hosted F-Droid repo (fastest updates)
+
+The release pipeline builds, signs and publishes every release to a
+self-hosted F-Droid repository, so new versions land there first. Add it once
+and your F-Droid client handles updates from then on:
 
 1. In your F-Droid client, open *Settings → Repositories → Add* (or open the
    link below on your phone):
@@ -135,6 +147,14 @@ app.
 Betas of upcoming versions are published there too, as pre-releases; to test
 them, switch on *Include prereleases* for Agendula in Obtainium.
 
+### Google Play
+
+A Google Play release is on its way.
+
+Play builds are signed with Google's key rather than mine, so switching between
+Play and any other channel means uninstalling first. Tasks kept only in
+Agendula's own database go with it, so sync them to a CalDAV account first.
+
 ### Offline version
 
 Each Codeberg release also carries `agendula-offline_v<version>.apk`: Agendula
@@ -158,8 +178,9 @@ JDK 17 and the Android SDK are all it needs; see
 ## Translations
 
 Translations are managed on a self-hosted **Weblate**, and partial ones are
-fine — an untranslated string simply falls back to English. Agendula ships in
-English, German and Brazilian Portuguese so far.
+fine — an untranslated string simply falls back to English.
+
+<a href="https://weblate.dev.jeanlucmakiola.de/engage/agendula/"><img src="https://weblate.dev.jeanlucmakiola.de/widget/agendula/multi-auto.svg" alt="Translation status" width="600"></a>
 
 **→ [Help translate Agendula](https://weblate.dev.jeanlucmakiola.de/engage/agendula/)**
 
