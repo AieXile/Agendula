@@ -446,4 +446,6 @@
     <string name="filter_missing">تم حذف عامل التصفية</string>
     <string name="view_filter_tags">تصفية حسب الوسم</string>
     <string name="filter_section_lists">القوائم</string>
+    <string name="settings_appearance_subtitle">السمة، اللون و تنسيق الوقت</string>
+    <string name="settings_task_form_subtitle">الحقول، القائمة والمهام الفرعية الافتراضية</string>
 </resources>
