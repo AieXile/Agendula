@@ -17,6 +17,8 @@ required.</p>
 <p>
 <a href="https://f-droid.org/packages/de.jeanlucmakiola.agendula/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="56"></a>
 &nbsp;
+<a href="https://play.google.com/store/apps/details?id=de.jeanlucmakiola.agendula"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="56"></a>
+&nbsp;
 <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula"><img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png?raw=true" alt="Get it on Obtainium" height="56"></a>
 &nbsp;
 <a href="https://ko-fi.com/jeanlucmakiola"><img src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_badge_beige.png" alt="Support me on Ko-fi" height="56"></a>
@@ -149,7 +151,8 @@ them, switch on *Include prereleases* for Agendula in Obtainium.
 
 ### Google Play
 
-A Google Play release is on its way.
+Agendula is on
+[Google Play](https://play.google.com/store/apps/details?id=de.jeanlucmakiola.agendula).
 
 Play builds are signed with Google's key rather than mine, so switching between
 Play and any other channel means uninstalling first. Tasks kept only in
