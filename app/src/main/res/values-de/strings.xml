@@ -432,4 +432,8 @@
     <string name="settings_store_own_hint">Agendulas eigener Speicher. Nichts weiteres zu installieren nötig.</string>
     <string name="settings_store_external">Eine andere Aufgaben-App</string>
     <string name="settings_store_permission_denied">Erlaubnis verweigert</string>
+    <string name="widget_week_label">Woche</string>
+    <string name="widget_lists_label">Listen</string>
+    <string name="widget_up_next_any_list">Alle Listen</string>
+    <string name="widget_up_next_tomorrow">Morgen</string>
 </resources>
