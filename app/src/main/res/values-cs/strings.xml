@@ -55,4 +55,22 @@
     <string name="edit_discard_title">Zahodit změny?</string>
     <string name="edit_discard_confirm">Zahodit</string>
     <string name="edit_keep_editing">Pokračovat v úpravách</string>
+    <string name="settings_privacy">Ochrana soukromí</string>
+    <string name="settings_license">Licence</string>
+    <string name="settings_licences">Licence open source</string>
+    <string name="licences_title">Licence open source</string>
+    <string name="licences_intro">Agendula obsahuje níže uvedené knihovny a další komponenty. Klepnutím na kteroukoli položku zobrazíte její zdrojový kód.</string>
+    <string name="settings_about_source">Zdrojový kód</string>
+    <string name="settings_report_problem">Nahlásit problém</string>
+    <string name="settings_report_problem_hint">Otevřít systém pro hlášení chyb</string>
+    <string name="settings_language">Jazyk aplikace</string>
+    <string name="settings_language_auto">Podle systému</string>
+    <string name="settings_translate_hint">Přidejte nový jazyk nebo vylepšete překlad na Weblate</string>
+    <string name="settings_translate">Pomozte s překladem</string>
+    <string name="onboarding_no_provider_body">Rozhodli jste se ukládat úkoly v jiné aplikaci, ale nemáte nainstalovanou žádnou kompatibilní aplikaci. Nainstalujte OpenTasks nebo tasks.org, případně přepněte zpět na vlastní úložiště aplikace Agendula.</string>
+    <string name="onboarding_backup_body_later">Pokud nemáte účet, vaše seznamy jsou uložené pouze v tomto zařízení. Kdykoli je můžete exportovat jako soubory iCalendar, které lze otevřít v jiných aplikacích pro úkoly nebo kalendář. Stačí přejít do Nastavení → Úložiště → Exportovat úkoly.</string>
+    <string name="onboarding_use_own_store">Používat úložiště tohoto zařízení</string>
+    <string name="settings_section_storage">Úložiště</string>
+    <string name="settings_storage_subtitle">Kde jsou úkoly uložené a jak je exportovat</string>
+    <string name="settings_store_own_hint">Vlastní úložiště aplikace Agendula. Není třeba nic dalšího instalovat.\nTohle bych použil. Je to přirozené</string>
 </resources>
