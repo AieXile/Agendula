@@ -662,4 +662,5 @@
     <string name="home_search_empty">لا مهام مطابقة لـ ”%1$s“</string>
     <string name="list_save_failed_server">الخادم لن يقبل هذا التغيير.</string>
     <string name="list_delete_confirm_message">سيتم حذف ”%1$s“ وجميع مهامه. هذا لا يمكن التراجع عنه.</string>
+    <string name="lists_empty_action">إنشاء قائمة</string>
 </resources>
