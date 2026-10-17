@@ -73,4 +73,10 @@
     <string name="settings_section_storage">Úložiště</string>
     <string name="settings_storage_subtitle">Kde jsou úkoly uložené a jak je exportovat</string>
     <string name="settings_store_own_hint">Vlastní úložiště aplikace Agendula. Není třeba nic dalšího instalovat.\nTohle bych použil. Je to přirozené</string>
+    <string name="export_to_folder">Uložit do adresáře</string>
+    <string name="export_to_zip">Uložit jako ZIP soubor</string>
+    <string name="settings_export">Exportovat úkoly</string>
+    <string name="settings_about_support">Podpora vývoje</string>
+    <string name="settings_section_appearance">Vzhled</string>
+    <string name="settings_appearance_subtitle">Motiv, barva a formát času</string>
 </resources>
