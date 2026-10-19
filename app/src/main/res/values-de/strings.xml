@@ -436,4 +436,11 @@
     <string name="widget_lists_label">Listen</string>
     <string name="widget_up_next_any_list">Alle Listen</string>
     <string name="widget_up_next_tomorrow">Morgen</string>
+    <string name="view_options_title">Sortieren und Filter</string>
+    <string name="view_filter_tags">Filtern nach Tag</string>
+    <string name="view_filter_clear">Filter zurücksetzen</string>
+    <string name="recurrence_ends">Endet</string>
+    <string name="recurring_scope_series">Alle Termine der Serie</string>
+    <string name="edit_recurrence_label">Wiederholung</string>
+    <string name="edit_recurrence_none">Wiederholt sich nicht</string>
 </resources>
