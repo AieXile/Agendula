@@ -1,6 +1,8 @@
 package de.jeanlucmakiola.agendula.data.tasks.transfer
 
 import com.google.common.truth.Truth.assertThat
+import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
@@ -24,10 +26,18 @@ class IcsImportTest {
 
         override fun hasUid(listId: Long, uid: String) = rows.any { it.listId == listId && it.uid == uid }
 
+        override fun hasUidAnywhere(uid: String) = rows.any { it.uid == uid }
+
         override fun insert(row: TaskEntity): Long {
             val id = nextId++
             rows += row.copy(id = id)
             return id
+        }
+
+        val alarms = mutableListOf<TaskAlarmEntity>()
+
+        override fun insertAlarms(taskId: Long, alarms: List<TaskAlarmEntity>) {
+            this.alarms += alarms.map { it.copy(taskId = taskId) }
         }
 
         override fun masterByUid(listId: Long, uid: String) =
@@ -87,10 +97,53 @@ class IcsImportTest {
         val child = rows.single { it.recurrenceId != null }
         assertThat(master.rrule).isEqualTo("FREQ=WEEKLY;BYDAY=MO,TH")
         assertThat(master.unknownProperties).contains("X-APPLE-SORT-ORDER:7")
-        assertThat(master.unknownProperties).contains("BEGIN:VALARM")
+        // The alarm is a reminder now, carrying the original for the upload.
+        assertThat(master.unknownProperties).doesNotContain("BEGIN:VALARM")
+        val alarm = store.alarms.single()
+        assertThat(alarm.taskId).isEqualTo(master.id)
+        assertThat(alarm.minutesBefore).isEqualTo(15)
+        assertThat(alarm.reference).isEqualTo(AlarmReference.START)
+        assertThat(alarm.raw).contains("DESCRIPTION:Water")
         assertThat(child.masterId).isEqualTo(master.id)
         assertThat(child.title).isEqualTo("Water plants (balcony)")
         assertThat(rows.all { it.listId == 1L && it.isDirty && it.href == null }).isTrue()
+    }
+
+    @Test
+    fun `an override keeps its own alarms and an Apple default alarm stays in the residue`() {
+        val withAlarm = vtodo(
+            "series", "Water plants (balcony)",
+            "RECURRENCE-ID:20260604T080000Z",
+            "DTSTART:20260604T100000Z",
+            "DUE:20260604T110000Z",
+            "BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER;RELATED=END:-PT1H\r\nEND:VALARM",
+            "BEGIN:VALARM\r\nACTION:DISPLAY\r\nX-APPLE-DEFAULT-ALARM:TRUE\r\nTRIGGER;RELATED=END:-PT5M\r\nEND:VALARM",
+        )
+        val parsed = IcsImport.parse(listOf(IcsSource("plants.ics", calendar(series, withAlarm))))
+        val store = FakeImportStore()
+
+        IcsImport.write(parsed, ImportTarget.Existing(1L), store)
+
+        val child = store.byUid("series").single { it.recurrenceId != null }
+        val own = store.alarms.filter { it.taskId == child.id }
+        assertThat(own.map { it.minutesBefore to it.reference }).containsExactly(60 to AlarmReference.DUE)
+        assertThat(child.unknownProperties).contains("X-APPLE-DEFAULT-ALARM:TRUE")
+    }
+
+    @Test
+    fun `the same file in a second list gives the copy alarm identities of its own`() {
+        val parsed = IcsImport.parse(listOf(IcsSource("plants.ics", calendar(series))))
+        val store = FakeImportStore()
+
+        IcsImport.write(parsed, ImportTarget.Existing(1L), store)
+        IcsImport.write(parsed, ImportTarget.Existing(2L), store)
+
+        val (first, second) = store.alarms
+        assertThat(first.raw).isNotNull()
+        assertThat(second.uid).isNotEqualTo(first.uid)
+        // Fresh, so an untouched copy is not re-sent as the original text either.
+        assertThat(second.raw).isNull()
+        assertThat(second.minutesBefore).isEqualTo(first.minutesBefore)
     }
 
     @Test

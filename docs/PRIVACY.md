@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy — Agendula
 description: What Agendula does with your data. No servers, no account, no analytics — your tasks stay on your device unless you add a CalDAV server yourself.
-updated: 2026-09-21
+updated: 2026-10-19
 ---
 
 <!--
@@ -21,7 +21,7 @@ updated: 2026-09-21
   render on the published page.
 -->
 
-**Last updated:** 21 September 2026  
+**Last updated:** 19 October 2026  
 Applies to the Android app **Agendula** (package `de.jeanlucmakiola.agendula`),
 all versions and all distribution channels.
 
@@ -76,8 +76,9 @@ exported from the device.
 
 ### What is transmitted, and to whom
 
-- The tasks in the synchronised lists, as standard iCalendar (`VTODO`) data,
-  and the credentials needed to authenticate.
+- The tasks in the synchronised lists, as standard iCalendar (`VTODO`) data —
+  including their reminders, as `VALARM`s — and the credentials needed to
+  authenticate.
 - Requests carry the user agent `Agendula (Android)` — a fixed string, so that
   you can recognise and revoke the session on your server. No device identifier
   is sent.

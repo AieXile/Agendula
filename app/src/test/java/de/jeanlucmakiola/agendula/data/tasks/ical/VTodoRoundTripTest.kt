@@ -1,6 +1,7 @@
 package de.jeanlucmakiola.agendula.data.tasks.ical
 
 import com.google.common.truth.Truth.assertThat
+import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
 import de.jeanlucmakiola.agendula.domain.ical.ICalComponent
 import de.jeanlucmakiola.agendula.domain.ical.ICalParser
 import de.jeanlucmakiola.agendula.domain.ical.ICalSerializer
@@ -23,6 +24,7 @@ class VTodoRoundTripTest {
         "nextcloud-shared-confidential",
         "recurring-master-overrides",
         "valarm-unknown-nested",
+        "valarm-claimed-apple",
         "unknown-component",
         "unknown-tzid",
         "uid-special-chars",
@@ -68,6 +70,29 @@ class VTodoRoundTripTest {
         // RFC 9074's alarm properties are what other clients now write; a flat
         // property-per-row model would have dropped this one with the nesting.
         assertThat(alarm.property("ACKNOWLEDGED")?.value).isEqualTo("20260901T113000Z")
+    }
+
+    @Test
+    fun `a claimed alarm becomes a reminder and comes back exactly as it arrived`() {
+        val original = vtodosOf("valarm-claimed-apple").single()
+        val mapped = VTodoMapper.read(original)
+
+        val alarm = mapped.alarms.single()
+        // RELATED=START with only a DUE: Apple's shape, read as before-due.
+        assertThat(alarm.minutesBefore).isEqualTo(30)
+        assertThat(alarm.reference).isEqualTo(AlarmReference.DUE)
+        assertThat(alarm.uid).isEqualTo("8E6C4A1E-0000-4C1B-9B1A-3F5F4C2D9A11")
+        assertThat(mapped.entity.unknownProperties.orEmpty()).doesNotContain("VALARM")
+
+        val written = roundTrip(original).components("VALARM").single()
+        assertThat(written).isEqualTo(original.components("VALARM").single())
+    }
+
+    @Test
+    fun `an Apple default alarm is left in the residue`() {
+        val mapped = VTodoMapper.read(vtodosOf("valarm-unknown-nested").single())
+        assertThat(mapped.alarms).isEmpty()
+        assertThat(mapped.entity.unknownProperties).contains("X-APPLE-DEFAULT-ALARM:TRUE")
     }
 
     @Test
@@ -145,6 +170,7 @@ class VTodoRoundTripTest {
             entity = mapped.entity,
             parentUid = mapped.parentUid,
             now = Instant.fromEpochMilliseconds(0),
+            alarms = mapped.alarms,
         )
         // Serialise and re-parse rather than comparing the tree directly: folding
         // and parameter quoting are where a serialiser loses data, and skipping

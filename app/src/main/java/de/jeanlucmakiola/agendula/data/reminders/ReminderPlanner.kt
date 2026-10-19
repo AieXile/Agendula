@@ -42,25 +42,41 @@ internal object ReminderPlanner {
             // the one the editor shows; otherwise the task's list may override the
             // global lead, or opt out entirely (override = null). All-day tasks
             // have their own day-scale defaults.
-            val reminders = perTask[task.taskId].orEmpty().ifEmpty {
-                val leads = if (task.isAllDay) settings.allDayReminderLeadsFor(task.listId)
-                else settings.reminderLeadsFor(task.listId)
-                leads.map { TaskReminder(it) }
-            }
-            reminders.map { reminder ->
+            //
+            // ⚠️ Present-but-empty is "none", not "the default": the store's
+            // answer for a task whose alarms another client turned off. A
+            // default here would keep ringing for what the user switched off.
+            val reminders = perTask[task.taskId]
+                ?: settings.defaultLeadsFor(task.listId, task.isAllDay).map { TaskReminder(it) }
+            reminders.mapNotNull { reminder ->
                 // A stored reminder says what it counts back from. Ours are always
                 // before due, but an imported dmfs alarm or another client's can be
                 // before *start*.
                 val anchor = if (reminder.fromStart) task.start ?: task.due!! else task.due!!
+                val trigger = triggerAt(
+                    anchor,
+                    task.isAllDay,
+                    reminder.minutesBefore,
+                    settings.allDayReminderMinuteOfDay,
+                    zone,
+                )
+                // Dismissed on another client already: firing it here within
+                // the missed-reminder grace would ring for something done with.
+                //
+                // ⚠️ An all-day reminder is compared from the start of its day,
+                // not from this device's time of day: other clients ring it at
+                // midnight, or at their own hour, so a dismissal at 07:00 must
+                // still silence the 09:00 this device would ring it at.
+                val earliest = if (task.isAllDay) {
+                    triggerAt(anchor, true, reminder.minutesBefore, 0, zone)
+                } else {
+                    trigger
+                }
+                val acknowledged = reminder.acknowledgedAt?.let { earliest <= it.toEpochMilliseconds() } == true
+                if (acknowledged) return@mapNotNull null
                 ScheduledReminder(
                     taskId = task.taskId,
-                    triggerAt = triggerAt(
-                        anchor,
-                        task.isAllDay,
-                        reminder.minutesBefore,
-                        settings.allDayReminderMinuteOfDay,
-                        zone,
-                    ),
+                    triggerAt = trigger,
                     occurrenceStart = task.occurrenceStart?.toEpochMilliseconds() ?: ScheduledReminder.NO_OCCURRENCE,
                 )
             }

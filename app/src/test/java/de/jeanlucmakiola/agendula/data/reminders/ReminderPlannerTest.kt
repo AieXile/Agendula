@@ -61,6 +61,59 @@ class ReminderPlannerTest {
     }
 
     @Test
+    fun `a reminder another client already dismissed is not fired again`() {
+        val due = Instant.parse("2026-07-20T10:00:00Z")
+        val task = testTask(id = 3, due = due)
+        val trigger = due.toEpochMilliseconds() - 15 * 60_000L
+        // Inside the missed-reminder grace, which is where a dismissal elsewhere matters.
+        val now = trigger + 60_000L
+        fun plan(acknowledged: Instant?) = ReminderPlanner.plan(
+            tasks = listOf(task),
+            perTask = mapOf(3L to listOf(TaskReminder(15, acknowledgedAt = acknowledged))),
+            settings = Settings(),
+            now = now,
+            zone = berlin,
+        )
+
+        assertThat(plan(acknowledged = Instant.fromEpochMilliseconds(trigger + 1))).isEmpty()
+        // Dismissed before this trigger came due: an earlier one, still to fire.
+        assertThat(plan(acknowledged = Instant.fromEpochMilliseconds(trigger - 1)))
+            .containsExactly(ScheduledReminder(3, trigger))
+        assertThat(plan(acknowledged = null)).containsExactly(ScheduledReminder(3, trigger))
+    }
+
+    @Test
+    fun `a task whose alarms were turned off elsewhere has none, not the default`() {
+        val due = Instant.parse("2026-07-20T10:00:00Z")
+        val now = due.toEpochMilliseconds() - 60 * 60_000L
+        fun plan(perTask: Map<Long, List<TaskReminder>>) = ReminderPlanner.plan(
+            tasks = listOf(testTask(id = 4, due = due)),
+            perTask = perTask,
+            settings = Settings(defaultReminderMinutes = listOf(15)),
+            now = now,
+            zone = berlin,
+        )
+
+        assertThat(plan(mapOf(4L to emptyList()))).isEmpty()
+        assertThat(plan(emptyMap())).hasSize(1)
+    }
+
+    @Test
+    fun `an all-day reminder dismissed elsewhere before this device's hour stays dismissed`() {
+        val task = testTask(id = 5, due = allDayInstantOf(date)).copy(isAllDay = true)
+        // Rung at midnight on the Mac, dismissed at 07:00; this device rings at 09:00.
+        val dismissed = date.atTime(7, 0).atZone(berlin).toInstant()
+        val plan = ReminderPlanner.plan(
+            tasks = listOf(task),
+            perTask = mapOf(5L to listOf(TaskReminder(0, acknowledgedAt = Instant.fromEpochMilliseconds(dismissed.toEpochMilli())))),
+            settings = Settings(allDayReminderMinuteOfDay = 9 * 60),
+            now = millis(date.atTime(8, 0), berlin),
+            zone = berlin,
+        )
+        assertThat(plan).isEmpty()
+    }
+
+    @Test
     fun `an all-day task takes the all-day defaults, not the timed ones`() {
         val task = testTask(id = 6, due = allDayInstantOf(date)).copy(isAllDay = true, listId = 7)
         val plan = ReminderPlanner.plan(

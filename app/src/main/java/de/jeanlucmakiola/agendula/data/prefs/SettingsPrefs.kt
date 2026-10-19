@@ -115,6 +115,10 @@ data class Settings(
     /** The lead times for an all-day task in [listId]. */
     fun allDayReminderLeadsFor(listId: Long): List<Int> =
         perListAllDayReminderOverride.reminderLeadsFor(listId, defaultAllDayReminderMinutes)
+
+    /** The default leads a task in [listId] takes — the one rule for which default applies. */
+    fun defaultLeadsFor(listId: Long, allDay: Boolean): List<Int> =
+        if (allDay) allDayReminderLeadsFor(listId) else reminderLeadsFor(listId)
 }
 
 /** App preferences, backed by DataStore. Mirrors Calendula's prefs shape. */

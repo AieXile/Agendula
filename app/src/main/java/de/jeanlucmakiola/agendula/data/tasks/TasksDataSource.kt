@@ -13,7 +13,19 @@ import kotlin.time.Instant
  * them — while Agendula's own UI only ever sets a before-due lead. Collapsing it
  * to a number here is what silently fired those reminders off the wrong anchor.
  */
-data class TaskReminder(val minutesBefore: Int, val fromStart: Boolean = false)
+data class TaskReminder(
+    val minutesBefore: Int,
+    val fromStart: Boolean = false,
+    /**
+     * When another client last dismissed this alarm (RFC 9074 `ACKNOWLEDGED`):
+     * a trigger at or before it has been dealt with and is not fired here.
+     * Never part of what a reminder *is* — see [lead].
+     */
+    val acknowledgedAt: Instant? = null,
+) {
+    /** The reminder without its bookkeeping, for comparing two of them. */
+    val lead: TaskReminder get() = if (acknowledgedAt == null) this else copy(acknowledgedAt = null)
+}
 
 /**
  * The one reminder Agendula's single-reminder editor shows and writes: the last
@@ -46,8 +58,17 @@ interface TasksDataSource {
     fun task(taskId: Long, occurrenceStart: Instant?): Task? = task(taskId)
     fun subtasks(parentTaskId: Long): List<Task>
 
-    fun insertTask(form: TaskForm): Long
-    fun updateTask(taskId: Long, form: TaskForm)
+    /**
+     * The write paths take the task's reminders in the same write as the task
+     * itself, so a sync can never upload one without the other.
+     *
+     * [insertTask] takes the new task's [reminders] whole. The updates take the
+     * before-due leads as `dueReminders`, and `null` leaves the reminders
+     * alone; a start-relative reminder the task already carries is kept — the
+     * editor never shows one, so it never sends one.
+     */
+    fun insertTask(form: TaskForm, reminders: List<TaskReminder>? = null): Long
+    fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>? = null)
 
     /**
      * Update a single occurrence of a recurring task, addressed by the task row and
@@ -60,7 +81,7 @@ interface TasksDataSource {
      * instance row id keeps this seam independent of any one store's row
      * numbering; External mode maps it back to an instance row itself.
      */
-    fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm)
+    fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null)
     /**
      * Set (or clear, with `null`) the task's [editable] reminder lead, stored as an
      * Alarm property row. Every other reminder on the task is left untouched. The
@@ -74,13 +95,13 @@ interface TasksDataSource {
      * Edit the whole series [seriesId] through its occurrence at [occurrenceStart]:
      * content from [form], and the series moved by however far that occurrence moved.
      */
-    fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm)
+    fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null)
 
     /**
      * "This and following": end [seriesId] before [occurrenceStart] and continue
      * from there as a new series built from [form]. Returns the new series' id.
      */
-    fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm): Long
+    fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null): Long
 
     /** Delete one generated occurrence of [seriesId] (an `EXDATE`). */
     fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant)
@@ -89,10 +110,14 @@ interface TasksDataSource {
     fun deleteFollowing(seriesId: Long, occurrenceStart: Instant)
 
 
-    /** Replace every reminder on [taskId] with [reminders], in order. */
+    /** Make [taskId]'s reminders exactly [reminders]. A synced task is owed a PUT for it. */
     fun setReminders(taskId: Long, reminders: List<TaskReminder>)
 
-    /** Every task's reminders, by task id, in stored order. One query, for the scheduler. */
+    /**
+     * Every task's reminders, by task id, in stored order. One query, for the
+     * scheduler. A task missing from the map takes the default; one present
+     * with an empty list has none (see `TaskEntity.remindersOff`).
+     */
     fun reminders(): Map<Long, List<TaskReminder>> = alarms().mapValues { listOf(it.value) }
 
     /** Every task's [editable] reminder, by task id. */

@@ -299,9 +299,10 @@ private class FakeExternalStore : TasksDataSource {
     override fun tasks(query: TaskQuery): List<Task> = unused()
     override fun task(taskId: Long): Task? = unused()
     override fun subtasks(parentTaskId: Long): List<Task> = unused()
-    override fun insertTask(form: TaskForm): Long = unused()
-    override fun updateTask(taskId: Long, form: TaskForm) = unused()
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm) = unused()
+    override fun insertTask(form: TaskForm, reminders: List<TaskReminder>?): Long = unused()
+    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) = unused()
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+        unused()
     override fun setAlarm(taskId: Long, minutesBeforeDue: Int?) = unused()
     override fun setReminders(taskId: Long, reminders: List<TaskReminder>) = unused()
     override fun setCompleted(taskId: Long, completed: Boolean) = unused()
@@ -309,8 +310,10 @@ private class FakeExternalStore : TasksDataSource {
     override fun deleteTask(taskId: Long) = unused()
     override fun setCancelled(taskId: Long, cancelled: Boolean) = unused()
     override fun setCancelledInstance(taskId: Long, occurrenceStart: Instant, cancelled: Boolean) = unused()
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm) = unused()
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm): Long = unused()
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+        unused()
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long =
+        unused()
     override fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant) = unused()
     override fun deleteFollowing(seriesId: Long, occurrenceStart: Instant) = unused()
     override fun createLocalList(name: String, color: Int): Long = unused()

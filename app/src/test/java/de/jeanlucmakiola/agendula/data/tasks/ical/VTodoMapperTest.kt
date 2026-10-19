@@ -1,6 +1,8 @@
 package de.jeanlucmakiola.agendula.data.tasks.ical
 
 import com.google.common.truth.Truth.assertThat
+import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.domain.PRIORITY_NONE
 import de.jeanlucmakiola.agendula.domain.TaskStatus
@@ -8,6 +10,7 @@ import de.jeanlucmakiola.agendula.domain.ical.ICalComponent
 import de.jeanlucmakiola.agendula.domain.ical.ICalParser
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 class VTodoMapperTest {
@@ -442,4 +445,64 @@ class VTodoMapperTest {
         timezone = timezone,
         unknownProperties = unknownProperties,
     )
+
+    @Nested
+    inner class Alarms {
+
+        private val due = Instant.parse("2026-10-01T15:00:00Z")
+        private val task = TaskEntity(listId = 1, uid = "t-1", title = "Pay rent", due = due)
+
+        @Test
+        fun `claimed alarms leave the residue and unclaimed ones stay`() {
+            val mapped = VTodoMapper.read(
+                vtodo(
+                    "DUE:20261001T150000Z",
+                    "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER;RELATED=END:-PT15M", "END:VALARM",
+                    "BEGIN:VALARM", "ACTION:EMAIL", "TRIGGER;RELATED=END:-PT1H", "END:VALARM",
+                ),
+            )
+            assertThat(mapped.alarms.map { it.minutesBefore }).containsExactly(15)
+            assertThat(mapped.entity.unknownProperties).contains("ACTION:EMAIL")
+            assertThat(mapped.entity.unknownProperties).doesNotContain("ACTION:DISPLAY")
+        }
+
+        @Test
+        fun `the task's reminders are written ahead of the residue's alarms`() {
+            val withResidue = task.copy(
+                unknownProperties = "BEGIN:VALARM\r\nACTION:EMAIL\r\nTRIGGER;RELATED=END:-PT1H\r\nEND:VALARM\r\n",
+            )
+            val written = VTodoMapper.write(
+                withResidue,
+                now = due - 1.days,
+                alarms = listOf(TaskAlarmEntity(taskId = 1, minutesBefore = 15, uid = "a-1")),
+            )
+            val alarms = written.components("VALARM")
+            assertThat(alarms.map { it.property("ACTION")?.value }).containsExactly("DISPLAY", "EMAIL").inOrder()
+            assertThat(alarms.first().property("TRIGGER")?.value).isEqualTo("-PT15M")
+        }
+
+        @Test
+        fun `a reminder left behind by a cleared due date does not make the task unuploadable`() {
+            val cleared = task.copy(due = null)
+            val written = VTodoMapper.write(
+                cleared,
+                alarms = listOf(TaskAlarmEntity(taskId = 1, minutesBefore = 15, uid = "a-1")),
+            )
+            assertThat(written.components("VALARM")).isEmpty()
+            assertThat(VTodoMapper.validate(written)).isEmpty()
+        }
+
+        @Test
+        fun `a reminder survives write and read with its identity`() {
+            val written = VTodoMapper.write(
+                task,
+                now = due - 1.days,
+                alarms = listOf(TaskAlarmEntity(taskId = 1, minutesBefore = 30, uid = "a-1")),
+            )
+            val back = VTodoMapper.read(written).alarms.single()
+            assertThat(back.minutesBefore).isEqualTo(30)
+            assertThat(back.reference).isEqualTo(AlarmReference.DUE)
+            assertThat(back.uid).isEqualTo("a-1")
+        }
+    }
 }

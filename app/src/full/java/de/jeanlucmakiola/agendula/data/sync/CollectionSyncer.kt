@@ -1,8 +1,10 @@
 package de.jeanlucmakiola.agendula.data.sync
 
+import de.jeanlucmakiola.agendula.data.tasks.ical.AlarmCodec
 import de.jeanlucmakiola.agendula.data.tasks.ical.CalendarResource
 import de.jeanlucmakiola.agendula.data.tasks.ical.ResourceValidator
 import de.jeanlucmakiola.agendula.data.tasks.ical.VTodoMapper
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import at.bitfire.dav4jvm.exception.UnauthorizedException
@@ -422,8 +424,9 @@ class CollectionSyncer(
 
         /** Null when the resource was rejected before it left the device. */
         private fun serialize(local: LocalResource): String? {
+            val alarms = store.alarmsFor(local.live.map { it.id })
             val todos = local.live.map { row ->
-                VTodoMapper.write(row, parentUidOf(row), now())
+                VTodoMapper.write(row, parentUidOf(row), now(), alarms[row.id].orEmpty())
             }
             val calendar = CalendarResource.build(todos)
 
@@ -778,14 +781,17 @@ class CollectionSyncer(
             val losing = existing.values.firstOrNull { it.isDirty }
 
             val master = mapped.firstOrNull { it.entity.recurrenceId == null } ?: mapped.first()
-            val masterRow = upsert(master.entity, existing[master.entity.recurrenceId], null, href, eTag)
+            val masterRow = upsert(master, existing[master.entity.recurrenceId], null, href, eTag)
             val masterId = masterRow.id
             parents[uid] = master.parentUid
 
             val written = mutableListOf(masterRow)
             mapped.filter { it !== master }.forEach { override ->
+                // ⚠️ An override's alarms are its own: RFC 5545 has an override
+                // replace the component, so one the server sends without a
+                // VALARM has none, whatever its master carries.
                 written += upsert(
-                    override.entity, existing[override.entity.recurrenceId], masterId, href, eTag,
+                    override, existing[override.entity.recurrenceId], masterId, href, eTag,
                 )
             }
             val kept = written.map { it.recurrenceId }.toSet()
@@ -832,12 +838,13 @@ class CollectionSyncer(
 
         /** @return the row as it now stands, so the caller can index it. */
         private fun upsert(
-            incoming: TaskEntity,
+            mapped: VTodoMapper.Mapped,
             existing: TaskEntity?,
             masterId: Long?,
             href: String,
             eTag: String?,
         ): TaskEntity {
+            val incoming = mapped.entity
             // Local-only columns the server has no opinion about. Taking the
             // mapper's defaults here would silently reset the user's ordering and
             // per-task colour on every download.
@@ -854,12 +861,42 @@ class CollectionSyncer(
                 // set uploads what was just downloaded.
                 isDirty = false,
                 isDeleted = false,
+                // The store's to change, from what the alarms do.
+                remindersOff = existing?.remindersOff ?: false,
             )
-            return if (existing == null) {
-                row.copy(id = store.insert(row))
-            } else {
-                store.update(row)
-                row
+            // The server's alarms replace ours, as every other field does: a
+            // dirty row is never downloaded except to discard its edit.
+            val alarms = existing?.let { keepLocalPrecision(mapped.alarms, it, row) } ?: mapped.alarms
+            return row.copy(id = store.upsertWithAlarms(row, alarms))
+        }
+
+        /**
+         * [incoming] with each alarm we uploaded ourselves put back to the lead
+         * we hold for it.
+         *
+         * ⚠️ The wire is coarser than the row: an all-day lead goes out in whole
+         * days, and a before-start reminder on a task without a start goes out
+         * before-due. Taking the round trip at its word would quietly turn a
+         * 15-minute all-day reminder into "on the day", or a before-start one
+         * into a before-due one, the first time the task is downloaded again.
+         * An alarm that comes back as exactly what we would have sent has not
+         * been changed, so the row's own lead stands.
+         */
+        private fun keepLocalPrecision(
+            incoming: List<TaskAlarmEntity>,
+            existing: TaskEntity,
+            task: TaskEntity,
+        ): List<TaskAlarmEntity> {
+            val local = store.alarmsFor(listOf(existing.id))[existing.id].orEmpty()
+            if (local.isEmpty()) return incoming
+            return incoming.map { alarm ->
+                val mine = local.firstOrNull { it.uid == alarm.uid } ?: return@map alarm
+                val sent = AlarmCodec.wireLead(mine, task)
+                if (sent == AlarmCodec.Lead(alarm.minutesBefore, alarm.reference)) {
+                    alarm.copy(minutesBefore = mine.minutesBefore, reference = mine.reference)
+                } else {
+                    alarm
+                }
             }
         }
 

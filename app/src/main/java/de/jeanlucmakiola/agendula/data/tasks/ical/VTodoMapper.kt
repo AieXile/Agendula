@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks.ical
 
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.domain.PRIORITY_NONE
 import de.jeanlucmakiola.agendula.domain.TaskStatus
@@ -52,10 +53,11 @@ import kotlin.time.Instant
  *
  * ## Alarms
  *
- * `VALARM`s round-trip in the residue and are never authored here. Local
- * reminders live in `task_alarms` and are never serialised. The two stores are
- * disjoint, so neither can destroy the other. Merging them is a later
- * decision, not a silent one.
+ * A `VALARM` [AlarmCodec] can fire exactly as written is claimed into
+ * [Mapped.alarms] — rows for `task_alarms`, carrying the original verbatim —
+ * and [write] authors the task's rows back. Any other `VALARM` (Apple's default
+ * and location alarms, repeating ones, snoozes) stays in the residue and is
+ * re-emitted untouched after the authored ones.
  */
 object VTodoMapper {
 
@@ -95,6 +97,8 @@ object VTodoMapper {
         val uidWasMissing: Boolean,
         /** Residue that exceeded [MAX_RESIDUE_BYTES] and had to be dropped. */
         val droppedResidue: Boolean,
+        /** The claimed `VALARM`s, `taskId` unset. Not counted against the residue cap. */
+        val alarms: List<TaskAlarmEntity> = emptyList(),
     )
 
     // ---------------------------------------------------------------- read
@@ -263,8 +267,18 @@ object VTodoMapper {
             .filterIndexed { index, _ -> index !in claimed }
             .filterNot { it.name.equals("DTSTAMP", ignoreCase = true) }
 
+        // Claimed against the entity as read, so the anchors are the ones the
+        // rows will be written back against.
+        val alarms = mutableListOf<TaskAlarmEntity>()
+        val residueComponents = vtodo.components.filter { component ->
+            if (!component.name.equals("VALARM", ignoreCase = true)) return@filter true
+            val row = AlarmCodec.fromVAlarm(component, entity) ?: return@filter true
+            alarms += row
+            false
+        }
+
         val residueText = ICalSerializer.serializeProperties(residueProperties) +
-            ICalSerializer.serializeAll(vtodo.components)
+            ICalSerializer.serializeAll(residueComponents)
         val tooLarge = residueText.toByteArray(Charsets.UTF_8).size > MAX_RESIDUE_BYTES
 
         return Mapped(
@@ -274,6 +288,7 @@ object VTodoMapper {
             parentUid = parentUid,
             uidWasMissing = uid.isEmpty(),
             droppedResidue = tooLarge,
+            alarms = alarms,
         )
     }
 
@@ -283,12 +298,14 @@ object VTodoMapper {
      * Serialises [entity] back to a VTODO.
      *
      * [parentUid] is the parent's `UID`, which the entity holds only as a row id.
-     * [now] is the `DTSTAMP`.
+     * [now] is the `DTSTAMP`. [alarms] are the task's reminder rows; one whose
+     * anchor the task no longer has is left out (see [AlarmCodec.toVAlarm]).
      */
     fun write(
         entity: TaskEntity,
         parentUid: String? = null,
         now: Instant = Clock.System.now(),
+        alarms: List<TaskAlarmEntity> = emptyList(),
     ): ICalComponent {
         val residue = parseResidue(entity.unknownProperties)
         val residueCategories = normalizeTags(residue.properties("CATEGORIES").flatMap(::categoryValues))
@@ -349,7 +366,7 @@ object VTodoMapper {
         return ICalComponent(
             name = "VTODO",
             properties = properties + keptResidue,
-            components = residue.components,
+            components = alarms.mapNotNull { AlarmCodec.toVAlarm(it, entity, now) } + residue.components,
         )
     }
 

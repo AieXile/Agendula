@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.sync
 
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.caldav.CalendarCollection
 import de.jeanlucmakiola.caldav.ChangeSet
@@ -19,6 +20,10 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 class FakeStore(rows: List<TaskEntity> = emptyList()) : SyncStore {
 
     val rows = rows.toMutableList()
+
+    /** `task_alarms`, cascading with [rows] as the foreign key does. */
+    val alarms = mutableListOf<TaskAlarmEntity>()
+    private var nextAlarmId = 1L
     val readOnlyWrites = mutableListOf<Pair<Long, Boolean>>()
 
     /** In order, so a test can prove the token was stored *after* its bodies. */
@@ -27,7 +32,7 @@ class FakeStore(rows: List<TaskEntity> = emptyList()) : SyncStore {
 
     override fun rowsIn(listId: Long) = this.rows.filter { it.listId == listId }
 
-    override fun insert(row: TaskEntity): Long {
+    fun insert(row: TaskEntity): Long {
         // Computed against the rows as they stand, not at construction: tests
         // seed `rows` directly after building this, and an id fixed up front
         // collides with the first seeded row — which then makes a delete of one
@@ -45,6 +50,30 @@ class FakeStore(rows: List<TaskEntity> = emptyList()) : SyncStore {
 
     override fun deleteAll(taskIds: List<Long>) {
         rows.removeAll { it.id in taskIds }
+        alarms.removeAll { it.taskId in taskIds }
+    }
+
+    override fun alarmsFor(taskIds: List<Long>) = alarms.filter { it.taskId in taskIds }.groupBy { it.taskId }
+
+    override fun upsertWithAlarms(row: TaskEntity, alarms: List<TaskAlarmEntity>): Long {
+        if (row.id != 0L && rows.none { it.id == row.id }) return row.id
+        val id = if (row.id == 0L) insert(row) else row.id.also { update(row) }
+        val hadAny = this.alarms.any { it.taskId == id }
+        // Matched by uid, then lead, as `TaskAlarmDao.replaceFromServer` does.
+        val existing = this.alarms.filter { it.taskId == id }.toMutableList()
+        this.alarms.removeAll { it.taskId == id }
+        alarms.forEach { alarm ->
+            val match = existing.firstOrNull { it.uid == alarm.uid }
+                ?: existing.firstOrNull { it.minutesBefore == alarm.minutesBefore && it.reference == alarm.reference }
+            match?.let(existing::remove)
+            this.alarms += alarm.copy(id = match?.id ?: nextAlarmId++, taskId = id)
+        }
+        val index = rows.indexOfFirst { it.id == id }
+        when {
+            alarms.isNotEmpty() -> rows[index] = rows[index].copy(remindersOff = false)
+            hadAny -> rows[index] = rows[index].copy(remindersOff = true)
+        }
+        return id
     }
 
     override fun markSynced(taskIds: List<Long>, href: String?, eTag: String?) {

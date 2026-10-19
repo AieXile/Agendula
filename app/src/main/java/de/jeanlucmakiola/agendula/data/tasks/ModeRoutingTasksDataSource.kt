@@ -34,20 +34,21 @@ class ModeRoutingTasksDataSource(
     override fun tasks(query: TaskQuery): List<Task> = active().tasks(query)
     override fun task(taskId: Long): Task? = active().task(taskId)
     override fun task(taskId: Long, occurrenceStart: Instant?): Task? = active().task(taskId, occurrenceStart)
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm) =
-        active().updateSeries(seriesId, occurrenceStart, form)
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm): Long =
-        active().splitSeries(seriesId, occurrenceStart, form)
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+        active().updateSeries(seriesId, occurrenceStart, form, dueReminders)
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long =
+        active().splitSeries(seriesId, occurrenceStart, form, dueReminders)
     override fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant) =
         active().deleteOccurrence(seriesId, occurrenceStart)
     override fun deleteFollowing(seriesId: Long, occurrenceStart: Instant) =
         active().deleteFollowing(seriesId, occurrenceStart)
     override fun subtasks(parentTaskId: Long): List<Task> = active().subtasks(parentTaskId)
-    override fun insertTask(form: TaskForm): Long = active().insertTask(form)
-    override fun updateTask(taskId: Long, form: TaskForm) = active().updateTask(taskId, form)
+    override fun insertTask(form: TaskForm, reminders: List<TaskReminder>?): Long = active().insertTask(form, reminders)
+    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) =
+        active().updateTask(taskId, form, dueReminders)
 
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm) =
-        active().updateInstance(taskId, occurrenceStart, form)
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+        active().updateInstance(taskId, occurrenceStart, form, dueReminders)
 
     override fun setAlarm(taskId: Long, minutesBeforeDue: Int?) = active().setAlarm(taskId, minutesBeforeDue)
     override fun alarms(): Map<Long, TaskReminder> = active().alarms()

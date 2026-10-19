@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import de.jeanlucmakiola.agendula.domain.PRIORITY_NONE
 import de.jeanlucmakiola.agendula.domain.TaskStatus
+import java.util.UUID
 import kotlin.time.Instant
 
 /**
@@ -199,12 +200,31 @@ data class TaskEntity(
      * verbatim on write so a round-trip cannot silently lose a field.
      */
     @ColumnInfo(name = "unknown_properties") val unknownProperties: String? = null,
+
+    // reminders
+    /**
+     * Another client removed this task's last alarm, so it has none — not "use
+     * the default". A task without reminder rows normally takes the list's or
+     * the app's default, which is right for one that never had any (a client
+     * that does not write alarms), and wrong for one whose alarms were turned
+     * off elsewhere: it would keep ringing here. Set by a download that takes
+     * the last row away; cleared as soon as the task has a reminder again.
+     */
+    @ColumnInfo(name = "reminders_off", defaultValue = "0") val remindersOff: Boolean = false,
 )
 
 /** What [TaskAlarmEntity.minutesBefore] counts back from. */
 enum class AlarmReference { DUE, START }
 
-/** A reminder lead on a task. Positive [minutesBefore] is *before* [reference]. */
+/**
+ * A reminder lead on a task. Positive [minutesBefore] is *before* [reference].
+ *
+ * Synced as a `VALARM` (see `AlarmCodec`). [uid] is the alarm's identity on the
+ * wire — `X-WR-ALARMUID` / RFC 9074 `UID` — minted when the row is created, so
+ * every upload of the same alarm names it the same way. [raw] is the `VALARM`
+ * this row was read from, re-emitted verbatim while the row still means what
+ * it did, so another client's `ACKNOWLEDGED`, `X-*` and trigger form survive.
+ */
 @Entity(
     tableName = "task_alarms",
     foreignKeys = [
@@ -224,4 +244,6 @@ data class TaskAlarmEntity(
     @ColumnInfo(name = "minutes_before") val minutesBefore: Int,
     @ColumnInfo(name = "reference", defaultValue = "DUE") val reference: AlarmReference = AlarmReference.DUE,
     @ColumnInfo(name = "message") val message: String? = null,
+    @ColumnInfo(name = "uid", defaultValue = "") val uid: String = UUID.randomUUID().toString(),
+    @ColumnInfo(name = "raw") val raw: String? = null,
 )

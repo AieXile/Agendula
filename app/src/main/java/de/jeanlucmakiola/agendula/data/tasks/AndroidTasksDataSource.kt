@@ -127,9 +127,10 @@ class AndroidTasksDataSource @Inject constructor(
 
     // --- writes ---------------------------------------------------------------
 
-    override fun insertTask(form: TaskForm): Long {
+    override fun insertTask(form: TaskForm, reminders: List<TaskReminder>?): Long {
         val values = TaskWriteMapper.seriesValues(form, ZoneId.systemDefault().id)
-        // One batch, so a refused tag leaves no task behind for a retry to duplicate.
+        // One batch, so a refused tag or alarm leaves no task behind for a retry
+        // to duplicate.
         val authority = authority()
         val ops = arrayListOf(
             ContentProviderOperation.newInsert(TasksContract.tasksUri(authority))
@@ -142,20 +143,37 @@ class AndroidTasksDataSource @Inject constructor(
                 .withValueBackReference(Properties.TASK_ID, 0)
                 .build()
         }
+        reminders.orEmpty().forEach { reminder ->
+            ops += ContentProviderOperation.newInsert(TasksContract.propertiesUri(authority))
+                .withValues(
+                    TaskWriteMapper.alarmValues(0, reminder.minutesBefore, reminder.fromStart)
+                        .toContentValues().apply { remove(Properties.TASK_ID) },
+                )
+                .withValueBackReference(Properties.TASK_ID, 0)
+                .build()
+        }
         val results = runCatching { resolver.applyBatch(authority, ops) }
             .getOrElse { throw TaskWriteFailedException("insert task", it) }
         return results.firstOrNull()?.uri?.lastPathSegment?.toLongOrNull()
             ?: throw TaskWriteFailedException("insert task: no id")
     }
 
-    override fun updateTask(taskId: Long, form: TaskForm) {
+    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) {
         val values = TaskWriteMapper.seriesValues(form, ZoneId.systemDefault().id)
         val rows = resolver.update(taskUri(authority(), taskId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update task $taskId")
         setCategories(taskId, form.tags)
+        writeDueReminders(taskId, dueReminders)
     }
 
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm) {
+    /** [leads] as the task's before-due reminders; a start-relative one from elsewhere is kept. */
+    private fun writeDueReminders(taskId: Long, leads: List<Int>?) {
+        if (leads == null) return
+        val kept = alarmRows(taskId).map { it.second }.filter { it.fromStart }
+        setReminders(taskId, kept + leads.distinct().sorted().map { TaskReminder(it) })
+    }
+
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) {
         val occurrence = task(seriesId, occurrenceStart)
         val anchors = resolver.query(
             taskUri(authority(), seriesId), arrayOf(Tasks.DTSTART, Tasks.DUE), null, null, null,
@@ -175,6 +193,7 @@ class AndroidTasksDataSource @Inject constructor(
         val rows = resolver.update(taskUri(authority(), seriesId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update series $seriesId")
         setCategories(seriesId, form.tags)
+        writeDueReminders(seriesId, dueReminders)
     }
 
     /**
@@ -183,10 +202,10 @@ class AndroidTasksDataSource @Inject constructor(
      * task. Per-occurrence edits past the split point are dropped rather than
      * carried over — the provider offers no way to re-parent an exception.
      */
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm): Long {
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long {
         val spec = seriesSpec(seriesId) ?: throw TaskWriteFailedException("split series $seriesId")
         if (spec.rrule == null || occurrenceStart <= spec.anchor) {
-            updateSeries(seriesId, occurrenceStart, form)
+            updateSeries(seriesId, occurrenceStart, form, dueReminders)
             return seriesId
         }
         // COUNT counts before EXDATE is applied (RFC 5545 §3.8.5.3).
@@ -196,7 +215,8 @@ class AndroidTasksDataSource @Inject constructor(
         ).size
         endSeriesBefore(seriesId, spec, occurrenceStart)
         val rule = form.rrule?.let { if (it == spec.rrule) TaskFormWriter.remainingCount(it, spent) else it }
-        return insertTask(form.copy(rrule = rule, percentComplete = null))
+        val reminders = dueReminders?.distinct()?.sorted()?.map { TaskReminder(it) }
+        return insertTask(form.copy(rrule = rule, percentComplete = null), reminders)
     }
 
     override fun deleteFollowing(seriesId: Long, occurrenceStart: Instant) {
@@ -262,7 +282,23 @@ class AndroidTasksDataSource @Inject constructor(
         resolver.delete(TasksContract.instanceUri(authority(), instanceId), null, null)
     }
 
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm) {
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) {
+        if (dueReminders == null) return writeInstance(taskId, occurrenceStart, form)
+        // ⚠️ Written to the series, and then put back. Forking an occurrence
+        // copies the task's *current* properties onto the new override row, so
+        // setting the alarm beforehand is the only way to carry it across — and
+        // leaving it there would silently give every other occurrence in the
+        // series the reminder the user set on one of them.
+        val seriesReminders = alarmRows(taskId).map { it.second }
+        writeDueReminders(taskId, dueReminders)
+        try {
+            writeInstance(taskId, occurrenceStart, form)
+        } finally {
+            setReminders(taskId, seriesReminders)
+        }
+    }
+
+    private fun writeInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm) {
         val instanceId = instanceIdFor(taskId, occurrenceStart)
             ?: throw TaskWriteFailedException("update instance $taskId@$occurrenceStart: no such occurrence")
         val values = TaskWriteMapper.instanceValues(form, ZoneId.systemDefault().id)

@@ -7,7 +7,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.agendula.data.tasks.ical.CalendarResource
 import de.jeanlucmakiola.agendula.data.tasks.ical.VTodoMapper
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
+import de.jeanlucmakiola.agendula.data.tasks.room.freshCopy
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
 import kotlinx.coroutines.CoroutineDispatcher
@@ -65,7 +67,11 @@ interface IcsImportStore {
     fun <T> transaction(block: () -> T): T
     fun createList(name: String, color: Int): Long
     fun hasUid(listId: Long, uid: String): Boolean
+
+    /** Whether any list holds [uid] — the same file imported somewhere else before. */
+    fun hasUidAnywhere(uid: String): Boolean
     fun insert(row: TaskEntity): Long
+    fun insertAlarms(taskId: Long, alarms: List<TaskAlarmEntity>)
     fun masterByUid(listId: Long, uid: String): TaskEntity?
     fun setParent(taskId: Long, parentId: Long?)
 }
@@ -76,9 +82,9 @@ interface IcsImportStore {
  *
  * Goes through the same [CalendarResource] / [VTodoMapper] path CalDAV sync
  * uses, so recurrence, `RECURRENCE-ID` overrides, `RELATED-TO` parents and every
- * property the mapper does not claim (`VALARM`s included) survive as they would
- * on a download. `VALARM`s stay in the residue: like sync, the import does not
- * turn them into local reminders.
+ * property the mapper does not claim survive as they would on a download. A
+ * `VALARM` the mapper claims becomes a reminder on the task, exactly as a
+ * download does; the rest stay in the residue.
  *
  * Tasks whose UID the target list already holds are skipped, so importing the
  * same file twice is harmless.
@@ -200,8 +206,17 @@ class IcsImport @Inject constructor(
                         skipped++
                         continue
                     }
+                    // ⚠️ The same file in a second list is a second task carrying
+                    // the first one's alarm identities. Those are what clients
+                    // track a dismissal by, so the copy's alarms are new ones.
+                    val copied = store.hasUidAnywhere(task.uid)
+                    fun alarmsOf(mapped: VTodoMapper.Mapped) =
+                        if (copied) mapped.alarms.map { it.freshCopy(0) } else mapped.alarms
                     val masterId = store.insert(task.master.entity.forImport(listId, masterId = null))
-                    task.overrides.forEach { store.insert(it.entity.forImport(listId, masterId)) }
+                    store.insertAlarms(masterId, alarmsOf(task.master))
+                    task.overrides.forEach {
+                        store.insertAlarms(store.insert(it.entity.forImport(listId, masterId)), alarmsOf(it))
+                    }
                     task.master.parentUid?.let { parents += masterId to it }
                     imported++
                 }
@@ -270,7 +285,14 @@ class RoomIcsImportStore(private val database: TasksDatabase) : IcsImportStore {
             arrayOf<Any?>(listId, uid),
         ).use { it.moveToFirst() }
 
+    override fun hasUidAnywhere(uid: String): Boolean =
+        database.query("SELECT 1 FROM tasks WHERE uid = ? LIMIT 1", arrayOf<Any?>(uid)).use { it.moveToFirst() }
+
     override fun insert(row: TaskEntity): Long = database.tasks().insert(row)
+
+    override fun insertAlarms(taskId: Long, alarms: List<TaskAlarmEntity>) {
+        alarms.forEach { database.alarms().insert(it.copy(id = 0, taskId = taskId)) }
+    }
 
     override fun masterByUid(listId: Long, uid: String): TaskEntity? = database.tasks().byUid(listId, uid)
 

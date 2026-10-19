@@ -13,7 +13,8 @@ VTIMEZONE bodies, fold positions, parameter quoting).
 |---|---|
 | `nextcloud-shared-confidential.ics` | A `CLASS:CONFIDENTIAL` task as Nextcloud rewrites it on GET from a **shared** calendar — `DUE`, `STATUS`, `COMPLETED`, `PERCENT-COMPLETE`, `PRIORITY` and `RELATED-TO` already stripped, ETag left untouched. Re-PUTting this destroys the owner's task |
 | `recurring-master-overrides.ics` | Master plus two `RECURRENCE-ID` overrides in one resource, sharing a UID |
-| `valarm-unknown-nested.ics` | Unknown properties **inside** a `VALARM` — the case a flat property-per-row model cannot represent |
+| `valarm-unknown-nested.ics` | Unknown properties **inside** a `VALARM` — the case a flat property-per-row model cannot represent. An Apple *default* alarm, so it stays in the residue |
+| `valarm-claimed-apple.ics` | The same Apple alarm without `X-APPLE-DEFAULT-ALARM`, so it is **claimed** as a reminder: `RELATED=START` on a task with only `DUE` (Apple's non-conformant shape) reads as a before-due lead, and the original must come back verbatim through the row's `raw` |
 | `unknown-component.ics` | An entirely unknown sub-component |
 | `unknown-tzid.ics` | A `TZID` no device tzdb knows, with its own `VTIMEZONE` |
 | `uid-special-chars.ics` | A UID containing `/` and `@` — the href sanitiser must not assume it is filename-safe |

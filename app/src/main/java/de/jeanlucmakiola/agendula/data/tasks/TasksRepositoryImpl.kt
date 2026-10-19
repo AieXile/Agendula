@@ -21,6 +21,7 @@ import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -109,10 +110,40 @@ class TasksRepositoryImpl @Inject constructor(
 
     override suspend fun createTask(form: TaskForm): Long =
         withContext(io) {
-            val id = dataSource.insertTask(form)
-            writeReminders(id, form)
-            id
+            dataSource.insertTask(form, dueRemindersFor(form, current = null).distinct().sorted().map { TaskReminder(it) })
         }
+
+    /**
+     * The before-due leads to store for [form], given the task as it was.
+     *
+     * A task that gets its due date in this write and names no reminder of its
+     * own takes the list's or the app's default *as its own reminders*. The
+     * default is this device's setting, which nothing else can see; stored on
+     * the task, it travels with it to the server and fires on every client.
+     * The cost is tasks.org's: changing the default later does not reach the
+     * tasks that already have it.
+     *
+     * A task that already had a due date keeps what the form says, so an
+     * edit that clears every reminder means "use the default here" as before —
+     * with one exception. Switching between timed and all-day swaps the
+     * default it was given for the other kind's, as long as the reminders are
+     * still exactly that default: a timed 15 minutes is no lead for an all-day
+     * task, which the planner used to sort out by itself while the default
+     * stayed unstored.
+     */
+    private suspend fun dueRemindersFor(form: TaskForm, current: Task?): List<Int> {
+        if (form.due == null) return form.reminders
+        val hadDue = current?.due != null
+        if (!hadDue) {
+            if (form.reminders.isNotEmpty()) return form.reminders
+            return settingsPrefs.settings.first().defaultLeadsFor(form.listId, form.isAllDay)
+        }
+        if (current.isAllDay == form.isAllDay || form.reminders.isEmpty()) return form.reminders
+        val settings = settingsPrefs.settings.first()
+        val previous = settings.defaultLeadsFor(current.listId, current.isAllDay)
+        return if (form.reminders.sorted() == previous.sorted()) settings.defaultLeadsFor(form.listId, form.isAllDay)
+        else form.reminders
+    }
 
     override suspend fun duplicateTask(taskId: Long, occurrenceStart: Instant?): Long =
         withContext(io) {
@@ -121,6 +152,9 @@ class TasksRepositoryImpl @Inject constructor(
         }
 
     private fun copyOf(task: Task, parentId: Long?, depth: Int): Long {
+        // In the same write as the copy: inserted first and given its reminders
+        // after, a sync landing in between uploads the copy without them.
+        val reminders = dataSource.reminders()[task.taskId].orEmpty().map { it.lead }
         val id = dataSource.insertTask(
             TaskForm(
                 title = task.title,
@@ -135,9 +169,8 @@ class TasksRepositoryImpl @Inject constructor(
                 url = task.url,
                 tags = task.tags,
             ),
+            reminders,
         )
-        val reminders = dataSource.reminders()[task.taskId].orEmpty()
-        if (reminders.isNotEmpty()) dataSource.setReminders(id, reminders)
         if (depth < MAX_COPY_DEPTH) {
             SeriesCollapse.visible(dataSource.subtasks(task.taskId))
                 .filter { it.taskId != task.taskId && it.status != TaskStatus.CANCELLED }
@@ -172,18 +205,17 @@ class TasksRepositoryImpl @Inject constructor(
             val seen = current?.lastModified
             if (seen != null && seen != expectedLastModified) throw TaskConflictException(taskId)
         }
+        val reminders = dueRemindersFor(form, current)
         val seriesId = current?.seriesId
         val occurrence = current?.occurrenceStart
         if (seriesId != null && occurrence != null) {
             when (scope) {
                 RecurringScope.AllOccurrences -> {
-                    writeReminders(seriesId, form)
-                    dataSource.updateSeries(seriesId, occurrence, form)
+                    dataSource.updateSeries(seriesId, occurrence, form, reminders)
                     return@withContext
                 }
                 RecurringScope.ThisAndFollowing -> {
-                    val created = dataSource.splitSeries(seriesId, occurrence, form)
-                    writeReminders(created, form)
+                    dataSource.splitSeries(seriesId, occurrence, form, reminders)
                     return@withContext
                 }
                 RecurringScope.ThisOccurrence -> Unit
@@ -191,31 +223,11 @@ class TasksRepositoryImpl @Inject constructor(
         }
         // A recurring task's start/due are one occurrence's resolved times, so
         // writing them back to the task row would re-anchor the whole series.
-        // Going through the occurrence forks an override instead.
+        // Going through the occurrence forks an override instead, which takes
+        // the reminders on its own row and leaves the series' alone.
         val instance = current?.takeIf { it.isRecurring }?.occurrenceStart
-        if (instance == null) {
-            writeReminders(taskId, form)
-            dataSource.updateTask(taskId, form)
-            return@withContext
-        }
-        // ⚠️ Written to the series, and then put back. Forking an occurrence
-        // copies the task's *current* properties onto the new override row,
-        // so setting the alarm beforehand is the only way to carry it
-        // across — and leaving it there would silently give every other
-        // occurrence in the series the reminder the user set on one of them.
-        val seriesReminders = dataSource.reminders()[taskId].orEmpty()
-        writeReminders(taskId, form)
-        try {
-            dataSource.updateInstance(taskId, instance, form)
-        } finally {
-            dataSource.setReminders(taskId, seriesReminders)
-        }
-    }
-
-    /** The form's before-due reminders; a start-relative one from elsewhere is kept as it was. */
-    private fun writeReminders(taskId: Long, form: TaskForm) {
-        val kept = dataSource.reminders()[taskId].orEmpty().filter { it.fromStart }
-        dataSource.setReminders(taskId, kept + form.reminders.distinct().sorted().map { TaskReminder(it) })
+        if (instance == null) dataSource.updateTask(taskId, form, reminders)
+        else dataSource.updateInstance(taskId, instance, form, reminders)
     }
 
     override suspend fun setCancelled(taskId: Long, occurrenceStart: Instant?, cancelled: Boolean) =

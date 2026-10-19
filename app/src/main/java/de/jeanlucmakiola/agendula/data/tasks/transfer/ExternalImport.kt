@@ -9,8 +9,7 @@ import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
-import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
-import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
+import de.jeanlucmakiola.agendula.data.tasks.room.toAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
@@ -200,7 +199,7 @@ class ExternalImport @Inject constructor(
         var alarmCount = 0
         for ((sourceTaskId, reminders) in snapshot.alarms) {
             val taskId = taskIds[sourceTaskId] ?: continue
-            reminders.forEach { alarmDao.insert(it.toEntity(taskId)) }
+            reminders.forEach { alarmDao.insert(it.toAlarmEntity(taskId)) }
             alarmCount += reminders.size
         }
 
@@ -226,12 +225,6 @@ class ExternalImport @Inject constructor(
         rdate = rdate,
         createdAt = created,
         lastModified = lastModified,
-    )
-
-    private fun TaskReminder.toEntity(taskId: Long) = TaskAlarmEntity(
-        taskId = taskId,
-        minutesBefore = minutesBefore,
-        reference = if (fromStart) AlarmReference.START else AlarmReference.DUE,
     )
 
     private fun verify(written: TransferCounts, before: TransferCounts) {

@@ -161,6 +161,57 @@ object ICalValues {
         }
     }
 
+    private val DURATION = Regex(
+        "([+-])?P(?:(\\d+)W|(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?)",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /**
+     * RFC 5545 §3.3.6 `dur-value` in signed seconds: `-PT15M` → -900, `P1W` →
+     * 604800, `-P1DT2H` → -93600. Null when it does not parse.
+     *
+     * A little more lenient than the grammar — `PT1H5S` skips the minutes the
+     * grammar would require — because a stricter reader would leave another
+     * client's alarm unread over a form nobody misreads.
+     */
+    fun parseDuration(value: String): Long? {
+        val match = DURATION.matchEntire(value.trim()) ?: return null
+        val (sign, weeks, days, hours, minutes, seconds) = match.destructured
+        // "P" and "PT" alone match the pattern and mean nothing.
+        if (listOf(weeks, days, hours, minutes, seconds).all(String::isEmpty)) return null
+        if (value.trim().endsWith("T", ignoreCase = true)) return null
+        fun part(text: String, scale: Long): Long =
+            if (text.isEmpty()) 0L else Math.multiplyExact(text.toLong(), scale)
+        val total = runCatching {
+            listOf(
+                part(weeks, 7 * 86_400L), part(days, 86_400L),
+                part(hours, 3_600L), part(minutes, 60L), part(seconds, 1L),
+            ).reduce(Math::addExact)
+        }.getOrNull() ?: return null
+        return if (sign == "-") -total else total
+    }
+
+    /** The inverse of [parseDuration], in days and time, never weeks: `-PT15M`, `-P1D`, `PT0S`. */
+    fun formatDuration(seconds: Long): String {
+        if (seconds == 0L) return "PT0S"
+        val magnitude = kotlin.math.abs(seconds)
+        val days = magnitude / 86_400
+        val hours = magnitude % 86_400 / 3_600
+        val minutes = magnitude % 3_600 / 60
+        val rest = magnitude % 60
+        return buildString {
+            if (seconds < 0) append('-')
+            append('P')
+            if (days > 0) append(days).append('D')
+            if (hours > 0 || minutes > 0 || rest > 0) {
+                append('T')
+                if (hours > 0) append(hours).append('H')
+                if (minutes > 0) append(minutes).append('M')
+                if (rest > 0) append(rest).append('S')
+            }
+        }
+    }
+
     private fun java.time.Instant.toKotlin(): Instant =
         Instant.fromEpochMilliseconds(toEpochMilli())
 }

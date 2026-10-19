@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.sync
 
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
 import javax.inject.Inject
@@ -11,16 +12,32 @@ import javax.inject.Inject
  * discovery: the reconciliation above this interface is where local edits are
  * discarded, tombstones swept and conflicts resolved, and every one of those is
  * a decision that should be provable without a device. Room's test double is
- * Robolectric plus an in-memory database; this is eight methods.
+ * Robolectric plus an in-memory database; this is a dozen methods.
  */
 interface SyncStore {
 
     /** Every row in a list, **tombstones included**. */
     fun rowsIn(listId: Long): List<TaskEntity>
 
-    fun insert(row: TaskEntity): Long
-
     fun update(row: TaskEntity)
+
+    /** The reminders of [taskIds] — one resource's rows — by task id, for the body that uploads them. */
+    fun alarmsFor(taskIds: List<Long>): Map<Long, List<TaskAlarmEntity>>
+
+    /**
+     * Writes a downloaded row — inserted when its id is 0 — and makes its
+     * reminders exactly [alarms], in one transaction.
+     *
+     * ⚠️ One transaction, not an [update] and a second call. The row lands clean
+     * with the server's ETag, so if the process died between the two, nothing
+     * would ever download it again and the reminders would stay stale for good.
+     *
+     * A row that is gone by the time it is written — deleted on the device
+     * while the sync ran — stays gone, reminders and all.
+     *
+     * @return the row's id.
+     */
+    fun upsertWithAlarms(row: TaskEntity, alarms: List<TaskAlarmEntity>): Long
 
     fun deleteAll(taskIds: List<Long>)
 
@@ -56,11 +73,25 @@ class RoomSyncStore @Inject constructor(
 
     override fun rowsIn(listId: Long) = database.tasks().allIn(listId)
 
-    override fun insert(row: TaskEntity) = database.tasks().insert(row)
-
     override fun update(row: TaskEntity) {
         database.tasks().update(row)
     }
+
+    override fun alarmsFor(taskIds: List<Long>) =
+        if (taskIds.isEmpty()) emptyMap() else database.alarms().forTasks(taskIds).groupBy { it.taskId }
+
+    override fun upsertWithAlarms(row: TaskEntity, alarms: List<TaskAlarmEntity>): Long =
+        database.runInTransaction<Long> {
+            if (row.id == 0L) {
+                database.tasks().insert(row).also { database.alarms().replaceFromServer(it, alarms) }
+            } else {
+                // ⚠️ Zero rows means the row was deleted under us. Its alarms
+                // would then name a task that does not exist, and the foreign
+                // key would fail the whole transaction.
+                if (database.tasks().update(row) > 0) database.alarms().replaceFromServer(row.id, alarms)
+                row.id
+            }
+        }
 
     override fun deleteAll(taskIds: List<Long>) {
         if (taskIds.isNotEmpty()) database.tasks().deleteAll(taskIds)

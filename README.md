@@ -54,7 +54,8 @@ many small *florets* — so the two apps are florets of one bloom.)
   this and the following ones, or the whole series.
 - **Reminders** that fire at the exact time: several per task, separate defaults
   for timed and all-day tasks (globally and per list), Done and Snooze right on
-  the notification, and they survive reboots.
+  the notification, and they survive reboots. They sync as standard `VALARM`s,
+  so they also ring in other CalDAV clients, and theirs ring here.
 - **iCalendar import and export** — open an `.ics` or a zip of them, or write any
   list out as standard `.ics` files.
 - A **home-screen widget**, launcher shortcuts, a Quick Settings tile, and

@@ -89,7 +89,7 @@ object DataProvideModule {
             // backed-up `.db` does not. The backup rules carry all three files and
             // the app checkpoints on ON_STOP.
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .addMigrations(TasksDatabase.MIGRATION_1_2)
+            .addMigrations(TasksDatabase.MIGRATION_1_2, TasksDatabase.MIGRATION_2_3)
             .build()
 
     /**

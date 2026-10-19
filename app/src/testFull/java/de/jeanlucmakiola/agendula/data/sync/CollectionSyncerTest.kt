@@ -1,6 +1,8 @@
 package de.jeanlucmakiola.agendula.data.sync
 
 import com.google.common.truth.Truth.assertThat
+import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
+import de.jeanlucmakiola.agendula.data.tasks.room.TaskAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskListEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskMove
@@ -968,6 +970,137 @@ class CollectionSyncerTest {
         assertThat(remote.resources).hasSize(1)
         assertThat(store.rowsIn(list.id).single().title).isEqualTo("Oat milk")
         assertThat(report.discardedEdits.single().cause).isEqualTo(DiscardedEdit.Cause.DELETE_LOST)
+    }
+
+    // ------------------------------------------------------------- reminders
+
+    private val due = Instant.parse("2026-03-05T09:00:00Z")
+    private val alarm15 = "BEGIN:VALARM\r\nACTION:DISPLAY\r\nX-WR-ALARMUID:srv-1\r\n" +
+        "TRIGGER;RELATED=END:-PT15M\r\nEND:VALARM"
+
+    private fun alarm(taskId: Long, minutes: Int, uid: String = "a-$minutes") =
+        TaskAlarmEntity(taskId = taskId, minutesBefore = minutes, uid = uid)
+
+    @Test fun `an upload carries the task's reminders as VALARMs`() {
+        store.rows += task(id = 1, uid = "a", title = "Pay rent").copy(due = due, isDirty = true)
+        store.alarms += alarm(1, 15, uid = "a-1")
+
+        sync()
+
+        val body = remote.resources.values.single().body
+        assertThat(body).contains("BEGIN:VALARM")
+        assertThat(body).contains("TRIGGER;RELATED=END:-PT15M")
+        assertThat(body).contains("X-WR-ALARMUID:a-1")
+    }
+
+    @Test fun `the alarm keeps its identity across uploads`() {
+        store.rows += task(id = 1, uid = "a", title = "Pay rent").copy(due = due, isDirty = true)
+        store.alarms += alarm(1, 15, uid = "a-1")
+        sync()
+        val first = remote.resources.values.single().body
+        store.rows[0] = store.rows[0].copy(title = "Pay the rent", isDirty = true)
+
+        sync()
+
+        val second = remote.resources.values.single().body
+        assertThat(second).isNotEqualTo(first)
+        assertThat(second).contains("X-WR-ALARMUID:a-1")
+    }
+
+    @Test fun `a downloaded alarm becomes a reminder and leaves the residue`() {
+        remote.put("one.ics", vtodo("a", "Pay rent", extra = "DUE:20260305T090000Z\r\n$alarm15"))
+
+        sync()
+
+        val row = store.rows.single()
+        val reminder = store.alarms.single()
+        assertThat(reminder.taskId).isEqualTo(row.id)
+        assertThat(reminder.minutesBefore).isEqualTo(15)
+        assertThat(reminder.uid).isEqualTo("srv-1")
+        assertThat(row.unknownProperties.orEmpty()).doesNotContain("VALARM")
+        assertThat(row.isDirty).isFalse()
+    }
+
+    @Test fun `a re-download keeps the reminder's row, and a removal on the server clears it`() {
+        remote.put("one.ics", vtodo("a", "Pay rent", extra = "DUE:20260305T090000Z\r\n$alarm15"))
+        sync()
+        val id = store.alarms.single().id
+        remote.put("one.ics", vtodo("a", "Pay the rent", extra = "DUE:20260305T090000Z\r\n$alarm15"), eTag = "e-2")
+
+        sync()
+
+        // Matched by identity, so the row is updated in place rather than churned.
+        assertThat(store.alarms.single().id).isEqualTo(id)
+
+        remote.put("one.ics", vtodo("a", "Pay the rent", extra = "DUE:20260305T090000Z"), eTag = "e-3")
+        sync()
+
+        assertThat(store.alarms).isEmpty()
+        // Turned off elsewhere: "none", so the device default does not take over.
+        assertThat(store.rows.single().remindersOff).isTrue()
+    }
+
+    @Test fun `a task that never had alarms still takes the default`() {
+        remote.put("one.ics", vtodo("a", "Pay rent", extra = "DUE:20260305T090000Z"))
+
+        sync()
+
+        assertThat(store.rows.single().remindersOff).isFalse()
+    }
+
+    @Test fun `an alarm coming back as we sent it keeps the lead the wire could not carry`() {
+        // A 15-minute lead on an all-day task goes out as "on the day".
+        store.rows += task(id = 1, uid = "a", title = "Pay rent")
+            .copy(due = Instant.parse("2026-03-05T00:00:00Z"), isAllDay = true, isDirty = true)
+        store.alarms += alarm(1, 15, uid = "a-1")
+        sync()
+        val sent = remote.resources.values.single()
+        assertThat(sent.body).contains("TRIGGER;RELATED=END:PT0S")
+
+        // The server hands it back under a new ETag, unchanged.
+        sent.eTag = de.jeanlucmakiola.caldav.ETag("e-2", weak = false)
+        sync()
+
+        assertThat(store.alarms.single().minutesBefore).isEqualTo(15)
+    }
+
+    @Test fun `a before-start reminder on a task without a start survives the round trip`() {
+        store.rows += task(id = 1, uid = "a", title = "Pay rent").copy(due = due, isDirty = true)
+        store.alarms += alarm(1, 10, uid = "s-1").copy(reference = AlarmReference.START)
+        sync()
+        val sent = remote.resources.values.single()
+        // Sent from DUE, which is what the planner fires it from.
+        assertThat(sent.body).contains("TRIGGER;RELATED=END:-PT10M")
+
+        sent.eTag = de.jeanlucmakiola.caldav.ETag("e-2", weak = false)
+        sync()
+
+        assertThat(store.alarms.single().reference).isEqualTo(AlarmReference.START)
+    }
+
+    @Test fun `an override without alarms has none, whatever its master carries`() {
+        val body = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+            "BEGIN:VTODO\r\nUID:s\r\nSUMMARY:Water\r\nDUE:20260305T090000Z\r\nRRULE:FREQ=DAILY\r\n" +
+            "$alarm15\r\nEND:VTODO\r\n" +
+            "BEGIN:VTODO\r\nUID:s\r\nSUMMARY:Water (late)\r\nRECURRENCE-ID:20260306T090000Z\r\n" +
+            "DUE:20260306T120000Z\r\nEND:VTODO\r\nEND:VCALENDAR\r\n"
+        remote.put("s.ics", body)
+
+        sync()
+
+        val master = store.rows.single { it.recurrenceId == null }
+        assertThat(store.alarms.map { it.taskId }).containsExactly(master.id)
+    }
+
+    @Test fun `a 412 discards a local reminder edit along with the rest`() {
+        remote.put("one.ics", vtodo("a", "Pay rent", extra = "DUE:20260305T090000Z\r\n$alarm15"), eTag = "newer")
+        store.rows += task(id = 1, uid = "a", title = "Pay rent")
+            .copy(href = "http://server/dav/tasks/one.ics", etag = "stale", due = due, isDirty = true)
+        store.alarms += alarm(1, 60)
+
+        sync()
+
+        assertThat(store.alarms.map { it.minutesBefore }).containsExactly(15)
     }
 
     private fun task(

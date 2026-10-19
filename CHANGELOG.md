@@ -7,6 +7,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- Reminders now sync. A reminder set on a task is uploaded as a standard alarm
+  (`VALARM`), so it also notifies in macOS and iOS Reminders, Thunderbird,
+  tasks.org and jtx Board, and alarms set in those apps now fire in Agendula
+  instead of the default reminder. Removing a task's alarm in another app
+  turns it off here too, rather than falling back to the default (#52).
+- A new task with a due date, or one that gets its first due date, takes the
+  default reminder as its own, so it travels with the task to the server.
+  Changing the default later no longer changes those tasks; tasks that rely on
+  the default today are left as they are.
+- On upgrade, reminders on open, synced tasks that so far stayed on this
+  device are uploaded once.
+- Alarms imported from an `.ics` file become reminders on the task.
+
 ## [1.1.0] - 2026-10-10
 
 ### Added
