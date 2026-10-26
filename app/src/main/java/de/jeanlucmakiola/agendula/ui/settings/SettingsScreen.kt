@@ -1,11 +1,8 @@
 package de.jeanlucmakiola.agendula.ui.settings
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
@@ -25,6 +23,7 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,20 +50,22 @@ import de.jeanlucmakiola.floret.components.CollapsingScaffold
 import de.jeanlucmakiola.floret.components.GroupedListInset
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.GroupedSectionHeader
+import de.jeanlucmakiola.floret.components.LanguagePickerRow
 import de.jeanlucmakiola.floret.components.OptionPicker
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.crash.CrashReportDialog
 import de.jeanlucmakiola.floret.crash.CrashReporter
 import de.jeanlucmakiola.floret.crash.openIssueTracker
 import de.jeanlucmakiola.floret.crash.submitCrashReport
-import de.jeanlucmakiola.floret.locale.AppLanguage
+import de.jeanlucmakiola.floret.identity.predictiveBackExit
 
 /** The settings sub-screens reached from the hub's category rows. */
 internal enum class SettingsSection {
     Appearance,
     TaskForm,
-    Reminders,
+    Notifications,
     Storage,
+    Backup,
     Export,
     Import,
     Accounts,
@@ -72,10 +74,10 @@ internal enum class SettingsSection {
     Licences,
     ;
 
-    /** Where back goes: Export is opened from Storage, the account screens from Accounts. */
+    /** The section that stays composed underneath: Backup under export and import, Accounts under its screens. */
     val parent: SettingsSection?
         get() = when (this) {
-            Export, Import -> Storage
+            Export, Import -> Backup
             AddAccount, Account -> Accounts
             else -> null
         }
@@ -88,8 +90,9 @@ internal enum class SettingsSection {
  * A full-screen destination; [onBack] pops it. [initialSection] names a
  * sub-screen to open on (see [de.jeanlucmakiola.agendula.ui.navigation.Dest.Settings]).
  *
- * Every sub-screen is its own file. This one owns the hub, the section enum and
- * the back rules between them, and nothing else.
+ * Every sub-screen is its own file and handles its own back through the
+ * predictive-back preview. This one owns the hub, the section enum and the
+ * routing between them, and nothing else.
  */
 @Composable
 fun SettingsScreen(
@@ -106,10 +109,8 @@ fun SettingsScreen(
             else SettingsSection.entries.firstOrNull { it.name == initialSection },
         )
     }
-
-    // Inside a sub-screen, system back (button or gesture) returns to the hub
-    // rather than popping the whole Settings destination to the lists overview.
-    BackHandler(enabled = section != null) { section = section?.parent }
+    // Import's "open storage" comes back to Import rather than the hub.
+    var storageReturn by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
 
     Box(
         modifier = modifier
@@ -118,34 +119,58 @@ fun SettingsScreen(
     ) {
         SettingsHub(onBack = onBack, onOpenSection = { section = it })
 
-        SlideInSection(visible = section == SettingsSection.Appearance) {
-            AppearanceScreen(state = state, viewModel = viewModel, onBack = { section = null })
+        val appearance = section == SettingsSection.Appearance
+        SlideInSection(visible = appearance) {
+            AppearanceScreen(state = state, viewModel = viewModel, onBack = { section = null }, visible = appearance)
         }
-        SlideInSection(visible = section == SettingsSection.TaskForm) {
-            TaskFormScreen(state = state, viewModel = viewModel, onBack = { section = null })
+        val taskForm = section == SettingsSection.TaskForm
+        SlideInSection(visible = taskForm) {
+            TaskFormScreen(state = state, viewModel = viewModel, onBack = { section = null }, visible = taskForm)
         }
-        SlideInSection(visible = section == SettingsSection.Reminders) {
-            RemindersScreen(state = state, viewModel = viewModel, onBack = { section = null })
+        val notifications = section == SettingsSection.Notifications
+        SlideInSection(visible = notifications) {
+            NotificationsScreen(state = state, viewModel = viewModel, onBack = { section = null }, visible = notifications)
         }
-        // Storage stays composed under Export, so the deeper screen slides over it.
-        val storageOpen = section == SettingsSection.Storage ||
-            section?.parent == SettingsSection.Storage
-        SlideInSection(visible = storageOpen) {
+        val storage = section == SettingsSection.Storage
+        SlideInSection(visible = storage) {
             StorageScreen(
                 viewModel = viewModel,
+                onBack = {
+                    section = storageReturn
+                    storageReturn = null
+                },
+                visible = storage,
+            )
+        }
+        // Backup stays composed under export and import, so the deeper screen slides over it.
+        val backup = section == SettingsSection.Backup || section?.parent == SettingsSection.Backup
+        SlideInSection(visible = backup) {
+            BackupScreen(
                 onOpenExport = { section = SettingsSection.Export },
                 onOpenImport = { section = SettingsSection.Import },
                 onBack = { section = null },
+                visible = backup,
             )
         }
-        SlideInSection(visible = section == SettingsSection.Export) {
-            ExportScreen(onBack = { section = SettingsSection.Storage })
+        val exportOpen = section == SettingsSection.Export
+        SlideInSection(visible = exportOpen) {
+            ExportScreen(onBack = { section = SettingsSection.Backup }, visible = exportOpen)
         }
-        SlideInSection(visible = section == SettingsSection.Import) {
-            ImportScreen(onBack = { section = SettingsSection.Storage })
+        val importOpen = section == SettingsSection.Import
+        SlideInSection(visible = importOpen) {
+            ImportScreen(
+                onBack = { section = SettingsSection.Backup },
+                onOpenStorage = {
+                    storageReturn = SettingsSection.Import
+                    section = SettingsSection.Storage
+                },
+                predictiveBack = true,
+                visible = importOpen,
+            )
         }
-        SlideInSection(visible = section == SettingsSection.Licences) {
-            LicencesScreen(onBack = { section = null })
+        val licences = section == SettingsSection.Licences
+        SlideInSection(visible = licences) {
+            LicencesScreen(onBack = { section = null }, visible = licences)
         }
         AccountSections(
             section = section,
@@ -155,12 +180,18 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * A sub-screen layered over the hub, with Calendula's overlay motion: it slides
+ * in on the motion scheme's spring and leaves from its predictive-back preview.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SlideInSection(visible: Boolean, content: @Composable () -> Unit) {
+    val slideSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally { it } + fadeIn(),
-        exit = slideOutHorizontally { it } + fadeOut(),
+        enter = slideInHorizontally(slideSpec) { it } + fadeIn(),
+        exit = predictiveBackExit(),
     ) { content() }
 }
 
@@ -208,7 +239,7 @@ private fun SettingsHub(
             summary = stringResource(R.string.settings_reminders_subtitle),
             position = Position.Bottom,
             leading = { CategoryIcon(Icons.Default.Notifications, ChipAccent.Primary) },
-            onClick = { onOpenSection(SettingsSection.Reminders) },
+            onClick = { onOpenSection(SettingsSection.Notifications) },
         )
 
         Spacer(Modifier.height(8.dp))
@@ -225,14 +256,41 @@ private fun SettingsHub(
         GroupedRow(
             title = stringResource(R.string.settings_section_storage),
             summary = stringResource(R.string.settings_storage_subtitle),
-            position = if (BuildConfig.SYNC_ENABLED) Position.Bottom else Position.Alone,
-            leading = { CategoryIcon(Icons.Rounded.Storage, ChipAccent.Secondary) },
+            position = if (BuildConfig.SYNC_ENABLED) Position.Middle else Position.Top,
+            leading = { CategoryIcon(Icons.Rounded.Storage, ChipAccent.Primary) },
             onClick = { onOpenSection(SettingsSection.Storage) },
+        )
+        GroupedRow(
+            title = stringResource(R.string.settings_section_backup),
+            summary = stringResource(R.string.settings_backup_subtitle),
+            position = Position.Bottom,
+            leading = { CategoryIcon(Icons.Default.Backup, ChipAccent.Secondary) },
+            onClick = { onOpenSection(SettingsSection.Backup) },
         )
 
         Spacer(Modifier.height(8.dp))
         GroupedSectionHeader(stringResource(R.string.settings_group_app))
-        LanguageRow(position = Position.Top)
+        LanguagePickerRow(
+            position = Position.Top,
+            title = stringResource(R.string.settings_language),
+            autoLabel = stringResource(R.string.settings_language_auto),
+            localesConfig = R.xml.locales_config,
+            predictiveBack = true,
+            // Invite contributions right where users pick their language.
+            header = {
+                val context = LocalContext.current
+                val translateUrl = stringResource(R.string.about_translate_url)
+                GroupedRow(
+                    title = stringResource(R.string.settings_translate),
+                    summary = stringResource(R.string.settings_translate_hint),
+                    position = Position.Alone,
+                    leading = { CategoryIcon(Icons.Default.Translate, ChipAccent.Neutral) },
+                    onClick = { openUrl(context, translateUrl) },
+                )
+                Spacer(Modifier.height(16.dp))
+            },
+            leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Secondary) },
+        )
         ReportProblemRow(position = Position.Bottom)
 
         // Source, licence and privacy sit at the bottom as reference material
@@ -315,64 +373,6 @@ private fun AboutLinkRow(label: String, url: String, icon: ImageVector, position
         onClick = { openUrl(context, url) },
     )
 }
-
-/**
- * The app-language row. Deliberately not floret-kit's `LanguagePickerRow`: the
- * picker it opens carries a "Help translate" header, and inviting contributions
- * right where a user goes looking for their language is app-specific framing,
- * not a family primitive. Everything else matches that recipe.
- */
-@Composable
-private fun LanguageRow(position: Position) {
-    val context = LocalContext.current
-    val supported = remember { AppLanguage.supportedTags(context, R.xml.locales_config) }
-    // Setting a locale recreates the activity; mirror the choice locally so the
-    // row updates instantly even before the recreation lands.
-    var current by remember { mutableStateOf(AppLanguage.currentTag(supported)) }
-    var showDialog by remember { mutableStateOf(false) }
-
-    // null = follow the system; the rest are BCP-47 tags from locales_config.xml.
-    val options = remember(supported) { listOf<String?>(null) + supported }
-
-    GroupedRow(
-        title = stringResource(R.string.settings_language),
-        summary = languageLabel(current),
-        position = position,
-        leading = { CategoryIcon(Icons.Default.Language, ChipAccent.Secondary) },
-        onClick = { showDialog = true },
-    )
-
-    if (showDialog) {
-        OptionPicker(
-            title = stringResource(R.string.settings_language),
-            predictiveBack = true,
-            options = options,
-            selected = current,
-            label = { languageLabel(it) },
-            onSelect = {
-                current = it
-                AppLanguage.apply(it)
-            },
-            onDismiss = { showDialog = false },
-            // Invite contributions right where users pick their language.
-            header = {
-                val translateUrl = stringResource(R.string.about_translate_url)
-                GroupedRow(
-                    title = stringResource(R.string.settings_translate),
-                    summary = stringResource(R.string.settings_translate_hint),
-                    position = Position.Alone,
-                    leading = { CategoryIcon(Icons.Default.Translate, ChipAccent.Neutral) },
-                    onClick = { openUrl(context, translateUrl) },
-                )
-                Spacer(Modifier.height(16.dp))
-            },
-        )
-    }
-}
-
-@Composable
-private fun languageLabel(tag: String?): String =
-    if (tag == null) stringResource(R.string.settings_language_auto) else AppLanguage.displayName(tag)
 
 /**
  * Opens the project's issue tracker to report a problem. If a crash report was

@@ -218,6 +218,226 @@ class AddAccountViewModelTest {
             // The input survives, so the user can correct it rather than retype it.
             assertThat(step.input).isEqualTo("https://example.com/")
         }
+
+        @Test
+        fun `an email that finds no server asks for the server address instead`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405 on mailbox.org",
+            )
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NeedsAuthentication(listOf("dav.mailbox.org"))
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.Service(CalDavProvider.MAILBOX_ORG))
+            vm.onAddressChanged("me@mailbox.org")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val step = vm.state.value.step as AddAccountStep.EnterAddress
+            assertThat(step.manualServer).isTrue()
+            assertThat(step.input).isEmpty()
+            assertThat(step.error).isNull()
+
+            vm.onAddressChanged("https://dav.mailbox.org/")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            // The email the user already gave is the username, not retyped.
+            val credentials = vm.state.value.step as AddAccountStep.EnterCredentials
+            assertThat(credentials.username).isEqualTo("me@mailbox.org")
+        }
+
+        @Test
+        fun `back from the server fallback returns to the email`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405 on mailbox.org",
+            )
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.Service(CalDavProvider.MAILBOX_ORG))
+            vm.onAddressChanged("me@mailbox.org")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            assertThat(vm.onBackWithin()).isTrue()
+            val step = vm.state.value.step as AddAccountStep.EnterAddress
+            assertThat(step.manualServer).isFalse()
+            assertThat(step.input).isEqualTo("me@mailbox.org")
+        }
+
+        @Test
+        fun `a failure that is not a missing server keeps its error on the email`() = runTest(dispatcher) {
+            for (cause in listOf(
+                CalDavDiscovery.Outcome.Cause.NOT_AN_ADDRESS,
+                CalDavDiscovery.Outcome.Cause.SERVER_ERROR,
+            )) {
+                gateway.discoveryOutcomes += CalDavDiscovery.Outcome.Failed(cause, "$cause")
+                val vm = viewModel()
+                vm.onProviderChosen(ProviderChoice.Service(CalDavProvider.MAILBOX_ORG))
+                vm.onAddressChanged("me@mailbox.org")
+                vm.onAddressSubmitted()
+                advanceUntilIdle()
+
+                val step = vm.state.value.step as AddAccountStep.EnterAddress
+                assertThat(step.manualServer).isFalse()
+                assertThat(step.error).isEqualTo(cause)
+                assertThat(step.input).isEqualTo("me@mailbox.org")
+            }
+        }
+
+        @Test
+        fun `an email nothing answered for asks for the server and keeps the error`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.Failed(
+                CalDavDiscovery.Outcome.Cause.UNREACHABLE,
+                "no route",
+            )
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.OtherServer)
+            vm.onAddressChanged("me@mail-only.example")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val step = vm.state.value.step as AddAccountStep.EnterAddress
+            assertThat(step.manualServer).isTrue()
+            assertThat(step.input).isEmpty()
+            assertThat(step.error).isEqualTo(CalDavDiscovery.Outcome.Cause.UNREACHABLE)
+        }
+
+        @Test
+        fun `an email that asked for a password first still reaches the server field`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NeedsAuthentication(listOf("example.com"))
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.OtherServer)
+            vm.onAddressChanged("me@example.com")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            vm.onUsernameChanged("me@example.com")
+            vm.onPasswordChanged("secret")
+            vm.onCredentialsSubmitted()
+            advanceUntilIdle()
+
+            val step = vm.state.value.step as AddAccountStep.EnterAddress
+            assertThat(step.manualServer).isTrue()
+            assertThat(step.error).isNull()
+        }
+
+        @Test
+        fun `the guidance follows the field through the fallback`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.OtherServer)
+            vm.onAddressChanged("me@fastmail.com")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            assertThat(vm.state.value.quirk).isNull()
+
+            vm.onAddressChanged("https://caldav.icloud.com/")
+            assertThat(vm.onBackWithin()).isTrue()
+            assertThat(vm.state.value.quirk).isEqualTo(ServerQuirk.FASTMAIL_APP_PASSWORD)
+        }
+
+        @Test
+        fun `a different email typed into the server field becomes the username`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NeedsAuthentication(listOf("new.example"))
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.OtherServer)
+            vm.onAddressChanged("a@old.example")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            vm.onAddressChanged("b@new.example")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val credentials = vm.state.value.step as AddAccountStep.EnterCredentials
+            assertThat(credentials.username).isEqualTo("b@new.example")
+        }
+
+        @Test
+        fun `a mailto address falls back without its prefix`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NeedsAuthentication(listOf("dav.example.com"))
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.OtherServer)
+            vm.onAddressChanged("mailto:me@example.com")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            vm.onAddressChanged("https://dav.example.com/")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val credentials = vm.state.value.step as AddAccountStep.EnterCredentials
+            assertThat(credentials.username).isEqualTo("me@example.com")
+            vm.onBackWithin()
+            vm.onBackWithin()
+            assertThat((vm.state.value.step as AddAccountStep.EnterAddress).input).isEqualTo("me@example.com")
+        }
+
+        @Test
+        fun `back from the fallback keeps a re-authentication's username`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NeedsAuthentication(listOf("dav.mailbox.org"))
+
+            val vm = viewModel()
+            vm.startReauthentication(1L, "https://dav.mailbox.org/caldav/me/", "me@mailbox.org")
+            vm.onAddressChanged("me@mailbox.org")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            assertThat(vm.onBackWithin()).isTrue()
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val credentials = vm.state.value.step as AddAccountStep.EnterCredentials
+            assertThat(credentials.username).isEqualTo("me@mailbox.org")
+        }
+
+        @Test
+        fun `a server address that fails stays on the server field`() = runTest(dispatcher) {
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405",
+            )
+            gateway.discoveryOutcomes += CalDavDiscovery.Outcome.NotCalDav(
+                CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+                "405 again",
+            )
+
+            val vm = viewModel()
+            vm.onProviderChosen(ProviderChoice.Service(CalDavProvider.MAILBOX_ORG))
+            vm.onAddressChanged("me@mailbox.org")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+            vm.onAddressChanged("https://mailbox.org/")
+            vm.onAddressSubmitted()
+            advanceUntilIdle()
+
+            val step = vm.state.value.step as AddAccountStep.EnterAddress
+            assertThat(step.manualServer).isTrue()
+            assertThat(step.error).isEqualTo(CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER)
+            assertThat(step.input).isEqualTo("https://mailbox.org/")
+        }
     }
 
     @Nested

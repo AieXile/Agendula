@@ -25,12 +25,14 @@ import de.jeanlucmakiola.floret.components.positionOf
  * source, which is the specific thing §3.2(a) requires us to point at.
  */
 @Composable
-internal fun LicencesScreen(onBack: () -> Unit) {
+internal fun LicencesScreen(onBack: () -> Unit, visible: Boolean) {
     val uriHandler = LocalUriHandler.current
 
     CollapsingScaffold(
         title = stringResource(R.string.licences_title),
         onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
     ) {
         Text(
             stringResource(R.string.licences_intro),

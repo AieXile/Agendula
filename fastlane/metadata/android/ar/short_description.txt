@@ -1,0 +1,1 @@
+تطبيق مهام بتصميم Material 3 Expressive مع مزامنة CalDAV.

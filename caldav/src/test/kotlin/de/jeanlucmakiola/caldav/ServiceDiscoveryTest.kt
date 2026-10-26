@@ -14,8 +14,7 @@ class ServiceDiscoveryTest {
         val srv: Map<String, List<SrvRecord>> = emptyMap(),
         val txt: Map<String, List<String>> = emptyMap(),
     ) : DnsResolver {
-        override fun srv(name: String) = srv[name].orEmpty()
-        override fun txt(name: String) = txt[name].orEmpty()
+        override fun lookup(name: String) = DnsRecords(srv[name].orEmpty(), txt[name].orEmpty())
     }
 
     private fun urls(input: String, dns: DnsResolver = DnsResolver.None) =
@@ -151,6 +150,15 @@ class ServiceDiscoveryTest {
         assertThat(ServiceDiscovery.domainOf("mailto:me@example.com")).isEqualTo("example.com")
         assertThat(ServiceDiscovery.domainOf("me@example.com")).isEqualTo("example.com")
         assertThat(ServiceDiscovery.domainOf("example.com")).isEqualTo("example.com")
+    }
+
+    @Test
+    fun `an email is told apart from a URL and loses its mailto prefix`() {
+        assertThat(ServiceDiscovery.emailOf("mailto:me@example.com")).isEqualTo("me@example.com")
+        assertThat(ServiceDiscovery.emailOf(" me@example.com ")).isEqualTo("me@example.com")
+        assertThat(ServiceDiscovery.emailOf("https://me@example.com/")).isNull()
+        assertThat(ServiceDiscovery.emailOf("example.com")).isNull()
+        assertThat(ServiceDiscovery.emailOf("@example.com")).isNull()
     }
 
     @Test

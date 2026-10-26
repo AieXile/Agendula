@@ -3,37 +3,8 @@ package de.jeanlucmakiola.agendula.data.tasks
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import kotlin.time.Instant
-
-/**
- * A stored reminder: how long before, and what it counts back from.
- *
- * [fromStart] matters because both stores can hold a `START`-referenced alarm —
- * the dmfs import preserves one, and an external provider's other clients write
- * them — while Agendula's own UI only ever sets a before-due lead. Collapsing it
- * to a number here is what silently fired those reminders off the wrong anchor.
- */
-data class TaskReminder(
-    val minutesBefore: Int,
-    val fromStart: Boolean = false,
-    /**
-     * When another client last dismissed this alarm (RFC 9074 `ACKNOWLEDGED`):
-     * a trigger at or before it has been dealt with and is not fired here.
-     * Never part of what a reminder *is* — see [lead].
-     */
-    val acknowledgedAt: Instant? = null,
-) {
-    /** The reminder without its bookkeeping, for comparing two of them. */
-    val lead: TaskReminder get() = if (acknowledgedAt == null) this else copy(acknowledgedAt = null)
-}
-
-/**
- * The one reminder Agendula's single-reminder editor shows and writes: the last
- * before-due one, which is where a write lands, so it stays the same one across
- * saves. Anything else a task carries — a start-relative alarm, or the extra ones
- * another client or the dmfs import brought — is left to ride along.
- */
-fun List<TaskReminder>.editable(): TaskReminder? = lastOrNull { !it.fromStart }
 
 /** What to fetch from the provider. Smart-list date logic is applied above this. */
 data class TaskQuery(
@@ -59,16 +30,37 @@ interface TasksDataSource {
     fun subtasks(parentTaskId: Long): List<Task>
 
     /**
+     * The task rows directly under [parentTaskId]: one id per subtask, its series
+     * master when it recurs, whether or not any occurrence falls in the window
+     * [subtasks] expands.
+     */
+    fun subtaskIds(parentTaskId: Long): List<Long> =
+        subtasks(parentTaskId).map { it.seriesId ?: it.taskId }.distinct().filter { it != parentTaskId }
+
+    /**
+     * Delete [taskId] and its subtasks, all the way down; left behind they would
+     * hang off a tombstone. Each task once, so a parent loop an import brought in
+     * ends instead of recursing forever.
+     */
+    fun deleteWithSubtasks(taskId: Long) {
+        val seen = HashSet<Long>()
+        fun delete(id: Long) {
+            if (!seen.add(id)) return
+            subtaskIds(id).forEach(::delete)
+            deleteTask(id)
+        }
+        delete(taskId)
+    }
+
+    /**
      * The write paths take the task's reminders in the same write as the task
      * itself, so a sync can never upload one without the other.
      *
-     * [insertTask] takes the new task's [reminders] whole. The updates take the
-     * before-due leads as `dueReminders`, and `null` leaves the reminders
-     * alone; a start-relative reminder the task already carries is kept — the
-     * editor never shows one, so it never sends one.
+     * Each takes the task's whole set of [reminders], before-start and
+     * before-due alike, and `null` leaves the stored ones alone.
      */
     fun insertTask(form: TaskForm, reminders: List<TaskReminder>? = null): Long
-    fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>? = null)
+    fun updateTask(taskId: Long, form: TaskForm, reminders: List<TaskReminder>? = null)
 
     /**
      * Update a single occurrence of a recurring task, addressed by the task row and
@@ -81,27 +73,19 @@ interface TasksDataSource {
      * instance row id keeps this seam independent of any one store's row
      * numbering; External mode maps it back to an instance row itself.
      */
-    fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null)
-    /**
-     * Set (or clear, with `null`) the task's [editable] reminder lead, stored as an
-     * Alarm property row. Every other reminder on the task is left untouched. The
-     * provider never fires it — [de.jeanlucmakiola.agendula.data.reminders
-     * .ReminderScheduler] does — but persisting it here is what syncs the lead and
-     * shares it with other OpenTasks clients.
-     */
-    fun setAlarm(taskId: Long, minutesBeforeDue: Int?)
+    fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>? = null)
 
     /**
      * Edit the whole series [seriesId] through its occurrence at [occurrenceStart]:
      * content from [form], and the series moved by however far that occurrence moved.
      */
-    fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null)
+    fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>? = null)
 
     /**
      * "This and following": end [seriesId] before [occurrenceStart] and continue
      * from there as a new series built from [form]. Returns the new series' id.
      */
-    fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>? = null): Long
+    fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>? = null): Long
 
     /** Delete one generated occurrence of [seriesId] (an `EXDATE`). */
     fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant)
@@ -118,10 +102,7 @@ interface TasksDataSource {
      * scheduler. A task missing from the map takes the default; one present
      * with an empty list has none (see `TaskEntity.remindersOff`).
      */
-    fun reminders(): Map<Long, List<TaskReminder>> = alarms().mapValues { listOf(it.value) }
-
-    /** Every task's [editable] reminder, by task id. */
-    fun alarms(): Map<Long, TaskReminder>
+    fun reminders(): Map<Long, List<TaskReminder>>
 
     /**
      * Every task in [listId] read from the **`tasks` table**, for export. Masters,

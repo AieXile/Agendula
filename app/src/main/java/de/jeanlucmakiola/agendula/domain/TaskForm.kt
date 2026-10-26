@@ -18,8 +18,10 @@ data class TaskForm(
     val parentId: Long? = null,
     /** 0..100 progress; `null` leaves it unset (cleared). */
     val percentComplete: Int? = null,
-    /** The task's own reminders, in minutes before [due]; empty = the list's or app default applies. */
-    val reminders: List<Int> = emptyList(),
+    /** The task's own reminders; empty = the list's or app default applies, unless [remindersChosen]. */
+    val reminders: List<TaskReminder> = emptyList(),
+    /** Whether [reminders] are exactly the task's, as the editor showed them: empty is then none. */
+    val remindersChosen: Boolean = false,
     val location: String? = null,
     val url: String? = null,
     val tags: List<String> = emptyList(),
@@ -30,14 +32,14 @@ data class TaskForm(
         if (title.isBlank()) add(TaskFormError.BLANK_TITLE)
         if (listId <= 0L) add(TaskFormError.NO_LIST)
         if (start != null && due != null && due < start) add(TaskFormError.DUE_BEFORE_START)
-        if (reminders.isNotEmpty() && due == null) add(TaskFormError.REMINDER_WITHOUT_DUE)
+        if (reminders.isNotEmpty() && start == null && due == null) add(TaskFormError.REMINDER_WITHOUT_DATE)
         if (rrule != null && start == null && due == null) add(TaskFormError.RECURRENCE_WITHOUT_DATE)
     }
 
     val isValid: Boolean get() = validate().isEmpty()
 }
 
-enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITHOUT_DUE, RECURRENCE_WITHOUT_DATE }
+enum class TaskFormError { BLANK_TITLE, NO_LIST, DUE_BEFORE_START, REMINDER_WITHOUT_DATE, RECURRENCE_WITHOUT_DATE }
 
 /**
  * Optional edit-form sections that can be shown or tucked behind "More fields"

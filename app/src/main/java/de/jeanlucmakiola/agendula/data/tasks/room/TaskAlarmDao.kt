@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.ical.ICalParser
 import de.jeanlucmakiola.agendula.domain.ical.ICalValues
 import kotlin.time.Instant
@@ -25,17 +25,20 @@ interface TaskAlarmDao {
     @Query("SELECT * FROM task_alarms WHERE task_id IN (:taskIds) ORDER BY id")
     fun forTasks(taskIds: List<Long>): List<TaskAlarmEntity>
 
+    @Query("SELECT * FROM task_alarms WHERE id = :id")
+    fun entity(id: Long): TaskAlarmEntity?
+
     @Insert
     fun insert(alarm: TaskAlarmEntity): Long
+
+    @Update
+    fun update(alarm: TaskAlarmEntity): Int
 
     @Query("DELETE FROM task_alarms WHERE id = :id")
     fun delete(id: Long): Int
 
     @Query("DELETE FROM task_alarms WHERE task_id = :taskId")
     fun deleteForTask(taskId: Long): Int
-
-    @Update
-    fun update(alarm: TaskAlarmEntity)
 
     /** See [TaskEntity.remindersOff]. */
     @Query("UPDATE tasks SET reminders_off = :off WHERE id = :taskId")

@@ -2,8 +2,8 @@ package de.jeanlucmakiola.agendula.data.tasks.room
 
 import androidx.room.InvalidationTracker
 import de.jeanlucmakiola.agendula.data.tasks.TaskQuery
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
-import de.jeanlucmakiola.agendula.data.tasks.editable
+import de.jeanlucmakiola.agendula.domain.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminderOrder
 import de.jeanlucmakiola.agendula.data.tasks.TaskWriteFailedException
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
 import de.jeanlucmakiola.agendula.domain.Task
@@ -31,7 +31,51 @@ private val SERIES_LINES = listOf("EXDATE", "RDATE", "RRULE", "RECURRENCE-ID", "
 /** Enough to count every occurrence before a split point without bounding a real series. */
 internal const val SPLIT_COUNT_CEILING = 100_000
 
-private val OBSERVED_TABLES = arrayOf("tasks", "task_lists", "task_alarms", "accounts")
+/** The window every read of the store expands a series over. */
+internal fun expansionWindow(now: Instant) = ExpansionWindow(
+    from = now - WINDOW_BACK,
+    until = now + WINDOW_FORWARD,
+    pivot = now,
+)
+
+/**
+ * One occurrence's resolved start and due. A timed series keeps each
+ * occurrence's duration; a due-anchored one has no start to offset from, so
+ * the anchor *is* the due date.
+ */
+internal fun occurrenceTimes(master: TaskEntity, anchor: Instant): Pair<Instant?, Instant?> {
+    if (master.dtstart == null) return null to anchor
+    val length = master.due?.let { it - master.dtstart }
+    return anchor to length?.let { anchor + it }
+}
+
+/** One occurrence of a series: its anchor, the override replacing it if any, and its resolved times. */
+internal class SeriesOccurrence(
+    val anchor: Instant,
+    val override: TaskEntity?,
+    val start: Instant?,
+    val due: Instant?,
+    val distance: Int?,
+)
+
+/**
+ * Every occurrence of [master] inside the expansion window, with any
+ * `RECURRENCE-ID` override substituted for the occurrence it replaces, or
+ * `null` when [master] does not recur.
+ */
+internal fun seriesOccurrences(master: TaskEntity, overrides: List<TaskEntity>, now: Instant): List<SeriesOccurrence>? {
+    val spec = master.recurrenceSpec() ?: return null
+    val anchors = RecurrenceExpander.expand(spec, expansionWindow(now))
+    val distances = RecurrenceExpander.distancesFromCurrent(anchors, now)
+    val byAnchor = overrides.associateBy { it.recurrenceId }
+    return anchors.mapIndexed { index, anchor ->
+        val override = byAnchor[anchor]
+        val (start, due) = if (override != null) override.dtstart to override.due else occurrenceTimes(master, anchor)
+        SeriesOccurrence(anchor, override, start, due, distances.getOrNull(index))
+    }
+}
+
+internal val OBSERVED_TABLES = arrayOf("tasks", "task_lists", "task_alarms", "accounts")
 
 /** Distinct alarm texts whose `ACKNOWLEDGED` is remembered between scheduler passes. */
 private const val ACK_CACHE_SIZE = 512
@@ -104,6 +148,12 @@ class RoomTasksDataSource @Inject constructor(
             .flatMap { occurrencesOf(it, tasks.overrides(it.task.id), now) }
     }
 
+    /** One transaction, so a failure part-way leaves the subtree whole. */
+    override fun deleteWithSubtasks(taskId: Long) = tx { super.deleteWithSubtasks(taskId) }
+
+    override fun subtaskIds(parentTaskId: Long): List<Long> =
+        tasks.subtasks(parentTaskId).map { it.task.id }.filter { it != parentTaskId }
+
     override fun exportTasks(listId: Long): List<ExportTask> =
         tasks.exportTasks(listId).map(RoomTaskMapper::exportTask)
 
@@ -125,9 +175,6 @@ class RoomTasksDataSource @Inject constructor(
         }
     }
 
-    override fun alarms(): Map<Long, TaskReminder> =
-        reminders().mapNotNull { (id, list) -> list.editable()?.let { id to it } }.toMap()
-
     /**
      * Every occurrence of [row] inside the expansion window, with any
      * `RECURRENCE-ID` override substituted for the occurrence it replaces.
@@ -136,52 +183,29 @@ class RoomTasksDataSource @Inject constructor(
      * [Task.occurrenceStart], so it keys and edits by task id exactly as before.
      */
     private fun occurrencesOf(row: TaskRow, overrides: List<TaskEntity>, now: Instant): List<Task> {
-        val spec = row.task.recurrenceSpec() ?: return listOf(RoomTaskMapper.task(row))
-        val window = ExpansionWindow(
-            from = now - WINDOW_BACK,
-            until = now + WINDOW_FORWARD,
-            pivot = now,
-        )
-        val anchors = RecurrenceExpander.expand(spec, window)
-        if (anchors.isEmpty()) return emptyList()
-
-        val distances = RecurrenceExpander.distancesFromCurrent(anchors, now)
-        val byAnchor = overrides.associateBy { it.recurrenceId }
-
-        return anchors.mapIndexedNotNull { index, anchor ->
-            val override = byAnchor[anchor]
+        val occurrences = seriesOccurrences(row.task, overrides, now) ?: return listOf(RoomTaskMapper.task(row))
+        return occurrences.map { occurrence ->
+            val override = occurrence.override
             if (override != null) {
                 RoomTaskMapper.task(
                     row = row.copy(task = override),
-                    occurrenceStart = anchor,
-                    start = override.dtstart,
-                    due = override.due,
-                    distanceFromCurrent = distances[index],
+                    occurrenceStart = occurrence.anchor,
+                    start = occurrence.start,
+                    due = occurrence.due,
+                    distanceFromCurrent = occurrence.distance,
                     seriesId = row.task.id,
                     recurrenceRule = row.task.rrule,
                 )
             } else {
-                val (start, due) = occurrenceTimes(row.task, anchor)
                 RoomTaskMapper.task(
                     row = row,
-                    occurrenceStart = anchor,
-                    start = start,
-                    due = due,
-                    distanceFromCurrent = distances[index],
+                    occurrenceStart = occurrence.anchor,
+                    start = occurrence.start,
+                    due = occurrence.due,
+                    distanceFromCurrent = occurrence.distance,
                 )
             }
         }
-    }
-
-    /**
-     * One occurrence's resolved start and due. A timed series keeps each
-     * occurrence's duration; a due-anchored one has no start to offset from, so
-     * the anchor *is* the due date.
-     */
-    private fun occurrenceTimes(master: TaskEntity, anchor: Instant): Pair<Instant?, Instant?> {
-        if (master.dtstart == null) return null to anchor
-        val length = master.due?.let { it - master.dtstart }
-        return anchor to length?.let { anchor + it }
     }
 
     // --- writes ---------------------------------------------------------------
@@ -199,26 +223,24 @@ class RoomTasksDataSource @Inject constructor(
     }
 
     /**
-     * [leads] as [taskId]'s before-due reminders, inside the caller's
-     * transaction. A start-relative row is kept: the editor never shows one.
+     * [reminders] as [taskId]'s own, inside the caller's transaction.
      *
      * ⚠️ Part of the task write rather than a second call after it. Once
      * reminders sync, a sync landing between the two would upload the task
      * without them, or with the ones it is about to lose.
      */
-    private fun dueLeads(taskId: Long): List<Int> =
-        alarms.forTask(taskId).filter { it.reference == AlarmReference.DUE }.map { it.minutesBefore }.sorted()
-
-    private fun writeDueReminders(taskId: Long, leads: List<Int>?) {
-        if (leads == null) return
-        val kept = alarms.forTask(taskId).filter { it.reference == AlarmReference.START }.map { it.asReminder() }
-        alarms.syncForTask(taskId, kept + leads.distinct().sorted().map { TaskReminder(it) })
+    private fun writeReminders(taskId: Long, reminders: List<TaskReminder>?) {
+        if (reminders == null) return
+        alarms.syncForTask(taskId, reminders)
     }
 
-    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) = tx {
+    private fun storedReminders(taskId: Long): List<TaskReminder> =
+        alarms.forTask(taskId).map { it.asReminder() }.sortedWith(TaskReminderOrder)
+
+    override fun updateTask(taskId: Long, form: TaskForm, reminders: List<TaskReminder>?) = tx {
         val current = tasks.entity(taskId) ?: throw TaskWriteFailedException("update task $taskId")
         val edited = TaskFormWriter.apply(current, form, clock.now(), zone())
-        writeDueReminders(taskId, dueReminders)
+        writeReminders(taskId, reminders)
         if (current.masterId == null && edited.listId != current.listId) {
             if (lists.exists(edited.listId) == 0) throw TaskWriteFailedException("move task: no list ${edited.listId}")
             move(current, TaskFormWriter.withRule(edited, form.rrule))
@@ -257,20 +279,23 @@ class RoomTasksDataSource @Inject constructor(
         plan.tombstone?.let { tasks.insert(it) }
     }
 
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) = tx {
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) = tx {
         val master = seriesMaster(seriesId)
         // ⚠️ The overrides too, where they still carry the series' reminders.
         // A fork copies them as a snapshot — completing one occurrence is
         // enough — and each override uploads its own VALARMs, so leaving them
         // would keep ringing those occurrences at the old lead everywhere. One
         // whose reminders were set for that occurrence alone keeps them.
-        if (dueReminders != null) {
-            val before = dueLeads(master.id)
+        if (reminders != null) {
+            val before = storedReminders(master.id)
             tasks.overrides(master.id)
-                .filter { dueLeads(it.id) == before }
-                .forEach { writeDueReminders(it.id, dueReminders) }
+                .filter { storedReminders(it.id) == before }
+                .forEach {
+                    writeReminders(it.id, reminders)
+                    if (form.remindersChosen && reminders.isEmpty()) alarms.setRemindersOff(it.id, true)
+                }
         }
-        writeDueReminders(master.id, dueReminders)
+        writeReminders(master.id, reminders)
         val (start, due) = resolvedTimes(master, occurrenceStart)
         val edited = TaskFormWriter.seriesEdit(master, start, due, form, clock.now(), zone())
         // A moved or re-ruled series no longer generates the anchors its
@@ -286,14 +311,14 @@ class RoomTasksDataSource @Inject constructor(
         writes.onWritten(setOf(master.listId, edited.listId))
     }
 
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long {
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?): Long {
         var created = seriesId
         tx {
             val master = seriesMaster(seriesId)
             val spec = master.recurrenceSpec()
             val anchor = master.recurrenceAnchor
             if (spec == null || anchor == null || occurrenceStart <= anchor) {
-                updateSeries(seriesId, occurrenceStart, form, dueReminders)
+                updateSeries(seriesId, occurrenceStart, form, reminders)
                 return@tx
             }
             val now = clock.now()
@@ -338,7 +363,7 @@ class RoomTasksDataSource @Inject constructor(
             val newId = tasks.insert(fresh)
             // A new UID, so a new resource: the alarms are copies, not the same ones.
             alarms.copyToTask(master.id, newId, sameResource = false)
-            writeDueReminders(newId, dueReminders)
+            writeReminders(newId, reminders)
 
             val unmoved = fresh.dtstart == start && fresh.due == due && sameRule
             tasks.overrides(master.id)
@@ -373,8 +398,7 @@ class RoomTasksDataSource @Inject constructor(
         val master = tasks.entity(seriesId) ?: return@tx
         val anchor = master.recurrenceAnchor
         if (anchor == null || occurrenceStart <= anchor) {
-            tasks.subtasks(seriesId).forEach { deleteTask(it.task.id) }
-            deleteTask(seriesId)
+            deleteWithSubtasks(seriesId)
             return@tx
         }
         tasks.update(TaskFormWriter.endedBefore(master, occurrenceStart, clock.now(), zone()))
@@ -403,7 +427,7 @@ class RoomTasksDataSource @Inject constructor(
      * which is the model least compatible with sync; the override shares its
      * master's UID, which is exactly what makes it an override.
      */
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) = tx {
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) = tx {
         val master = tasks.entity(taskId) ?: throw TaskWriteFailedException("update instance $taskId")
         val now = clock.now()
         val existing = tasks.override(taskId, occurrenceStart)
@@ -412,7 +436,7 @@ class RoomTasksDataSource @Inject constructor(
             // master's, whatever the form was carrying.
             val edited = TaskFormWriter.apply(existing, form, now, zone())
             tasks.update(edited.copy(listId = master.listId, parentId = master.parentId))
-            writeDueReminders(existing.id, dueReminders)
+            writeReminders(existing.id, reminders)
             writes.onWritten(setOf(master.listId))
             return@tx
         }
@@ -429,16 +453,8 @@ class RoomTasksDataSource @Inject constructor(
         // The occurrence starts out with the series' reminders and then takes
         // the form's — the master's own are never touched.
         alarms.copyToTask(taskId, id, sameResource = true)
-        writeDueReminders(id, dueReminders)
+        writeReminders(id, reminders)
         writes.onWritten(setOf(master.listId))
-    }
-
-    /** Through [setReminders], so a synced task is owed the PUT and the others keep their identity. */
-    override fun setAlarm(taskId: Long, minutesBeforeDue: Int?) {
-        val current = alarms.forTask(taskId).map { it.asReminder() }
-        val editable = current.indexOfLast { !it.fromStart }
-        val others = if (editable < 0) current else current.filterIndexed { index, _ -> index != editable }
-        setReminders(taskId, others + listOfNotNull(minutesBeforeDue?.let { TaskReminder(it) }))
     }
 
     override fun setReminders(taskId: Long, reminders: List<TaskReminder>) = tx {
@@ -564,6 +580,47 @@ class RoomTasksDataSource @Inject constructor(
         }
         if (listAccount == null) tasks.delete(taskId) else tasks.markDeleted(taskId, clock.now())
         writes.onWritten(setOf(current.listId))
+    }
+
+    // --- whole-row writes, for the published provider --------------------------
+
+    /** Inserts [entity] as it stands, for a client that wrote the row itself. */
+    internal fun insertEntity(entity: TaskEntity): Long {
+        if (lists.exists(entity.listId) == 0) throw TaskWriteFailedException("insert task: no list ${entity.listId}")
+        return tasks.insert(entity).also { writes.onWritten(setOf(entity.listId)) }
+    }
+
+    /**
+     * Writes [edited] over [current] under the rules [updateTask] and
+     * [updateSeries] keep: a task moves lists through [TaskMove], an override
+     * keeps its master's list and parent, and a series whose anchor or rule
+     * changed drops the overrides it no longer generates.
+     */
+    internal fun replaceEntity(current: TaskEntity, edited: TaskEntity) {
+        tx {
+            val reshaped = current.masterId == null && current.recurrenceSpec() != null &&
+                (edited.dtstart != current.dtstart || edited.due != current.due || edited.rrule != current.rrule)
+            if (reshaped) tasks.overrides(current.id).forEach { tasks.delete(it.id) }
+            when {
+                current.masterId != null -> tasks.update(edited.copy(listId = current.listId, parentId = current.parentId))
+                edited.listId != current.listId -> {
+                    if (lists.exists(edited.listId) == 0) throw TaskWriteFailedException("move task: no list ${edited.listId}")
+                    move(current, edited)
+                }
+                else -> tasks.update(edited)
+            }
+        }
+        writes.onWritten(setOf(current.listId, edited.listId))
+    }
+
+    /** Adds, changes or removes one reminder, and marks its task changed so the reminder syncs. */
+    internal fun writeAlarm(taskId: Long, write: () -> Unit) {
+        val task = tasks.entity(taskId) ?: throw TaskWriteFailedException("alarm on task $taskId")
+        tx {
+            write()
+            tasks.update(task.copy(lastModified = clock.now(), isDirty = true))
+        }
+        writes.onWritten(setOf(task.listId))
     }
 
     override fun createLocalList(name: String, color: Int): Long =

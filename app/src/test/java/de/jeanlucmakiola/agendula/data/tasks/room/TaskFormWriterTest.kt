@@ -3,6 +3,7 @@ package de.jeanlucmakiola.agendula.data.tasks.room
 import com.google.common.truth.Truth.assertThat
 import de.jeanlucmakiola.agendula.domain.Priority
 import de.jeanlucmakiola.agendula.domain.TaskForm
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.TaskStatus
 import org.junit.jupiter.api.Test
 import kotlin.time.Instant
@@ -51,6 +52,17 @@ class TaskFormWriterTest {
         assertThat(entity.createdAt).isEqualTo(NOW)
         assertThat(entity.lastModified).isEqualTo(NOW)
         assertThat(entity.isDirty).isTrue()
+    }
+
+    @Test
+    fun `an empty set the editor chose turns reminders off, any other keeps the flag`() {
+        val due = Instant.parse("2026-02-01T10:00:00Z")
+        val chosen = form(due = due).copy(remindersChosen = true)
+        assertThat(TaskFormWriter.apply(task(), chosen, NOW, ZONE).remindersOff).isTrue()
+        val withOne = chosen.copy(reminders = listOf(TaskReminder(15)))
+        assertThat(TaskFormWriter.apply(task().copy(remindersOff = true), withOne, NOW, ZONE).remindersOff).isFalse()
+        assertThat(TaskFormWriter.apply(task().copy(remindersOff = true), form(due = due), NOW, ZONE).remindersOff).isTrue()
+        assertThat(TaskFormWriter.apply(task(), form(due = due), NOW, ZONE).remindersOff).isFalse()
     }
 
     @Test

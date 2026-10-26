@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskDetail
@@ -81,13 +82,6 @@ interface TasksRepository {
         occurrenceStart: Instant? = null,
         scope: RecurringScope = RecurringScope.AllOccurrences,
     )
-
-    /**
-     * The per-task reminder lead in minutes before due, or `null` if the task has
-     * none (in which case the list's / global setting applies). Read when the edit
-     * form loads so saving can't silently drop it.
-     */
-    suspend fun reminderFor(taskId: Long): Int?
 
     /** Every reminder stored on the task, in order — including start-relative ones. */
     suspend fun remindersFor(taskId: Long): List<TaskReminder>

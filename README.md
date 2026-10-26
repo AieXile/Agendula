@@ -102,6 +102,10 @@ Agendula's own store is an ordinary app database, so it **coexists with
 OpenTasks rather than replacing it**. If you already sync through a provider,
 Agendula can work on top of it exactly as before.
 
+Other apps can read and write the tasks in Agendula's own store through an
+OpenTasks-compatible provider, once you grant them permission. See
+[docs/CONTENT_PROVIDER.md](docs/CONTENT_PROVIDER.md).
+
 Switching between the two moves nothing — each store keeps its own tasks — so
 **Settings → Storage** asks before it switches, and offers to **copy** a
 provider's tasks into Agendula's own store when you want to move over. The copy
@@ -164,7 +168,7 @@ Agendula's own database go with it, so sync them to a CalDAV account first.
 Each Codeberg release also carries `agendula-offline_v<version>.apk`: Agendula
 without CalDAV sync and **without the network permission**, so it cannot
 connect to anything. It installs alongside the regular app rather than replacing
-it; move tasks between the two with Settings → Storage → Export / Import. In
+it; move tasks between the two with Settings → Backup & restore → Export / Import. In
 Obtainium, pick it with *Filter APKs by regular expression* set to
 `^agendula-offline_v`.
 

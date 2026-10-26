@@ -53,8 +53,10 @@ All of this is verifiable in the
 ## 3. Where your tasks live — your choice
 
 - **On your device (the default)** — your task lists, tasks and reminders are
-  kept in Agendula's own database inside the app's private storage. Nothing is
-  published to other apps, and uninstalling the app removes it.
+  kept in Agendula's own database inside the app's private storage, and
+  uninstalling the app removes it. Another app can read these tasks only if you
+  grant it Agendula's "read Agendula tasks" permission, and change them only if
+  you grant it "add, change and delete Agendula tasks" (see section 9).
 - **In a tasks provider you already use** — OpenTasks or tasks.org. Agendula
   then reads and writes that app's task database through Android's provider
   mechanism, after you grant its read/write permission. Whatever already
@@ -97,8 +99,8 @@ nominated. Data is encrypted in transit.
 When you type a server address or an email domain, Agendula follows the
 standard discovery procedure (RFC 6764): a DNS lookup for the `_caldavs._tcp`
 service record of that domain, then `/.well-known/caldav` on the host. The DNS
-query goes to whichever resolver your device or network uses, and the requests
-go to the domain you typed — no directory of servers is consulted and no lookup
+query goes through Android's own resolver, so it uses your device's Private DNS
+setting when one is on, and the requests go to the domain you typed — no directory of servers is consulted and no lookup
 is sent to the developer.
 
 ### Signing in to a Nextcloud
@@ -210,8 +212,20 @@ source:
   used for scheduled background work (WorkManager); on older Android versions
   it needs them to run an expedited sync.
 
-Agendula publishes no content provider of its own and declares no permissions
-that other apps could request.
+Agendula declares two permissions that other apps can request. Android asks you
+before granting either, and you can revoke them at any time in the system
+settings.
+
+- `de.jeanlucmakiola.agendula.permission.READ_TASKS`: an app that holds it can
+  read your task lists, tasks, reminders and tags from Agendula's own database.
+- `de.jeanlucmakiola.agendula.permission.WRITE_TASKS`: an app that holds it can
+  add, change, complete and delete those tasks, reminders and tags. It cannot
+  change or delete task lists. Its changes sync to your CalDAV server like your
+  own edits.
+
+Neither gives access to anything while Agendula works on top of an external
+tasks provider. What an app does with your tasks is governed by its own privacy
+policy.
 
 ## 10. Distribution channels
 

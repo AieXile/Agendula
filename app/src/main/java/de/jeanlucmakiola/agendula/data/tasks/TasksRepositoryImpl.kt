@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
 import de.jeanlucmakiola.floret.time.DayWindow
@@ -110,40 +111,17 @@ class TasksRepositoryImpl @Inject constructor(
 
     override suspend fun createTask(form: TaskForm): Long =
         withContext(io) {
-            dataSource.insertTask(form, dueRemindersFor(form, current = null).distinct().sorted().map { TaskReminder(it) })
+            dataSource.insertTask(form, storedRemindersFor(form, current = null))
         }
 
-    /**
-     * The before-due leads to store for [form], given the task as it was.
-     *
-     * A task that gets its due date in this write and names no reminder of its
-     * own takes the list's or the app's default *as its own reminders*. The
-     * default is this device's setting, which nothing else can see; stored on
-     * the task, it travels with it to the server and fires on every client.
-     * The cost is tasks.org's: changing the default later does not reach the
-     * tasks that already have it.
-     *
-     * A task that already had a due date keeps what the form says, so an
-     * edit that clears every reminder means "use the default here" as before —
-     * with one exception. Switching between timed and all-day swaps the
-     * default it was given for the other kind's, as long as the reminders are
-     * still exactly that default: a timed 15 minutes is no lead for an all-day
-     * task, which the planner used to sort out by itself while the default
-     * stayed unstored.
-     */
-    private suspend fun dueRemindersFor(form: TaskForm, current: Task?): List<Int> {
-        if (form.due == null) return form.reminders
-        val hadDue = current?.due != null
-        if (!hadDue) {
-            if (form.reminders.isNotEmpty()) return form.reminders
-            return settingsPrefs.settings.first().defaultLeadsFor(form.listId, form.isAllDay)
-        }
-        if (current.isAllDay == form.isAllDay || form.reminders.isEmpty()) return form.reminders
-        val settings = settingsPrefs.settings.first()
-        val previous = settings.defaultLeadsFor(current.listId, current.isAllDay)
-        return if (form.reminders.sorted() == previous.sorted()) settings.defaultLeadsFor(form.listId, form.isAllDay)
-        else form.reminders
-    }
+    private suspend fun storedRemindersFor(form: TaskForm, current: Task?): List<TaskReminder> =
+        StoredReminders.of(
+            form,
+            current,
+            settingsPrefs.settings.first(),
+            Clock.System.now().toEpochMilliseconds(),
+            ZoneId.systemDefault(),
+        )
 
     override suspend fun duplicateTask(taskId: Long, occurrenceStart: Instant?): Long =
         withContext(io) {
@@ -179,9 +157,6 @@ class TasksRepositoryImpl @Inject constructor(
         return id
     }
 
-    override suspend fun reminderFor(taskId: Long): Int? =
-        withContext(io) { runCatching { dataSource.alarms()[taskId]?.minutesBefore }.getOrNull() }
-
     override suspend fun remindersFor(taskId: Long): List<TaskReminder> =
         withContext(io) { runCatching { dataSource.reminders()[taskId].orEmpty() }.getOrDefault(emptyList()) }
 
@@ -205,7 +180,7 @@ class TasksRepositoryImpl @Inject constructor(
             val seen = current?.lastModified
             if (seen != null && seen != expectedLastModified) throw TaskConflictException(taskId)
         }
-        val reminders = dueRemindersFor(form, current)
+        val reminders = storedRemindersFor(form, current)
         val seriesId = current?.seriesId
         val occurrence = current?.occurrenceStart
         if (seriesId != null && occurrence != null) {
@@ -260,7 +235,7 @@ class TasksRepositoryImpl @Inject constructor(
             val current = dataSource.task(taskId, occurrenceStart)
             val seriesId = current?.seriesId
             val occurrence = current?.occurrenceStart
-            if (seriesId == null || occurrence == null) return@withContext deleteWithSubtasks(taskId)
+            if (seriesId == null || occurrence == null) return@withContext dataSource.deleteWithSubtasks(taskId)
             when (scope) {
                 RecurringScope.ThisOccurrence ->
                     // An override row deletes itself into an EXDATE; a generated
@@ -268,17 +243,9 @@ class TasksRepositoryImpl @Inject constructor(
                     if (current.taskId != seriesId) dataSource.deleteTask(current.taskId)
                     else dataSource.deleteOccurrence(seriesId, occurrence)
                 RecurringScope.ThisAndFollowing -> dataSource.deleteFollowing(seriesId, occurrence)
-                RecurringScope.AllOccurrences -> deleteWithSubtasks(seriesId)
+                RecurringScope.AllOccurrences -> dataSource.deleteWithSubtasks(seriesId)
             }
         }
-
-    /** A parent goes with its subtasks; left behind they would hang off a tombstone. */
-    private fun deleteWithSubtasks(taskId: Long) {
-        dataSource.subtasks(taskId).map { it.taskId }.distinct()
-            .filter { it != taskId }
-            .forEach { dataSource.deleteTask(it) }
-        dataSource.deleteTask(taskId)
-    }
 
     override suspend fun createLocalList(name: String, color: Int): Long =
         withContext(io) { dataSource.createLocalList(name, color) }

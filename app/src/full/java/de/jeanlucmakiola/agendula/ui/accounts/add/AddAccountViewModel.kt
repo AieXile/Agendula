@@ -77,7 +77,12 @@ sealed interface AddAccountStep {
         val input: String = "",
         /** A cause, not a message — the screen owns the wording. */
         val error: CalDavDiscovery.Outcome.Cause? = null,
-    ) : AddAccountStep
+        /** The email address found no server, so a hosted choice asks for its URL instead. */
+        val manualServer: Boolean = false,
+    ) : AddAccountStep {
+        /** Whether the field takes an email address rather than a server URL. */
+        val asksForEmail: Boolean get() = choice.provider?.hosted == true && !manualServer
+    }
 
     data class Working(val message: AddAccountMessage.Progress) : AddAccountStep
 
@@ -279,6 +284,11 @@ class AddAccountViewModel @Inject constructor(
         get() = handle[KEY_REAUTH_ACCOUNT]
         set(value) { handle[KEY_REAUTH_ACCOUNT] = value }
 
+    /** The email that found no server; Back returns to it from the server field. */
+    private var fallbackEmail: String?
+        get() = handle[KEY_FALLBACK_EMAIL]
+        set(value) { handle[KEY_FALLBACK_EMAIL] = value }
+
     /** The username the credentials step starts with on a re-authentication. */
     private var suggestedUsername: String
         get() = handle[KEY_SUGGESTED_USERNAME] ?: ""
@@ -370,6 +380,7 @@ class AddAccountViewModel @Inject constructor(
         // one is not an answer to this one.
         if (picked != choice) addressInput = ""
         choice = picked
+        clearFallback()
         val quirk = picked.provider?.let(ServerQuirk::forProvider)
         val setup = quirk?.hasSetupSteps == true
         updateState {
@@ -430,11 +441,10 @@ class AddAccountViewModel @Inject constructor(
         addressInput = value
         updateState {
             it.copy(
-                step = AddAccountStep.EnterAddress(picked, value),
+                step = addressStep(value),
                 // The service's own rule outranks the one the typed host implies:
                 // it was chosen deliberately, and it is known before a key is hit.
-                quirk = picked.provider?.let(ServerQuirk::forProvider)
-                    ?: ServerQuirk.forInput(value),
+                quirk = quirkFor(value),
             )
         }
     }
@@ -505,11 +515,45 @@ class AddAccountViewModel @Inject constructor(
                 // would make it permanently unreachable.
                 CalDavDiscovery.Outcome.Unauthenticated -> offerSignIn()
 
-                is CalDavDiscovery.Outcome.NotCalDav -> backToAddress(outcome.cause)
+                is CalDavDiscovery.Outcome.NotCalDav -> backToAddressOrServer(outcome.cause)
 
-                is CalDavDiscovery.Outcome.Failed -> backToAddress(outcome.cause)
+                is CalDavDiscovery.Outcome.Failed -> backToAddressOrServer(outcome.cause)
             }
         }
+    }
+
+    /**
+     * An email address whose domain has no CalDAV server goes straight to the
+     * server field rather than an error with nowhere to go; the email stays as
+     * the username. A domain nothing answered for may also be a typo or no
+     * network, so that message stays visible on the server field. Any other
+     * failure keeps its own message on the email field.
+     */
+    private fun backToAddressOrServer(cause: CalDavDiscovery.Outcome.Cause) {
+        val email = ServiceDiscovery.emailOf(typedInput)
+        if (fallbackEmail != null || email == null || cause !in NO_SERVER_FOUND) {
+            return backToAddress(cause)
+        }
+        fallbackEmail = email
+        addressInput = ""
+        updateState {
+            it.copy(
+                step = addressStep("", cause.takeIf { it == CalDavDiscovery.Outcome.Cause.UNREACHABLE }),
+                quirk = quirkFor(""),
+            )
+        }
+    }
+
+    private fun clearFallback() {
+        fallbackEmail = null
+    }
+
+    /**
+     * The username the credentials step starts with: a re-authentication's, else
+     * the email that fell back to the server field — or one typed into it.
+     */
+    private fun prefilledUsername(): String = suggestedUsername.ifBlank {
+        fallbackEmail?.let { ServiceDiscovery.emailOf(typedInput) ?: it }.orEmpty()
     }
 
     /** Step 3a → re-run discovery with the password the user typed. */
@@ -549,8 +593,8 @@ class AddAccountViewModel @Inject constructor(
 
                 CalDavDiscovery.Outcome.Unauthenticated -> credentialsRejected()
 
-                is CalDavDiscovery.Outcome.NotCalDav -> backToAddress(outcome.cause)
-                is CalDavDiscovery.Outcome.Failed -> backToAddress(outcome.cause)
+                is CalDavDiscovery.Outcome.NotCalDav -> backToAddressOrServer(outcome.cause)
+                is CalDavDiscovery.Outcome.Failed -> backToAddressOrServer(outcome.cause)
             }
         }
     }
@@ -577,7 +621,7 @@ class AddAccountViewModel @Inject constructor(
             updateState {
                 it.copy(
                     step = AddAccountStep.EnterCredentials(
-                        username = suggestedUsername,
+                        username = prefilledUsername(),
                         error = quirkHint(),
                     ),
                 )
@@ -803,7 +847,7 @@ class AddAccountViewModel @Inject constructor(
         pollJob?.cancel()
         updateState {
             it.copy(
-                step = AddAccountStep.EnterCredentials(username = suggestedUsername, error = null),
+                step = AddAccountStep.EnterCredentials(username = prefilledUsername(), error = null),
                 openInBrowser = null,
             )
         }
@@ -916,7 +960,17 @@ class AddAccountViewModel @Inject constructor(
         // Back into the errand when there was one, so the steps can be re-read
         // without starting the flow again — that is the screen people return to.
         is AddAccountStep.EnterAddress -> {
-            updateState { it.copy(step = providerOrSetupStep(), fatal = null) }
+            val email = fallbackEmail
+            if (email != null) {
+                clearFallback()
+                addressInput = email
+                typedInput = email
+                updateState {
+                    it.copy(step = addressStep(email), fatal = null, quirk = quirkFor(email))
+                }
+            } else {
+                updateState { it.copy(step = providerOrSetupStep(), fatal = null) }
+            }
             true
         }
 
@@ -990,6 +1044,7 @@ class AddAccountViewModel @Inject constructor(
         hostsNeedingAuth = emptyList()
         reauthAccountId = null
         suggestedUsername = ""
+        fallbackEmail = null
         current = AddAccountUiState()
     }
 
@@ -1119,8 +1174,7 @@ class AddAccountViewModel @Inject constructor(
         reauthenticating = reauthAccountId != null,
         // Derived rather than saved: it is a pure function of the choice and the
         // address, both of which are.
-        quirk = choice?.provider?.let(ServerQuirk::forProvider)
-            ?: ServerQuirk.forInput(addressInput),
+        quirk = quirkFor(addressInput),
     )
 
     /**
@@ -1148,8 +1202,8 @@ class AddAccountViewModel @Inject constructor(
             val credentials = CalDavGateway.Credentials(username, appPassword, root)
             when (val outcome = gateway.discover(target, credentials)) {
                 is CalDavDiscovery.Outcome.Found -> onDiscovered(outcome, selection)
-                is CalDavDiscovery.Outcome.NotCalDav -> backToAddress(outcome.cause)
-                is CalDavDiscovery.Outcome.Failed -> backToAddress(outcome.cause)
+                is CalDavDiscovery.Outcome.NotCalDav -> backToAddressOrServer(outcome.cause)
+                is CalDavDiscovery.Outcome.Failed -> backToAddressOrServer(outcome.cause)
                 // The credential we were holding is no longer accepted, which on
                 // this path is indistinguishable from never having had one.
                 is CalDavDiscovery.Outcome.NeedsAuthentication -> {
@@ -1250,6 +1304,7 @@ class AddAccountViewModel @Inject constructor(
         choice = choice ?: ProviderChoice.OtherServer,
         input = input,
         error = error,
+        manualServer = fallbackEmail != null,
     )
 
     /** What was actually set up, named the way the accounts list will name it. */
@@ -1286,12 +1341,13 @@ class AddAccountViewModel @Inject constructor(
         updateState { it.copy(step = transform(step)) }
     }
 
+    /** The chosen service's quirk, else the one the typed host implies. */
+    private fun quirkFor(input: String): ServerQuirk? =
+        choice?.provider?.let(ServerQuirk::forProvider) ?: ServerQuirk.forInput(input)
+
     /** The provider-specific reason a correct-looking password gets rejected. */
     private fun quirkHint(): AddAccountMessage? =
-        when (
-            val quirk = choice?.provider?.let(ServerQuirk::forProvider)
-                ?: ServerQuirk.forInput(typedInput)
-        ) {
+        when (val quirk = quirkFor(typedInput)) {
             ServerQuirk.FASTMAIL_APP_PASSWORD,
             ServerQuirk.ICLOUD_APP_SPECIFIC_PASSWORD,
             -> AddAccountMessage.Quirk(quirk)
@@ -1377,6 +1433,14 @@ class AddAccountViewModel @Inject constructor(
         const val KEY_SUMMARY_LISTS = "add_account.summary_lists"
         const val KEY_REAUTH_ACCOUNT = "add_account.reauth_account"
         const val KEY_SUGGESTED_USERNAME = "add_account.suggested_username"
+        const val KEY_FALLBACK_EMAIL = "add_account.fallback_email"
+
+        /** What sends an email to the server field: no CalDAV on its domain, or nothing answering for it. */
+        val NO_SERVER_FOUND = setOf(
+            CalDavDiscovery.Outcome.Cause.NOT_A_DAV_SERVER,
+            CalDavDiscovery.Outcome.Cause.NO_CALENDAR_SUPPORT,
+            CalDavDiscovery.Outcome.Cause.UNREACHABLE,
+        )
 
         /**
          * What to type for a server, from the principal an account stored.

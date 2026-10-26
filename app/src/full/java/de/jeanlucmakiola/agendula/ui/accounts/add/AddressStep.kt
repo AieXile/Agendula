@@ -20,7 +20,7 @@ import de.jeanlucmakiola.agendula.R
  */
 @Composable
 internal fun AddressStep(step: AddAccountStep.EnterAddress, viewModel: AddAccountViewModel) {
-    val hosted = step.choice.provider?.hosted == true
+    val hosted = step.asksForEmail
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         FieldRow(
             label = if (hosted) {
@@ -30,7 +30,7 @@ internal fun AddressStep(step: AddAccountStep.EnterAddress, viewModel: AddAccoun
             },
             value = step.input,
             onValueChange = viewModel::onAddressChanged,
-            placeholder = step.choice.provider?.primaryDomain?.let { "you@$it" }
+            placeholder = step.choice.provider?.primaryDomain?.takeIf { hosted }?.let { "you@$it" }
                 ?: stringResource(R.string.add_account_server_hint),
             error = step.error?.let { stringResource(it.message) },
             // An email address is still typed with the URI keyboard: it is the

@@ -874,11 +874,11 @@ class CollectionSyncer(
          * [incoming] with each alarm we uploaded ourselves put back to the lead
          * we hold for it.
          *
-         * ⚠️ The wire is coarser than the row: an all-day lead goes out in whole
-         * days, and a before-start reminder on a task without a start goes out
-         * before-due. Taking the round trip at its word would quietly turn a
-         * 15-minute all-day reminder into "on the day", or a before-start one
-         * into a before-due one, the first time the task is downloaded again.
+         * ⚠️ The wire is coarser than the row: a lead past the end of its
+         * anchor is clamped, and a before-start reminder on a task without a
+         * start goes out before-due. Taking the round trip at its word would
+         * quietly turn a before-start reminder into a before-due one the first
+         * time the task is downloaded again.
          * An alarm that comes back as exactly what we would have sent has not
          * been changed, so the row's own lead stands.
          */

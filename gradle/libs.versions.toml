@@ -51,10 +51,9 @@ okhttp = "4.12.0"
 xpp3 = "1.1.6"
 
 # --- :caldav (our CalDAV protocol layer) -------------------------------------
-# SRV/TXT lookups for RFC 6764 discovery. Android's resolver exposes no SRV API
-# below API 29's DnsResolver (which is callback-only and cannot do TXT paths),
-# and JNDI's DNS provider does not exist on Android at all. dnsjava is what DAVx5
-# uses. BSD-3 — it goes on the attribution screen with the rest.
+# Parses the raw SRV/TXT answers for RFC 6764 discovery; the lookup itself goes
+# through Android's DnsResolver, so it follows the network and Private DNS.
+# BSD-3 — it goes on the attribution screen with the rest.
 dnsjava = "3.6.3"
 # WebDAV-Push delivery. The connector only: DAVx5 also ships the embedded FCM
 # distributor, which pulls in Play Services and would get us flagged on F-Droid.

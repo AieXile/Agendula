@@ -14,7 +14,11 @@ import de.jeanlucmakiola.agendula.domain.SavedFilter
 import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFilter
 import de.jeanlucmakiola.agendula.domain.TaskFormField
+import de.jeanlucmakiola.agendula.domain.TaskReminder
+import de.jeanlucmakiola.agendula.domain.asTaskReminder
+import de.jeanlucmakiola.agendula.domain.asReminderLead
 import de.jeanlucmakiola.agendula.domain.TaskSortOrder
+import de.jeanlucmakiola.floret.reminders.ReminderLead
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.ReminderOverrideCodec
 import de.jeanlucmakiola.floret.reminders.applyReminderOverride
@@ -57,10 +61,10 @@ data class Settings(
     val dynamicColor: Boolean = true,
     /** The list a new task defaults to; `null` = first available. */
     val defaultListId: Long? = null,
-    /** Default reminders, as minutes before due (0 = at due time); empty = none. */
-    val defaultReminderMinutes: List<Int> = listOf(0),
-    /** Default reminders for all-day tasks, as days-scale minutes before [allDayReminderMinuteOfDay]. */
-    val defaultAllDayReminderMinutes: List<Int> = listOf(0),
+    /** Default reminders (0 before due = at due time); empty = none. */
+    val defaultReminders: List<ReminderLead> = listOf(ReminderLead(0)),
+    /** Default reminders for all-day tasks, in whole days, rung at [allDayReminderMinuteOfDay]. */
+    val defaultAllDayReminders: List<ReminderLead> = listOf(ReminderLead(0)),
     /** Local time (minutes from midnight) an all-day task's reminder counts back from. */
     val allDayReminderMinuteOfDay: Int = DEFAULT_ALL_DAY_REMINDER_MINUTE,
     /** Master switch for due reminders; off clears every scheduled alarm. */
@@ -74,13 +78,13 @@ data class Settings(
      */
     val bottomAddBar: Boolean = false,
     /**
-     * Per-list overrides of [defaultReminderMinutes]: a list present in the map
+     * Per-list overrides of [defaultReminders]: a list present in the map
      * overrides the global default (an empty list = no reminder); absent =
      * inherit.
      */
-    val perListReminderOverride: Map<Long, List<Int>> = emptyMap(),
-    /** Per-list overrides of [defaultAllDayReminderMinutes], same shape as [perListReminderOverride]. */
-    val perListAllDayReminderOverride: Map<Long, List<Int>> = emptyMap(),
+    val perListReminderOverride: Map<Long, List<ReminderLead>> = emptyMap(),
+    /** Per-list overrides of [defaultAllDayReminders], same shape as [perListReminderOverride]. */
+    val perListAllDayReminderOverride: Map<Long, List<ReminderLead>> = emptyMap(),
     /** Optional edit-form fields shown by default; the rest sit behind "More fields". */
     val defaultEditFields: Set<TaskFormField> = emptySet(),
     val sortOrder: TaskSortOrder = TaskSortOrder.DUE,
@@ -109,16 +113,16 @@ data class Settings(
         }
 
     /** The lead times for a task in [listId]: its override if set, else the global default. */
-    fun reminderLeadsFor(listId: Long): List<Int> =
-        perListReminderOverride.reminderLeadsFor(listId, defaultReminderMinutes)
+    fun reminderLeadsFor(listId: Long): List<ReminderLead> =
+        perListReminderOverride.reminderLeadsFor(listId, defaultReminders)
 
     /** The lead times for an all-day task in [listId]. */
-    fun allDayReminderLeadsFor(listId: Long): List<Int> =
-        perListAllDayReminderOverride.reminderLeadsFor(listId, defaultAllDayReminderMinutes)
+    fun allDayReminderLeadsFor(listId: Long): List<ReminderLead> =
+        perListAllDayReminderOverride.reminderLeadsFor(listId, defaultAllDayReminders)
 
-    /** The default leads a task in [listId] takes — the one rule for which default applies. */
-    fun defaultLeadsFor(listId: Long, allDay: Boolean): List<Int> =
-        if (allDay) allDayReminderLeadsFor(listId) else reminderLeadsFor(listId)
+    /** The default reminders a task in [listId] takes — the one rule for which default applies. */
+    fun defaultRemindersFor(listId: Long, allDay: Boolean): List<TaskReminder> =
+        (if (allDay) allDayReminderLeadsFor(listId) else reminderLeadsFor(listId)).map { it.asTaskReminder() }
 }
 
 /** App preferences, backed by DataStore. Mirrors Calendula's prefs shape. */
@@ -134,16 +138,18 @@ class SettingsPrefs @Inject constructor(
             dynamicColor = p[DYNAMIC_COLOR] ?: true,
             defaultListId = p[DEFAULT_LIST_ID]?.takeIf { it > 0 },
             // The single lead of earlier versions carries over until a list is saved.
-            defaultReminderMinutes = p[DEFAULT_REMINDERS]?.let(::parseMinutes)
-                ?: listOf(p[REMINDER_LEAD] ?: 0),
-            defaultAllDayReminderMinutes = p[DEFAULT_ALL_DAY_REMINDERS]?.let(::parseMinutes) ?: listOf(0),
+            defaultReminders = p[DEFAULT_REMINDERS]?.let(::parseLeads)
+                ?: listOf(ReminderLead(p[REMINDER_LEAD] ?: 0)),
+            defaultAllDayReminders = p[DEFAULT_ALL_DAY_REMINDERS]?.let(::parseLeads)?.inWholeDays()
+                ?: listOf(ReminderLead(0)),
             allDayReminderMinuteOfDay = p[ALL_DAY_REMINDER_MINUTE]?.takeIf { it in 0 until 24 * 60 }
                 ?: DEFAULT_ALL_DAY_REMINDER_MINUTE,
             remindersEnabled = p[REMINDERS_ENABLED] ?: true,
             showAddSubtaskRow = p[SHOW_ADD_SUBTASK_ROW] ?: true,
             bottomAddBar = p[BOTTOM_ADD_BAR] ?: false,
-            perListReminderOverride = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]),
-            perListAllDayReminderOverride = reminderCodec.parse(p[LIST_ALL_DAY_REMINDER_OVERRIDE]),
+            perListReminderOverride = reminderCodec.parseLeads(p[LIST_REMINDER_OVERRIDE]),
+            perListAllDayReminderOverride = reminderCodec.parseLeads(p[LIST_ALL_DAY_REMINDER_OVERRIDE])
+                .mapValues { it.value.inWholeDays() },
             defaultEditFields = p[DEFAULT_EDIT_FIELDS].orEmpty()
                 .mapNotNull { name -> runCatching { TaskFormField.valueOf(name) }.getOrNull() }
                 .toSet(),
@@ -189,12 +195,12 @@ class SettingsPrefs @Inject constructor(
         if (id == null) it.remove(DEFAULT_LIST_ID) else it[DEFAULT_LIST_ID] = id
     }
 
-    suspend fun setDefaultReminderMinutes(minutes: List<Int>) = dataStore.edit {
-        it[DEFAULT_REMINDERS] = minutes.normalizeReminders().joinToString(",")
+    suspend fun setDefaultReminders(leads: List<ReminderLead>) = dataStore.edit {
+        it[DEFAULT_REMINDERS] = leads.normalizeReminders().joinToString(",") { lead -> lead.toToken() }
     }
 
-    suspend fun setDefaultAllDayReminderMinutes(minutes: List<Int>) = dataStore.edit {
-        it[DEFAULT_ALL_DAY_REMINDERS] = minutes.normalizeReminders().joinToString(",")
+    suspend fun setDefaultAllDayReminders(leads: List<ReminderLead>) = dataStore.edit {
+        it[DEFAULT_ALL_DAY_REMINDERS] = leads.normalizeReminders().joinToString(",") { lead -> lead.toToken() }
     }
 
     suspend fun setAllDayReminderMinuteOfDay(minuteOfDay: Int) =
@@ -247,16 +253,16 @@ class SettingsPrefs @Inject constructor(
 
     /** Set (or clear, via [ReminderOverride.Inherit]) a list's reminder override. */
     suspend fun setListReminderOverride(listId: Long, override: ReminderOverride) = dataStore.edit { p ->
-        val current = reminderCodec.parse(p[LIST_REMINDER_OVERRIDE]).toMutableMap()
+        val current = reminderCodec.parseLeads(p[LIST_REMINDER_OVERRIDE]).toMutableMap()
         current.applyReminderOverride(listId, override)
-        p[LIST_REMINDER_OVERRIDE] = reminderCodec.serialize(current)
+        p[LIST_REMINDER_OVERRIDE] = reminderCodec.serializeLeads(current)
     }
 
     /** Set (or clear) a list's all-day reminder override. */
     suspend fun setListAllDayReminderOverride(listId: Long, override: ReminderOverride) = dataStore.edit { p ->
-        val current = reminderCodec.parse(p[LIST_ALL_DAY_REMINDER_OVERRIDE]).toMutableMap()
+        val current = reminderCodec.parseLeads(p[LIST_ALL_DAY_REMINDER_OVERRIDE]).toMutableMap()
         current.applyReminderOverride(listId, override)
-        p[LIST_ALL_DAY_REMINDER_OVERRIDE] = reminderCodec.serialize(current)
+        p[LIST_ALL_DAY_REMINDER_OVERRIDE] = reminderCodec.serializeLeads(current)
     }
 
     suspend fun setHiddenFromSmartLists(listId: Long, hidden: Boolean) = dataStore.edit { p ->
@@ -334,6 +340,13 @@ class SettingsPrefs @Inject constructor(
  */
 private val reminderCodec = ReminderOverrideCodec.DEFAULT
 
-/** `5,30` → [5, 30]; an empty string is an explicit "no reminder". */
-private fun parseMinutes(stored: String): List<Int> =
-    stored.split(',').mapNotNull { it.trim().toIntOrNull()?.takeIf { m -> m >= 0 } }.normalizeReminders()
+/** `s5,30` → [5 before start, 30 before due]; an empty string is an explicit "no reminder". */
+private fun parseLeads(stored: String): List<ReminderLead> =
+    stored.split(',').mapNotNull { ReminderLead.parse(it)?.takeIf { lead -> lead.minutes >= 0 } }.normalizeReminders()
+
+/**
+ * All-day defaults as whole days. Before 1.2 an all-day default could be hours
+ * before the all-day time; a lead that is not whole days now names a time of day.
+ */
+private fun List<ReminderLead>.inWholeDays(): List<ReminderLead> =
+    map { it.asTaskReminder().inWholeDays().asReminderLead() }.normalizeReminders()

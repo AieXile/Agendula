@@ -14,6 +14,8 @@ fun testTask(
     completedAt: Instant? = null,
     parentId: Long? = null,
     tags: List<String> = emptyList(),
+    start: Instant? = null,
+    created: Instant? = null,
 ): Task = Task(
     taskId = id,
     listId = listId,
@@ -24,7 +26,7 @@ fun testTask(
     priority = priority,
     status = status,
     percentComplete = null,
-    start = null,
+    start = start,
     due = due,
     isAllDay = isAllDay,
     timeZone = null,
@@ -37,7 +39,7 @@ fun testTask(
     isRecurring = false,
     occurrenceStart = null,
     distanceFromCurrent = 0,
-    created = null,
+    created = created,
     lastModified = null,
     tags = tags,
 )

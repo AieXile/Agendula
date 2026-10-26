@@ -105,6 +105,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE list_id = :listId AND is_deleted = 0 AND master_id IS NULL")
     fun exportTasks(listId: Long): List<TaskEntity>
 
+    /** Every row but the tombstones, overrides included — what the published provider lays out. */
+    @Query("SELECT * FROM tasks WHERE is_deleted = 0")
+    fun live(): List<TaskEntity>
+
     @Query("SELECT * FROM tasks WHERE is_dirty = 1")
     fun dirty(): List<TaskEntity>
 

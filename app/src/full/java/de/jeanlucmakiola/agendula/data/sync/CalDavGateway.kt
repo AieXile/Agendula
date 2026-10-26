@@ -4,9 +4,9 @@ import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.caldav.AppPassword
 import de.jeanlucmakiola.caldav.CalDavDiscovery
 import de.jeanlucmakiola.caldav.CalDavHttp
-import de.jeanlucmakiola.caldav.DnsJavaResolver
 import de.jeanlucmakiola.caldav.NextcloudLoginFlow
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import java.util.concurrent.TimeUnit
@@ -75,7 +75,8 @@ class OkHttpCalDavGateway @Inject constructor(
         val client = credentials?.let {
             CalDavHttp.authenticated(userAgent, it.username, it.password, it.origin)
         } ?: CalDavHttp.anonymous(userAgent)
-        CalDavDiscovery(client, DnsJavaResolver()).discover(target)
+        val job = coroutineContext.job
+        CalDavDiscovery(client, SystemDnsResolver { !job.isActive }).discover(target)
     }
 
     override suspend fun startLoginFlow(server: HttpUrl): NextcloudLoginFlow.Flow? =

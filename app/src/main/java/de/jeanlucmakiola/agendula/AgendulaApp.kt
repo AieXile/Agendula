@@ -16,6 +16,7 @@ import de.jeanlucmakiola.agendula.data.reminders.ReminderScheduler
 import de.jeanlucmakiola.agendula.data.reminders.TaskNotifier
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.StartupGate
+import de.jeanlucmakiola.agendula.data.tasks.provider.ProviderSnapshotSource
 import de.jeanlucmakiola.agendula.data.tasks.room.DatabaseCheckpoint
 import de.jeanlucmakiola.agendula.widget.TaskWidgetUpdater
 import de.jeanlucmakiola.floret.crash.CrashConfig
@@ -87,6 +88,7 @@ class AgendulaApp : Application(), Configuration.Provider {
                 scheduler.sync()
             }
             runCatching { entryPoint.taskWidgetUpdater().start() }
+            runCatching { entryPoint.providerSnapshotSource().start() }
             runCatching { ReminderMaintenanceWorker.schedule(this@AgendulaApp) }
         }
     }
@@ -122,5 +124,6 @@ class AgendulaApp : Application(), Configuration.Provider {
         fun taskNotifier(): TaskNotifier
         fun channelRefreshers(): Set<@JvmSuppressWildcards ChannelRefresher>
         fun taskWidgetUpdater(): TaskWidgetUpdater
+        fun providerSnapshotSource(): ProviderSnapshotSource
     }
 }

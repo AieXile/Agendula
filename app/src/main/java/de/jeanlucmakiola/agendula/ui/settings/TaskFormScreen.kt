@@ -42,10 +42,16 @@ internal fun TaskFormScreen(
     state: SettingsUiState,
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
+    visible: Boolean,
 ) {
     var showDefaultList by remember { mutableStateOf(false) }
 
-    CollapsingScaffold(title = stringResource(R.string.settings_section_task_form), onBack = onBack) {
+    CollapsingScaffold(
+        title = stringResource(R.string.settings_section_task_form),
+        onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
+    ) {
         SettingsHint(stringResource(R.string.settings_form_fields_hint))
         Spacer(Modifier.height(8.dp))
         val fields = TaskFormField.entries

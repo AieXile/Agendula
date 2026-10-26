@@ -464,14 +464,12 @@
     <string name="recurring_scope_series">جميع المهام في السلسلة</string>
     <string name="error_blank_title">أدخل عنوانًا.</string>
     <string name="error_no_list">اختر قائمة.</string>
-    <string name="error_reminder_without_due">عيِّن موعد استحقاق لاستخدام التذكير.</string>
     <string name="error_recurrence_without_date">تحتاج مهمة متكررة لموعد بدء أو استحقاق.</string>
     <string name="edit_recurrence_none">لا يتكرر</string>
     <string name="edit_tag_remove">إزالة الوسم %1$s</string>
     <string name="edit_discard_body">لم يتم حفظ تغييراتك لهذه المهمة.</string>
     <string name="edit_scope_title">حفظ التغييرات لمهمة متكررة</string>
     <string name="edit_reminder_add_first">أضف تذكيرًا (بخلاف ذلك الافتراضي ينطبق)</string>
-    <string name="detail_reminder_before_start">%1$s (قبل البدء)</string>
     <string name="subtask_progress">%1$d / %2$d</string>
     <string name="detail_delete_body">سيتم حذف هذه المهمة.</string>
     <plurals name="detail_delete_body_subtasks">

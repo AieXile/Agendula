@@ -31,8 +31,8 @@ internal fun AccountSections(
     // Which account the detail screen is showing; the section alone cannot say.
     var openAccount by rememberSaveable(initialAccountId) { mutableStateOf(initialAccountId) }
 
-    // Accounts stays composed under Add account, for the same reason Storage
-    // stays composed under Export: the deeper screen slides over it.
+    // Accounts stays composed under Add account, for the same reason Backup
+    // stays composed under export and import: the deeper screen slides over it.
     val accountsOpen = section == SettingsSection.Accounts ||
         section?.parent == SettingsSection.Accounts
     SlideInSection(visible = accountsOpen) {
@@ -50,9 +50,11 @@ internal fun AccountSections(
             onOpenStorage = { onSection(SettingsSection.Storage) },
             onBack = { onSection(null) },
             viewModel = accountsViewModel,
+            visible = accountsOpen,
         )
     }
-    SlideInSection(visible = section == SettingsSection.Account) {
+    val accountOpen = section == SettingsSection.Account
+    SlideInSection(visible = accountOpen) {
         openAccount?.let { id ->
             AccountDetailScreen(
                 accountId = id,
@@ -61,6 +63,7 @@ internal fun AccountSections(
                 onSignInAgain = signInAgain,
                 onOpenStorage = { onSection(SettingsSection.Storage) },
                 viewModel = accountsViewModel,
+                visible = accountOpen,
             )
         }
     }

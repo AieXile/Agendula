@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Header to first task row in the Tasks widget; shared with its picker preview. -->
+    <dimen name="widget_tasks_header_gap">8dp</dimen>
+    <!-- Header to anything that brings its own top spacing (a section label, a message). -->
+    <dimen name="widget_tasks_header_gap_tight">2dp</dimen>
+</resources>

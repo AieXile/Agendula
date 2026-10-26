@@ -10,6 +10,8 @@ import de.jeanlucmakiola.agendula.domain.ical.ICalParser
 import de.jeanlucmakiola.agendula.domain.ical.ICalProperty
 import de.jeanlucmakiola.agendula.domain.ical.ICalSerializer
 import de.jeanlucmakiola.agendula.domain.ical.ICalValues
+import de.jeanlucmakiola.agendula.domain.DAY_MINUTES
+import de.jeanlucmakiola.agendula.domain.MIN_ALL_DAY_LEAD
 import kotlin.math.roundToLong
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -31,8 +33,9 @@ import kotlin.time.Instant
  * - location alarms (`X-APPLE-PROXIMITY`, RFC 9074 `PROXIMITY`, a nested
  *   component) and Apple's `19760401T005545Z` sentinel trigger they carry;
  * - repeating alarms (`REPEAT`/`DURATION`) and RFC 9074 snoozes (`RELATED-TO`);
- * - a trigger *after* its anchor. The planner coerces a negative lead to 0, so
- *   it would fire at the wrong time;
+ * - a trigger *after* its anchor — on an all-day task, after the end of its
+ *   day. The planner coerces a negative lead to 0, so it would fire at the
+ *   wrong time;
  * - an absolute trigger on a recurring task, or on one with no `DUE` to count
  *   back from.
  *
@@ -50,18 +53,17 @@ import kotlin.time.Instant
  * `RELATED=END` counts from `DUE`. `RELATED=START` (the default) counts from
  * `DTSTART` — except when `DTSTART` equals `DUE`, or when there is no
  * `DTSTART` but there is a `DUE`. Apple writes the latter shape (against §3.8.6.3,
- * which wants `DTSTART` present), and reading it as a before-due reminder is
- * what makes it editable here: the editor only shows before-due rows.
+ * which wants `DTSTART` present).
  *
  * ## All-day tasks
  *
- * The local fire time of day is a device preference this mapper cannot see, so
- * an all-day lead is whole days, written `-P<n>D` against `DUE`'s midnight. Read
- * back, any trigger on an all-day task rounds to the nearest whole day.
+ * A relative trigger counts from the date's midnight, so the lead is the
+ * reminder as [de.jeanlucmakiola.agendula.domain.TaskReminder.allDay] reads it:
+ * `-P1D` is a day before at this device's all-day time, which this mapper cannot
+ * see, and `PT9H` is 09:00 on the day. An absolute trigger has no zone to read
+ * a time of day in, so it rounds to the nearest whole day.
  */
 object AlarmCodec {
-
-    private const val DAY_MINUTES = 24 * 60
 
     /** Apple's placeholder trigger for location alarms. Never a real time. */
     private const val APPLE_SENTINEL = "19760401T005545Z"
@@ -114,16 +116,11 @@ object AlarmCodec {
             else -> return null
         }
         val before = -seconds
-        val minutes = if (task.isAllDay) {
-            // Rounded before the sign check: `PT9H` on a date-only DUE is
-            // "09:00 on the day", which is this device's "on the day".
-            roundToDays(before)
-        } else {
-            // A lead in seconds is not one the planner can reproduce.
-            if (before % 60 != 0L) return null
-            before / 60
-        }
-        return minutes.toIntOrNull()?.let { Lead(it, reference) }
+        // A lead in seconds is not one the planner can reproduce.
+        if (before % 60 != 0L) return null
+        val minutes = before / 60
+        val latest = if (task.isAllDay) MIN_ALL_DAY_LEAD.toLong() else 0L
+        return minutes.takeIf { it in latest..Int.MAX_VALUE }?.let { Lead(it.toInt(), reference) }
     }
 
     private fun absoluteLead(trigger: ICalProperty, task: TaskEntity): Lead? {
@@ -143,6 +140,17 @@ object AlarmCodec {
         return minutes.toIntOrNull()?.let { Lead(it, AlarmReference.DUE) }
     }
 
+    /**
+     * [read] as builds before 1.2 stored it on an all-day task: rounded to whole
+     * days. Such a row keeps the other client's time of day instead of overwriting it.
+     */
+    private fun readAsWholeDays(read: Lead, task: TaskEntity): Lead? =
+        if (task.isAllDay && read.minutesBefore % DAY_MINUTES != 0) {
+            read.copy(minutesBefore = roundToDays(read.minutesBefore * 60L).coerceAtLeast(0).toInt())
+        } else {
+            null
+        }
+
     /** Nearest whole day, in minutes. */
     private fun roundToDays(seconds: Long): Long =
         (seconds / 86_400.0).roundToLong() * DAY_MINUTES
@@ -156,10 +164,10 @@ object AlarmCodec {
      * too — because `RELATED=END` without `DUE` is a resource the server
      * refuses ([VTodoMapper.validate]).
      *
-     * ⚠️ A before-start row on a task that has lost its start is written
-     * against `DUE`, which is what the planner fires it from. Leaving it out
-     * would drop it from every other client, and the next download would then
-     * take it off this device too.
+     * ⚠️ A row whose anchor the task has lost is written against the other
+     * date, which is what the planner fires it from. Leaving it out would drop
+     * it from every other client, and the next download would then take it off
+     * this device too.
      *
      * [now] marks an authored alarm `ACKNOWLEDGED` once it is past even the
      * planner's missed-reminder grace, so a client that honours RFC 9074 does
@@ -167,11 +175,15 @@ object AlarmCodec {
      * next download and would silence the late reminder this device still owes.
      */
     fun toVAlarm(row: TaskAlarmEntity, task: TaskEntity, now: Instant): ICalComponent? {
-        val reference = if (row.reference == AlarmReference.START && task.dtstart == null) AlarmReference.DUE
-        else row.reference
+        val reference = when {
+            row.reference == AlarmReference.START && task.dtstart == null -> AlarmReference.DUE
+            row.reference == AlarmReference.DUE && task.due == null -> AlarmReference.START
+            else -> row.reference
+        }
         val lead = Lead(row.minutesBefore, reference)
         row.raw?.let(::parse)?.let { original ->
-            if (resolve(original, task) == lead) return original
+            val read = resolve(original, task)
+            if (read == lead || read != null && readAsWholeDays(read, task) == lead) return original
         }
 
         val anchor = when (reference) {
@@ -179,12 +191,8 @@ object AlarmCodec {
             AlarmReference.START -> task.dtstart
         } ?: return null
         val related = if (reference == AlarmReference.DUE) "END" else "START"
-        val minutes = row.minutesBefore.coerceAtLeast(0).toLong()
-        val seconds = if (task.isAllDay) {
-            -((minutes + DAY_MINUTES / 2) / DAY_MINUTES) * 86_400
-        } else {
-            -minutes * 60
-        }
+        val minutes = row.minutesBefore.coerceAtLeast(if (task.isAllDay) MIN_ALL_DAY_LEAD else 0).toLong()
+        val seconds = -minutes * 60
 
         val properties = mutableListOf(
             ICalProperty("UID", value = row.uid),
@@ -202,13 +210,18 @@ object AlarmCodec {
 
     /**
      * What [row] reads back as once it has been to the server and back — not
-     * always the row itself, because the wire is coarser: an all-day lead is
-     * whole days, and a before-start row on a task without a start goes out
-     * before-due. A download that brings back exactly this has not changed the
+     * always the row itself, because the wire is coarser: a lead past the end
+     * of its anchor is clamped, and a before-start row on a task without a
+     * start goes out before-due. A download that brings back exactly this has not changed the
      * reminder, and the row's own lead must be kept rather than taken from it.
+     *
+     * ⚠️ As authored from the row, not re-emitted from [TaskAlarmEntity.raw]:
+     * a row rounded to whole days before 1.2 re-emits a time of day it does
+     * not hold, and would keep its rounded lead against the very alarm that
+     * carries it.
      */
     fun wireLead(row: TaskAlarmEntity, task: TaskEntity): Lead? =
-        toVAlarm(row, task, Instant.DISTANT_PAST)?.let { resolve(it, task) }
+        toVAlarm(row.copy(raw = null), task, Instant.DISTANT_PAST)?.let { resolve(it, task) }
 
     private fun parse(raw: String): ICalComponent? =
         runCatching { ICalParser.parse(raw) }.getOrNull()?.takeIf { it.name.equals("VALARM", ignoreCase = true) }

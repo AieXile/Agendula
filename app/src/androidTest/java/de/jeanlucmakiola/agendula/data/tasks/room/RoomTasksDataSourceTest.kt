@@ -5,7 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import de.jeanlucmakiola.agendula.data.tasks.TaskQuery
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.TaskForm
 import de.jeanlucmakiola.agendula.domain.TaskStatus
 import org.junit.After
@@ -366,41 +366,23 @@ class RoomTasksDataSourceTest {
     @Test
     fun alarmsRoundTripAndReplaceRatherThanAccumulate() {
         val id = source.insertTask(form(due = now + 1.days))
+        val start = TaskReminder(minutesBefore = 10, fromStart = true)
 
         // The whole reminder, not just the minute count: collapsing it to a bare
-        // Int is what fired an imported START-referenced alarm off DUE, and an
-        // alarm this seam sets from the UI is always due-referenced.
-        source.setAlarm(id, 30)
-        assertThat(source.alarms()[id]).isEqualTo(TaskReminder(minutesBefore = 30))
-
-        source.setAlarm(id, 60)
-        assertThat(db.alarms().forTask(id)).hasSize(1)
-        assertThat(source.alarms()[id]).isEqualTo(TaskReminder(minutesBefore = 60))
-
-        source.setAlarm(id, null)
-        assertThat(source.alarms()).doesNotContainKey(id)
-    }
-
-    @Test
-    fun settingTheEditableReminderLeavesTheOthersAlone() {
-        val id = source.insertTask(form(due = now + 1.days))
-        val start = TaskReminder(minutesBefore = 10, fromStart = true)
-        source.setReminders(id, listOf(start, TaskReminder(30), TaskReminder(120)))
-
-        source.setAlarm(id, 45)
-        assertThat(source.reminders()[id]).containsExactly(start, TaskReminder(30), TaskReminder(45)).inOrder()
-        assertThat(source.alarms()[id]).isEqualTo(TaskReminder(45))
-
-        source.setAlarm(id, null)
+        // Int is what fired an imported START-referenced alarm off DUE.
+        source.setReminders(id, listOf(start, TaskReminder(30)))
         assertThat(source.reminders()[id]).containsExactly(start, TaskReminder(30)).inOrder()
-        assertThat(source.alarms()[id]).isEqualTo(TaskReminder(30))
+
+        source.setReminders(id, listOf(TaskReminder(60)))
+        assertThat(db.alarms().forTask(id)).hasSize(1)
+        assertThat(source.reminders()[id]).containsExactly(TaskReminder(60))
     }
 
     @Test
     fun forkingAnOccurrenceCarriesTheReminderOntoIt() {
         val id = source.insertTask(form(due = now + 1.days))
         makeRecurring(id, now)
-        source.setAlarm(id, 30)
+        source.setReminders(id, listOf(TaskReminder(30)))
         val target = source.tasks(TaskQuery(listId = listId))
             .filter { it.taskId == id }
             .first { it.distanceFromCurrent == 1 }
@@ -417,7 +399,7 @@ class RoomTasksDataSourceTest {
         val original = db.alarms().forTask(id).single()
         db.alarms().update(original.copy(raw = "BEGIN:VALARM\r\nX-VENDOR:keep\r\nEND:VALARM\r\n"))
 
-        source.updateTask(id, form(title = "renamed", due = now + 2.days), dueReminders = listOf(15, 60))
+        source.updateTask(id, form(title = "renamed", due = now + 2.days), reminders = listOf(TaskReminder(15), TaskReminder(60)))
 
         val rows = db.alarms().forTask(id)
         val kept = rows.single { it.minutesBefore == 15 }
@@ -429,13 +411,13 @@ class RoomTasksDataSourceTest {
     }
 
     @Test
-    fun aSaveKeepsABeforeStartReminderTheEditorNeverShows() {
+    fun aSaveWritesBeforeStartAndBeforeDueRemindersAlike() {
         val id = source.insertTask(form(due = now + 1.days))
         source.setReminders(id, listOf(TaskReminder(10, fromStart = true), TaskReminder(30)))
 
-        source.updateTask(id, form(due = now + 1.days), dueReminders = listOf(45))
+        source.updateTask(id, form(due = now + 1.days), reminders = listOf(TaskReminder(5, fromStart = true), TaskReminder(45)))
 
-        assertThat(source.reminders()[id]).containsExactly(TaskReminder(10, fromStart = true), TaskReminder(45))
+        assertThat(source.reminders()[id]).containsExactly(TaskReminder(5, fromStart = true), TaskReminder(45))
     }
 
     @Test
@@ -448,7 +430,7 @@ class RoomTasksDataSourceTest {
             .filter { it.taskId == id }
             .first { it.distanceFromCurrent == 1 }
 
-        source.updateInstance(id, target.occurrenceStart!!, form(title = "moved").copy(listId = work), listOf(60))
+        source.updateInstance(id, target.occurrenceStart!!, form(title = "moved").copy(listId = work), listOf(TaskReminder(60)))
 
         // ⚠️ The master is never written, not even briefly: a sync landing in
         // between would upload the occurrence's reminder for the whole series.
@@ -467,7 +449,7 @@ class RoomTasksDataSourceTest {
             .filter { it.taskId == id }
             .first { it.distanceFromCurrent == 1 }
 
-        val created = source.splitSeries(id, target.occurrenceStart!!, form(title = "later"), listOf(30))
+        val created = source.splitSeries(id, target.occurrenceStart!!, form(title = "later"), listOf(TaskReminder(30)))
 
         assertThat(created).isNotEqualTo(id)
         val copy = db.alarms().forTask(created).single()
@@ -500,12 +482,12 @@ class RoomTasksDataSourceTest {
         val completed = occurrences.first { it.distanceFromCurrent == 1 }.occurrenceStart!!
         val own = occurrences.first { it.distanceFromCurrent == 2 }.occurrenceStart!!
         source.setCompletedInstance(id, completed, true)
-        source.updateInstance(id, own, form(title = "own"), listOf(5))
+        source.updateInstance(id, own, form(title = "own"), listOf(TaskReminder(5)))
 
         // Same times and rule, so the series is not reshaped — that drops its overrides.
         val first = occurrences.first()
         val unchanged = form().copy(start = first.start, due = first.due, rrule = "FREQ=WEEKLY")
-        source.updateSeries(id, first.occurrenceStart!!, unchanged, listOf(60))
+        source.updateSeries(id, first.occurrenceStart!!, unchanged, listOf(TaskReminder(60)))
 
         fun leads(anchor: Instant) = db.alarms().forTask(db.tasks().override(id, anchor)!!.id).map { it.minutesBefore }
         assertThat(db.alarms().forTask(id).map { it.minutesBefore }).containsExactly(60)
@@ -529,12 +511,12 @@ class RoomTasksDataSourceTest {
     }
 
     @Test
-    fun settingTheEditableReminderOwesTheServerAPut() {
+    fun settingRemindersOwesTheServerAPut() {
         val work = syncedList()
         val id = source.insertTask(form(due = now + 1.days).copy(listId = work))
         db.tasks().update(db.tasks().entity(id)!!.copy(isDirty = false))
 
-        source.setAlarm(id, 30)
+        source.setReminders(id, listOf(TaskReminder(30)))
 
         assertThat(db.tasks().entity(id)!!.isDirty).isTrue()
     }
@@ -567,7 +549,7 @@ class RoomTasksDataSourceTest {
     fun aForkedOccurrenceCarriesTheSeriesReminder() {
         val id = source.insertTask(form())
         makeRecurring(id, now)
-        source.setAlarm(id, minutesBeforeDue = 30)
+        source.setReminders(id, listOf(TaskReminder(30)))
         val target = source.tasks(TaskQuery(listId = listId))
             .filter { it.taskId == id }
             .first { it.distanceFromCurrent == 1 }
@@ -667,4 +649,47 @@ class RoomTasksDataSourceTest {
 
         assertThat(thrown).isNotNull()
     }
+
+    @Test
+    fun subtaskIdsNameRowsNotOccurrences() {
+        val parent = source.insertTask(form("parent"))
+        val longAgo = now - 1000.days
+        val outOfWindow = db.tasks().insert(
+            TaskEntity(listId = listId, uid = "old", title = "old", dtstart = longAgo, rrule = "FREQ=DAILY;COUNT=2", parentId = parent),
+        )
+        val series = db.tasks().insert(
+            TaskEntity(listId = listId, uid = "s", title = "s", dtstart = now, rrule = "FREQ=DAILY;COUNT=3", parentId = parent),
+        )
+        source.setCompletedInstance(series, now, true)
+        val plain = source.insertTask(form("plain").copy(parentId = parent))
+
+        assertThat(source.subtaskIds(parent)).containsExactly(outOfWindow, series, plain)
+    }
+
+    @Test
+    fun deletingASubtreeEndsOnAParentLoop() {
+        val a = source.insertTask(form("a"))
+        val b = source.insertTask(form("b").copy(parentId = a))
+        val c = source.insertTask(form("c").copy(parentId = b))
+        db.tasks().update(db.tasks().entity(a)!!.copy(parentId = c))
+
+        source.deleteWithSubtasks(a)
+
+        assertThat(listOf(a, b, c).mapNotNull { db.tasks().entity(it) }).isEmpty()
+    }
+
+    @Test
+    fun deletingFollowingFromTheFirstOccurrenceTakesTheWholeSubtree() {
+        val start = now
+        val series = db.tasks().insert(
+            TaskEntity(listId = listId, uid = "s", title = "s", dtstart = start, rrule = "FREQ=DAILY;COUNT=3"),
+        )
+        val child = source.insertTask(form("child").copy(parentId = series))
+        val grandchild = source.insertTask(form("grandchild").copy(parentId = child))
+
+        source.deleteFollowing(series, start)
+
+        assertThat(listOf(series, child, grandchild).mapNotNull { db.tasks().entity(it) }).isEmpty()
+    }
 }
+

@@ -1,12 +1,13 @@
 package de.jeanlucmakiola.agendula.ui.common
 
+import de.jeanlucmakiola.floret.components.CustomAmountEditor
 import de.jeanlucmakiola.floret.components.FullScreenPicker
 import de.jeanlucmakiola.floret.components.Position
 import de.jeanlucmakiola.floret.components.positionOf
-import de.jeanlucmakiola.floret.components.DialogAmountField
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.SelectedCheck
-import de.jeanlucmakiola.floret.reminders.reminderOverrideForMinutes
+import de.jeanlucmakiola.floret.reminders.ReminderLead
+import de.jeanlucmakiola.floret.reminders.reminderOverrideForLeads
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -16,27 +17,19 @@ import de.jeanlucmakiola.floret.reminders.decomposeReminderMinutes
 import androidx.compose.animation.AnimatedVisibility
 import de.jeanlucmakiola.floret.identity.collapseExit
 import de.jeanlucmakiola.floret.identity.expandEnter
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,8 +39,10 @@ import de.jeanlucmakiola.agendula.R
  * Reminder lead-time picker, full-screen: the grouped list of preset lead times
  * plus a "Custom" row that expands an inline amount field + unit selector.
  * [allowInherit] adds a "Use default" row (per-list overrides); [allowNone] adds
- * a "None" row; [allDay] switches to day-scale presets and wording. Returns the
- * choice as a [ReminderOverride]. Ported from Calendula's ReminderDefaultPicker.
+ * a "None" row; [allDay] switches to day-scale presets and wording, and its
+ * custom amounts to days and weeks. [header] sits above the rows, for whatever
+ * else the caller's reminder carries. Returns the choice as a
+ * [ReminderOverride]. Ported from Calendula's ReminderDefaultPicker.
  */
 @Composable
 fun ReminderLeadPicker(
@@ -59,6 +54,7 @@ fun ReminderLeadPicker(
     onDismiss: () -> Unit,
     allDay: Boolean = false,
     presets: List<Int> = if (allDay) ALLDAY_REMINDER_PRESETS else REMINDER_PRESETS,
+    header: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     // Agendula is single-reminder: an override carries a one-element list, so
     // take the single value for this single-select picker.
@@ -68,7 +64,7 @@ fun ReminderLeadPicker(
 
     var customExpanded by rememberSaveable { mutableStateOf(false) }
     var amountText by rememberSaveable { mutableStateOf(seed.amount?.toString() ?: "") }
-    var unit by rememberSaveable { mutableStateOf(seed.unit) }
+    var unit by rememberSaveable { mutableStateOf(seed.unit.takeIf { it in reminderUnits(allDay) } ?: reminderUnits(allDay).first()) }
 
     val options = buildList {
         if (allowInherit) add(ReminderOverride.Inherit)
@@ -78,6 +74,7 @@ fun ReminderLeadPicker(
     val rowCount = options.size + 1 // + the custom row
 
     FullScreenPicker(title = title, onDismiss = onDismiss) {
+        header?.invoke(this)
         options.forEachIndexed { index, option ->
             val isSelected = option == selected
             GroupedRow(
@@ -112,6 +109,8 @@ fun ReminderLeadPicker(
                 onAmountChange = { amountText = it },
                 unit = unit,
                 onUnitChange = { unit = it },
+                units = reminderUnits(allDay),
+                allDay = allDay,
                 onConfirm = { minutes ->
                     onSelect(ReminderOverride.Minutes(listOf(minutes)))
                     onDismiss()
@@ -129,7 +128,9 @@ fun ReminderLeadPicker(
  * Clearing the last time falls back to "Use default" on a per-list picker and to
  * "No reminder" on the global one. Changes apply live; the user leaves via back.
  * [allDay] switches to day-scale presets, and [leadTimeSummary] adds a second
- * line to each lead-time row. Ported from Calendula's ReminderDefaultPicker.
+ * line to each lead-time row. A start / due toggle picks which date the rows
+ * count from, and the choice carries it ([ReminderOverride.Minutes.fromStart]).
+ * Ported from Calendula's ReminderDefaultPicker.
  */
 @Composable
 fun ReminderDefaultPicker(
@@ -149,24 +150,27 @@ fun ReminderDefaultPicker(
     LaunchedEffect(selected) { if (!userEdited) current = selected }
     val inherits = current is ReminderOverride.Inherit
     val isNone = current is ReminderOverride.None
-    val selectedMinutes = (current as? ReminderOverride.Minutes)?.minutes.orEmpty()
+    val selectedLeads = (current as? ReminderOverride.Minutes)?.leads.orEmpty()
+    var fromStart by rememberSaveable { mutableStateOf(true) }
+    val selectedMinutes = selectedLeads.filter { it.fromStart == fromStart }.map { it.minutes }
     // Custom values seen this session keep their row once unchecked.
-    val seenCustom = remember { mutableSetOf<Int>() }
-    seenCustom += selectedMinutes.filter { it !in presets }
-    val rows = presets + seenCustom.sorted()
+    val seenCustom = remember { mutableSetOf<ReminderLead>() }
+    seenCustom += selectedLeads.filter { it.minutes !in presets }
+    val rows = presets + seenCustom.filter { it.fromStart == fromStart }.map { it.minutes }.sorted()
 
     var customExpanded by rememberSaveable { mutableStateOf(false) }
     var amountText by rememberSaveable { mutableStateOf("") }
-    var unit by rememberSaveable { mutableStateOf(ReminderUnit.Minutes) }
+    var unit by rememberSaveable { mutableStateOf(reminderUnits(allDay).first()) }
 
     fun apply(override: ReminderOverride) {
         userEdited = true
         current = override
         onSelect(override)
     }
-    fun emit(minutes: List<Int>) = apply(reminderOverrideForMinutes(minutes, allowInherit))
+    fun emit(leads: List<ReminderLead>) = apply(reminderOverrideForLeads(leads, allowInherit))
+    fun lead(minute: Int) = ReminderLead(minute, fromStart)
     fun toggle(minute: Int) =
-        emit(if (minute in selectedMinutes) selectedMinutes - minute else selectedMinutes + minute)
+        emit(if (minute in selectedMinutes) selectedLeads - lead(minute) else selectedLeads + lead(minute))
 
     FullScreenPicker(title = title, onDismiss = onDismiss) {
         if (allowInherit) {
@@ -186,6 +190,8 @@ fun ReminderDefaultPicker(
             onClick = { apply(ReminderOverride.None) },
         )
         Spacer(Modifier.height(24.dp))
+        ReminderAnchorToggle(fromStart = fromStart, onChange = { fromStart = it })
+        Spacer(Modifier.height(16.dp))
         val rowCount = rows.size + 1 // + the custom row
         rows.forEachIndexed { index, minute ->
             val checked = minute in selectedMinutes
@@ -213,11 +219,28 @@ fun ReminderDefaultPicker(
                 onAmountChange = { amountText = it },
                 unit = unit,
                 onUnitChange = { unit = it },
+                units = reminderUnits(allDay),
+                allDay = allDay,
                 onConfirm = { minutes ->
-                    emit(selectedMinutes + minutes)
+                    emit(selectedLeads + lead(minutes))
                     amountText = ""
                     customExpanded = false
                 },
+            )
+        }
+    }
+}
+
+/** Which date a reminder counts back from. */
+@Composable
+fun ReminderAnchorToggle(fromStart: Boolean, onChange: (Boolean) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        listOf(true, false).forEachIndexed { index, start ->
+            SegmentedButton(
+                selected = fromStart == start,
+                onClick = { onChange(start) },
+                shape = SegmentedButtonDefaults.itemShape(index, 2),
+                label = { Text(stringResource(reminderAnchorLabel(start))) },
             )
         }
     }
@@ -229,50 +252,32 @@ private fun CustomReminderEditor(
     onAmountChange: (String) -> Unit,
     unit: ReminderUnit,
     onUnitChange: (ReminderUnit) -> Unit,
+    units: List<ReminderUnit>,
+    allDay: Boolean,
     onConfirm: (Int) -> Unit,
 ) {
     val amount = amountText.toIntOrNull()?.takeIf { it in 1..999 }
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        // A Position.Bottom shape: tight top corners meeting the row, full bottom.
-        shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 22.dp, bottomEnd = 22.dp),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                ReminderUnit.entries.forEachIndexed { index, entry ->
-                    SegmentedButton(
-                        selected = unit == entry,
-                        onClick = { onUnitChange(entry) },
-                        shape = SegmentedButtonDefaults.itemShape(index, ReminderUnit.entries.size),
-                        label = { Text(stringResource(reminderUnitLabel(entry))) },
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                DialogAmountField(value = amountText, onValueChange = onAmountChange, placeholder = "10")
-                Spacer(Modifier.width(16.dp))
-                Text(
-                    text = amount?.let { reminderLeadTimeLabel(it * unit.minutesFactor) }
-                        ?: stringResource(R.string.reminder_custom_amount),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(16.dp))
-                FilledTonalButton(
-                    onClick = { amount?.let { onConfirm(it * unit.minutesFactor) } },
-                    enabled = amount != null,
-                ) {
-                    Text(stringResource(R.string.reminder_custom_set))
-                }
-            }
-        }
-    }
+    CustomAmountEditor(
+        amountText = amountText,
+        onAmountChange = onAmountChange,
+        preview = amount?.let { reminderLeadTimeLabel(it * unit.minutesFactor, allDay) }
+            ?: stringResource(R.string.reminder_custom_amount),
+        setLabel = stringResource(R.string.reminder_custom_set),
+        confirmEnabled = amount != null,
+        onConfirm = { amount?.let { onConfirm(it * unit.minutesFactor) } },
+        unitLabels = units.map { stringResource(reminderUnitLabel(it)) },
+        selectedUnit = units.indexOf(unit),
+        onUnitChange = { onUnitChange(units[it]) },
+    )
 }
+
+/**
+ * The units a custom lead is entered in. An all-day reminder's time of day is
+ * set on its own, so its lead is whole days: an hour count would read back as a
+ * time of day.
+ */
+private fun reminderUnits(allDay: Boolean): List<ReminderUnit> =
+    if (allDay) listOf(ReminderUnit.Days, ReminderUnit.Weeks) else ReminderUnit.entries
 
 @Composable
 private fun reminderOverrideLabel(override: ReminderOverride, allDay: Boolean): String = when (override) {

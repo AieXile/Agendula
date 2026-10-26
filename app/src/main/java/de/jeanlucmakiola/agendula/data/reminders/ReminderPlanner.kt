@@ -1,8 +1,9 @@
 package de.jeanlucmakiola.agendula.data.reminders
 
 import de.jeanlucmakiola.agendula.data.prefs.Settings
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.AllDayReminder
 import de.jeanlucmakiola.agendula.domain.Task
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.calendarDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -36,23 +37,24 @@ internal object ReminderPlanner {
         // One reminder per *occurrence* and lead: a recurring series yields a row
         // per occurrence, all sharing a taskId, so this is a Set rather than a
         // taskId-keyed Map.
-        .filter { !it.isClosed && it.due != null }
+        .filter { !it.isClosed && (it.due != null || it.start != null) }
         .flatMap { task ->
-            // Reminders set on the task itself win — every one of them, not just
-            // the one the editor shows; otherwise the task's list may override the
-            // global lead, or opt out entirely (override = null). All-day tasks
-            // have their own day-scale defaults.
+            // Reminders set on the task itself win — every one of them;
+            // otherwise the task's list may override the global lead, or opt
+            // out entirely (override = null). All-day tasks have their own
+            // day-scale defaults.
             //
             // ⚠️ Present-but-empty is "none", not "the default": the store's
             // answer for a task whose alarms another client turned off. A
             // default here would keep ringing for what the user switched off.
-            val reminders = perTask[task.taskId]
-                ?: settings.defaultLeadsFor(task.listId, task.isAllDay).map { TaskReminder(it) }
+            // A default counts only from a date the task has; its own reminders
+            // stand in each date for the other when the task lacks it.
+            val own = perTask[task.taskId]
+            val reminders = own ?: settings.defaultRemindersFor(task.listId, task.isAllDay)
+                .filter { (if (it.fromStart) task.start else task.due) != null }
+            val created = task.created?.toEpochMilliseconds()
             reminders.mapNotNull { reminder ->
-                // A stored reminder says what it counts back from. Ours are always
-                // before due, but an imported dmfs alarm or another client's can be
-                // before *start*.
-                val anchor = if (reminder.fromStart) task.start ?: task.due!! else task.due!!
+                val anchor = if (reminder.fromStart) task.start ?: task.due!! else task.due ?: task.start!!
                 val trigger = triggerAt(
                     anchor,
                     task.isAllDay,
@@ -60,14 +62,19 @@ internal object ReminderPlanner {
                     settings.allDayReminderMinuteOfDay,
                     zone,
                 )
+                // A default never rings for a moment before the task existed:
+                // that is a task saved after its default had passed, not a
+                // reminder missed while the device was off.
+                if (own == null && created != null && trigger < created) return@mapNotNull null
                 // Dismissed on another client already: firing it here within
                 // the missed-reminder grace would ring for something done with.
                 //
-                // ⚠️ An all-day reminder is compared from the start of its day,
-                // not from this device's time of day: other clients ring it at
-                // midnight, or at their own hour, so a dismissal at 07:00 must
-                // still silence the 09:00 this device would ring it at.
-                val earliest = if (task.isAllDay) {
+                // ⚠️ An all-day reminder without a time of its own is compared
+                // from the start of its day, not from this device's time of
+                // day: other clients ring it at midnight, or at their own hour,
+                // so a dismissal at 07:00 must still silence the 09:00 this
+                // device would ring it at.
+                val earliest = if (task.isAllDay && reminder.allDay.minuteOfDay == null) {
                     triggerAt(anchor, true, reminder.minutesBefore, 0, zone)
                 } else {
                     trigger
@@ -96,8 +103,9 @@ internal object ReminderPlanner {
      *
      * ⚠️ An all-day anchor is UTC midnight of its date (see `AllDayTime.kt`), a
      * storage convention and not a moment — firing off it rang at 02:00 in
-     * Berlin and the evening before in New York. It is read as its calendar date
-     * at [allDayMinuteOfDay] local time instead, and the lead counts back from that.
+     * Berlin and the evening before in New York. It is read as its calendar
+     * date instead, and the lead as [TaskReminder.allDay]: whole days ring at
+     * [allDayMinuteOfDay] local time, anything else at the time it names.
      */
     fun triggerAt(
         anchor: Instant,
@@ -106,12 +114,11 @@ internal object ReminderPlanner {
         allDayMinuteOfDay: Int,
         zone: ZoneId,
     ): Long {
-        val base = if (allDay) {
-            val time = LocalTime.of(allDayMinuteOfDay / 60 % 24, allDayMinuteOfDay % 60)
-            anchor.calendarDate(allDay = true).atTime(time).atZone(zone).toInstant().toEpochMilli()
-        } else {
-            anchor.toEpochMilliseconds()
-        }
-        return base - leadMinutes.coerceAtLeast(0) * 60_000L
+        if (!allDay) return anchor.toEpochMilliseconds() - leadMinutes.coerceAtLeast(0) * 60_000L
+        val (days, minuteOfDay) = AllDayReminder.of(leadMinutes)
+        val minute = minuteOfDay ?: allDayMinuteOfDay
+        val time = LocalTime.of(minute / 60 % 24, minute % 60)
+        return anchor.calendarDate(allDay = true).minusDays(days.toLong())
+            .atTime(time).atZone(zone).toInstant().toEpochMilli()
     }
 }

@@ -79,7 +79,6 @@
     <string name="error_blank_title">Insira um título.</string>
     <string name="error_no_list">Escolha uma lista.</string>
     <string name="error_due_before_start">Prazo não pode ser antes do início.</string>
-    <string name="error_reminder_without_due">Ajuste um prazo para usar um lembrete.</string>
     <string name="lists_header">Listas</string>
     <string name="new_task">Nova tarefa</string>
     <string name="lists_failure">Não foi possível ler suas tarefas.</string>

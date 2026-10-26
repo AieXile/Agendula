@@ -131,17 +131,23 @@ class AlarmCodecTest {
     inner class AllDay {
 
         @Test
-        fun `a relative trigger rounds to whole days`() {
+        fun `a relative trigger counts back from the date's midnight`() {
             assertThat(AlarmCodec.resolve(alarm("ACTION:DISPLAY", "TRIGGER;RELATED=END:-P1D"), allDay))
                 .isEqualTo(lead(24 * 60))
+            // 09:00 the day before.
             assertThat(AlarmCodec.resolve(alarm("ACTION:DISPLAY", "TRIGGER;RELATED=END:-PT15H"), allDay))
-                .isEqualTo(lead(24 * 60))
+                .isEqualTo(lead(15 * 60))
         }
 
         @Test
-        fun `a time on the day itself is "on the day", not an after-due alarm`() {
+        fun `a time on the day itself is a time of day, not an after-due alarm`() {
             assertThat(AlarmCodec.resolve(alarm("ACTION:DISPLAY", "TRIGGER;RELATED=END:PT9H"), allDay))
-                .isEqualTo(lead(0))
+                .isEqualTo(lead(-9 * 60))
+        }
+
+        @Test
+        fun `a trigger after the day is over is not claimed`() {
+            assertThat(AlarmCodec.resolve(alarm("ACTION:DISPLAY", "TRIGGER;RELATED=END:PT24H"), allDay)).isNull()
         }
 
         @Test
@@ -157,6 +163,14 @@ class AlarmCodecTest {
             assertThat(AlarmCodec.toVAlarm(row, allDay, due)?.property("TRIGGER")?.value).isEqualTo("-P2D")
             val onTheDay = row.copy(minutesBefore = 0)
             assertThat(AlarmCodec.toVAlarm(onTheDay, allDay, due)?.property("TRIGGER")?.value).isEqualTo("PT0S")
+        }
+
+        @Test
+        fun `an authored all-day alarm with a time of its own is written from midnight`() {
+            val nine = TaskAlarmEntity(taskId = 1, minutesBefore = -9 * 60, uid = "a")
+            assertThat(AlarmCodec.toVAlarm(nine, allDay, due)?.property("TRIGGER")?.value).isEqualTo("PT9H")
+            val fivePmBefore = nine.copy(minutesBefore = 7 * 60)
+            assertThat(AlarmCodec.toVAlarm(fivePmBefore, allDay, due)?.property("TRIGGER")?.value).isEqualTo("-PT7H")
         }
     }
 
@@ -217,10 +231,40 @@ class AlarmCodecTest {
         }
 
         @Test
+        fun `a before-due row on a task without a due goes out before start`() {
+            val row = TaskAlarmEntity(taskId = 1, minutesBefore = 10, uid = "a")
+            val trigger = AlarmCodec.toVAlarm(row, withStart.copy(due = null), earlier)?.property("TRIGGER")
+            assertThat(trigger?.param("RELATED")).isEqualTo("START")
+            assertThat(trigger?.value).isEqualTo("-PT10M")
+        }
+
+        @Test
+        fun `an all-day row kept in whole days by an earlier build keeps the original's time`() {
+            val row = TaskAlarmEntity(
+                taskId = 1,
+                minutesBefore = 0,
+                uid = "a",
+                raw = "BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER;RELATED=END:PT9H\r\nEND:VALARM\r\n",
+            )
+            assertThat(AlarmCodec.toVAlarm(row, allDay, earlier)?.property("TRIGGER")?.value).isEqualTo("PT9H")
+        }
+
+        @Test
         fun `the wire lead is what the row reads back as`() {
-            val fifteen = TaskAlarmEntity(taskId = 1, minutesBefore = 15, uid = "a")
-            assertThat(AlarmCodec.wireLead(fifteen, allDay)).isEqualTo(lead(0))
-            assertThat(AlarmCodec.wireLead(fifteen, timed)).isEqualTo(lead(15))
+            val afterDue = TaskAlarmEntity(taskId = 1, minutesBefore = -15, uid = "a")
+            assertThat(AlarmCodec.wireLead(afterDue, timed)).isEqualTo(lead(0))
+            assertThat(AlarmCodec.wireLead(afterDue, allDay)).isEqualTo(lead(-15))
+        }
+
+        @Test
+        fun `a row rounded by an earlier build does not claim the original's time as its own`() {
+            val row = TaskAlarmEntity(
+                taskId = 1,
+                minutesBefore = 0,
+                uid = "a",
+                raw = "BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER;RELATED=END:PT9H\r\nEND:VALARM\r\n",
+            )
+            assertThat(AlarmCodec.wireLead(row, allDay)).isEqualTo(lead(0))
         }
     }
 

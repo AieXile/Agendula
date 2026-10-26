@@ -34,6 +34,7 @@ internal fun AppearanceScreen(
     state: SettingsUiState,
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
+    visible: Boolean,
 ) {
     val dynamicColorAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     var showTheme by remember { mutableStateOf(false) }
@@ -42,7 +43,12 @@ internal fun AppearanceScreen(
     val systemIs24Hour = DateFormat.is24HourFormat(LocalContext.current)
     val locale = currentLocale()
 
-    CollapsingScaffold(title = stringResource(R.string.settings_section_appearance), onBack = onBack) {
+    CollapsingScaffold(
+        title = stringResource(R.string.settings_section_appearance),
+        onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
+    ) {
         GroupedRow(
             title = stringResource(R.string.settings_theme),
             summary = stringResource(themeLabel(state.settings.themeMode)),

@@ -1,5 +1,6 @@
 package de.jeanlucmakiola.agendula.data.tasks
 
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import android.content.ContentProviderOperation
 import android.content.ContentResolver
 import android.content.ContentUris
@@ -85,6 +86,27 @@ class AndroidTasksDataSource @Inject constructor(
     override fun subtasks(parentTaskId: Long): List<Task> =
         queryInstances("${Tasks.PARENT_ID} = ?", arrayOf(parentTaskId.toString()))
 
+    /**
+     * Read from the `tasks` table, so a recurring subtask with no occurrence in
+     * the window still counts. All columns and a lenient `_deleted`, as in
+     * [exportTasks], since the table's shape varies across providers.
+     */
+    override fun subtaskIds(parentTaskId: Long): List<Long> = resolver.query(
+        TasksContract.tasksUri(authority()),
+        null,
+        "${Tasks.PARENT_ID} = ? AND (${Tasks.DELETED} IS NULL OR ${Tasks.DELETED} = 0)",
+        arrayOf(parentTaskId.toString()),
+        null,
+    )?.use { c ->
+        val r = CursorColumnReader(c)
+        buildList {
+            while (c.moveToNext()) {
+                if (r.getLong(Tasks.ORIGINAL_INSTANCE_ID) != null) continue
+                r.getLong(Tasks.ID)?.takeIf { it != parentTaskId }?.let(::add)
+            }
+        }
+    } ?: emptyList()
+
     private fun queryInstances(selection: String?, args: Array<String>?): List<Task> {
         val uri = TasksContract.instancesUri(authority())
         // projection = null (all columns): the instances view differs across
@@ -158,22 +180,20 @@ class AndroidTasksDataSource @Inject constructor(
             ?: throw TaskWriteFailedException("insert task: no id")
     }
 
-    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) {
+    override fun updateTask(taskId: Long, form: TaskForm, reminders: List<TaskReminder>?) {
         val values = TaskWriteMapper.seriesValues(form, ZoneId.systemDefault().id)
         val rows = resolver.update(taskUri(authority(), taskId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update task $taskId")
         setCategories(taskId, form.tags)
-        writeDueReminders(taskId, dueReminders)
+        writeReminders(taskId, reminders)
     }
 
-    /** [leads] as the task's before-due reminders; a start-relative one from elsewhere is kept. */
-    private fun writeDueReminders(taskId: Long, leads: List<Int>?) {
-        if (leads == null) return
-        val kept = alarmRows(taskId).map { it.second }.filter { it.fromStart }
-        setReminders(taskId, kept + leads.distinct().sorted().map { TaskReminder(it) })
+    private fun writeReminders(taskId: Long, reminders: List<TaskReminder>?) {
+        if (reminders == null) return
+        setReminders(taskId, reminders)
     }
 
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) {
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) {
         val occurrence = task(seriesId, occurrenceStart)
         val anchors = resolver.query(
             taskUri(authority(), seriesId), arrayOf(Tasks.DTSTART, Tasks.DUE), null, null, null,
@@ -193,7 +213,7 @@ class AndroidTasksDataSource @Inject constructor(
         val rows = resolver.update(taskUri(authority(), seriesId), values.toContentValues(), null, null)
         if (rows == 0) throw TaskWriteFailedException("update series $seriesId")
         setCategories(seriesId, form.tags)
-        writeDueReminders(seriesId, dueReminders)
+        writeReminders(seriesId, reminders)
     }
 
     /**
@@ -202,10 +222,10 @@ class AndroidTasksDataSource @Inject constructor(
      * task. Per-occurrence edits past the split point are dropped rather than
      * carried over — the provider offers no way to re-parent an exception.
      */
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long {
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?): Long {
         val spec = seriesSpec(seriesId) ?: throw TaskWriteFailedException("split series $seriesId")
         if (spec.rrule == null || occurrenceStart <= spec.anchor) {
-            updateSeries(seriesId, occurrenceStart, form, dueReminders)
+            updateSeries(seriesId, occurrenceStart, form, reminders)
             return seriesId
         }
         // COUNT counts before EXDATE is applied (RFC 5545 §3.8.5.3).
@@ -215,13 +235,12 @@ class AndroidTasksDataSource @Inject constructor(
         ).size
         endSeriesBefore(seriesId, spec, occurrenceStart)
         val rule = form.rrule?.let { if (it == spec.rrule) TaskFormWriter.remainingCount(it, spent) else it }
-        val reminders = dueReminders?.distinct()?.sorted()?.map { TaskReminder(it) }
         return insertTask(form.copy(rrule = rule, percentComplete = null), reminders)
     }
 
     override fun deleteFollowing(seriesId: Long, occurrenceStart: Instant) {
         val spec = seriesSpec(seriesId) ?: return
-        if (spec.rrule == null || occurrenceStart <= spec.anchor) return deleteTask(seriesId)
+        if (spec.rrule == null || occurrenceStart <= spec.anchor) return deleteWithSubtasks(seriesId)
         endSeriesBefore(seriesId, spec, occurrenceStart)
     }
 
@@ -282,15 +301,15 @@ class AndroidTasksDataSource @Inject constructor(
         resolver.delete(TasksContract.instanceUri(authority(), instanceId), null, null)
     }
 
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) {
-        if (dueReminders == null) return writeInstance(taskId, occurrenceStart, form)
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) {
+        if (reminders == null) return writeInstance(taskId, occurrenceStart, form)
         // ⚠️ Written to the series, and then put back. Forking an occurrence
         // copies the task's *current* properties onto the new override row, so
         // setting the alarm beforehand is the only way to carry it across — and
         // leaving it there would silently give every other occurrence in the
         // series the reminder the user set on one of them.
         val seriesReminders = alarmRows(taskId).map { it.second }
-        writeDueReminders(taskId, dueReminders)
+        writeReminders(taskId, reminders)
         try {
             writeInstance(taskId, occurrenceStart, form)
         } finally {
@@ -351,21 +370,6 @@ class AndroidTasksDataSource @Inject constructor(
         }
     }
 
-    override fun setAlarm(taskId: Long, minutesBeforeDue: Int?) {
-        val uri = TasksContract.propertiesUri(authority())
-        // Replace rather than update: the provider's AlarmHandler re-validates the
-        // whole row on every update, so a partial edit throws. Only the editable
-        // (last before-due) row goes — a start-relative or additional alarm
-        // another client wrote is not ours to drop.
-        alarmRows(taskId).lastOrNull { !it.second.fromStart }?.let { (propertyId, _) ->
-            resolver.delete(uri, "${Properties.PROPERTY_ID} = ?", arrayOf(propertyId.toString()))
-        }
-        if (minutesBeforeDue != null) {
-            resolver.insert(uri, TaskWriteMapper.alarmValues(taskId, minutesBeforeDue).toContentValues())
-                ?: throw TaskWriteFailedException("set alarm for task $taskId")
-        }
-    }
-
     override fun setReminders(taskId: Long, reminders: List<TaskReminder>) {
         val uri = TasksContract.propertiesUri(authority())
         resolver.delete(
@@ -381,9 +385,6 @@ class AndroidTasksDataSource @Inject constructor(
 
     override fun reminders(): Map<Long, List<TaskReminder>> =
         readAlarms(null).groupBy({ it.first }) { it.third }
-
-    override fun alarms(): Map<Long, TaskReminder> =
-        reminders().mapNotNull { (id, list) -> list.editable()?.let { id to it } }.toMap()
 
     /** `(property_id, reminder)` for [taskId]'s alarm rows, in stored order. */
     private fun alarmRows(taskId: Long): List<Pair<Long, TaskReminder>> =

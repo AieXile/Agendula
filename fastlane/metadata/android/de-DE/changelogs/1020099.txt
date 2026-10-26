@@ -1,0 +1,11 @@
+### Neu
+- Erinnerungen können ab dem Start oder ab der Fälligkeit zählen.
+- Ganztägige Aufgaben können Erinnerungen zu festen Uhrzeiten haben.
+- Andere Apps können lokale Aufgaben über OpenTasks lesen und bearbeiten, wenn du es erlaubst.
+
+### Geändert
+- Erinnerungen werden als VALARM synchronisiert und klingeln auch in Apple Erinnerungen, Thunderbird und tasks.org.
+
+### Behoben
+- Widgets funktionieren wieder nach dem Abhaken.
+- Die Anmeldung per E-Mail klappt wieder bei mailbox.org und Posteo.

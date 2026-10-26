@@ -11,7 +11,7 @@ import com.google.common.truth.Truth.assertThat
 import de.jeanlucmakiola.agendula.data.tasks.ProviderEnvironment
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
 import de.jeanlucmakiola.agendula.data.tasks.TaskQuery
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
 import de.jeanlucmakiola.agendula.data.tasks.room.AlarmReference
 import de.jeanlucmakiola.agendula.data.tasks.room.TasksDatabase
@@ -294,25 +294,24 @@ private class FakeExternalStore : TasksDataSource {
         return tasks[listId].orEmpty()
     }
 
-    override fun alarms(): Map<Long, TaskReminder> = alarms
+    override fun reminders(): Map<Long, List<TaskReminder>> = alarms.mapValues { listOf(it.value) }
 
     override fun tasks(query: TaskQuery): List<Task> = unused()
     override fun task(taskId: Long): Task? = unused()
     override fun subtasks(parentTaskId: Long): List<Task> = unused()
     override fun insertTask(form: TaskForm, reminders: List<TaskReminder>?): Long = unused()
-    override fun updateTask(taskId: Long, form: TaskForm, dueReminders: List<Int>?) = unused()
-    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+    override fun updateTask(taskId: Long, form: TaskForm, reminders: List<TaskReminder>?) = unused()
+    override fun updateInstance(taskId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) =
         unused()
-    override fun setAlarm(taskId: Long, minutesBeforeDue: Int?) = unused()
     override fun setReminders(taskId: Long, reminders: List<TaskReminder>) = unused()
     override fun setCompleted(taskId: Long, completed: Boolean) = unused()
     override fun setCompletedInstance(taskId: Long, occurrenceStart: Instant, completed: Boolean) = unused()
     override fun deleteTask(taskId: Long) = unused()
     override fun setCancelled(taskId: Long, cancelled: Boolean) = unused()
     override fun setCancelledInstance(taskId: Long, occurrenceStart: Instant, cancelled: Boolean) = unused()
-    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?) =
+    override fun updateSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?) =
         unused()
-    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, dueReminders: List<Int>?): Long =
+    override fun splitSeries(seriesId: Long, occurrenceStart: Instant, form: TaskForm, reminders: List<TaskReminder>?): Long =
         unused()
     override fun deleteOccurrence(seriesId: Long, occurrenceStart: Instant) = unused()
     override fun deleteFollowing(seriesId: Long, occurrenceStart: Instant) = unused()

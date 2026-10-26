@@ -63,6 +63,7 @@ object TaskFormWriter {
             isAllDay = form.isAllDay,
             timezone = if (timed) tzId else null,
             parentId = form.parentId?.takeIf { it > 0 },
+            remindersOff = if (form.remindersChosen) form.reminders.isEmpty() else current.remindersOff,
             lastModified = now,
             isDirty = true,
         )

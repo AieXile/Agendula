@@ -1,0 +1,11 @@
+### Novidades
+- Lembretes podem contar a partir do início da tarefa ou do prazo.
+- Tarefas de dia inteiro podem ter lembretes em horários fixos.
+- Outros apps podem ler e editar suas tarefas locais via OpenTasks, com sua permissão.
+
+### Alterações
+- Lembretes sincronizam como VALARM e tocam também no Lembretes da Apple, Thunderbird e tasks.org.
+
+### Correções
+- Widgets voltam a funcionar após marcar tarefas.
+- O login por e-mail volta a funcionar no mailbox.org e Posteo.

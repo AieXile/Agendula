@@ -1048,20 +1048,33 @@ class CollectionSyncerTest {
         assertThat(store.rows.single().remindersOff).isFalse()
     }
 
-    @Test fun `an alarm coming back as we sent it keeps the lead the wire could not carry`() {
-        // A 15-minute lead on an all-day task goes out as "on the day".
+    @Test fun `an all-day reminder at a time of its own round-trips from midnight`() {
+        // 09:00 on the day.
         store.rows += task(id = 1, uid = "a", title = "Pay rent")
             .copy(due = Instant.parse("2026-03-05T00:00:00Z"), isAllDay = true, isDirty = true)
-        store.alarms += alarm(1, 15, uid = "a-1")
+        store.alarms += alarm(1, -9 * 60, uid = "a-1")
+        sync()
+        val sent = remote.resources.values.single()
+        assertThat(sent.body).contains("TRIGGER;RELATED=END:PT9H")
+
+        sent.eTag = de.jeanlucmakiola.caldav.ETag("e-2", weak = false)
+        sync()
+
+        assertThat(store.alarms.single().minutesBefore).isEqualTo(-9 * 60)
+    }
+
+    @Test fun `an alarm coming back as we sent it keeps the lead the wire could not carry`() {
+        // A lead past due is clamped to "at due" on the way out.
+        store.rows += task(id = 1, uid = "a", title = "Pay rent").copy(due = due, isDirty = true)
+        store.alarms += alarm(1, -15, uid = "a-1")
         sync()
         val sent = remote.resources.values.single()
         assertThat(sent.body).contains("TRIGGER;RELATED=END:PT0S")
 
-        // The server hands it back under a new ETag, unchanged.
         sent.eTag = de.jeanlucmakiola.caldav.ETag("e-2", weak = false)
         sync()
 
-        assertThat(store.alarms.single().minutesBefore).isEqualTo(15)
+        assertThat(store.alarms.single().minutesBefore).isEqualTo(-15)
     }
 
     @Test fun `a before-start reminder on a task without a start survives the round trip`() {

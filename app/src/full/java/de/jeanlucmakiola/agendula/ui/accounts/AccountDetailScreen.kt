@@ -70,6 +70,7 @@ internal fun AccountDetailScreen(
     onSignInAgain: (AccountEntity) -> Unit,
     onOpenStorage: () -> Unit,
     viewModel: AccountsViewModel,
+    visible: Boolean,
 ) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val usable by viewModel.accountsUsable.collectAsStateWithLifecycle()
@@ -90,7 +91,7 @@ internal fun AccountDetailScreen(
     // shown on the accounts list rather than here.
     var confirming by remember { mutableStateOf(false) }
 
-    CollapsingScaffold(title = identity.title, onBack = onBack) {
+    CollapsingScaffold(title = identity.title, onBack = onBack, predictiveBack = true, visible = visible) {
         AccountHero(identity)
         Spacer(Modifier.height(24.dp))
 

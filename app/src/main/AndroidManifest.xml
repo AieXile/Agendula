@@ -9,12 +9,25 @@
          selected External mode. Both are dangerous-level.
 
          StorageMode.OWN needs nothing here: it is a Room database in our own data
-         directory. Agendula publishes no ContentProvider and declares no
-         permissions of its own. -->
+         directory. -->
     <uses-permission android:name="org.dmfs.permission.READ_TASKS" />
     <uses-permission android:name="org.dmfs.permission.WRITE_TASKS" />
     <uses-permission android:name="org.tasks.permission.READ_TASKS" />
     <uses-permission android:name="org.tasks.permission.WRITE_TASKS" />
+
+    <!-- What another app requests to read or write the own store through
+         AgendulaTaskProvider. Dangerous, like OpenTasks' own: the user grants
+         them per app. Suffixed per build, so debug and release can coexist. -->
+    <permission
+        android:name="${applicationId}.permission.READ_TASKS"
+        android:description="@string/permission_read_tasks_description"
+        android:label="@string/permission_read_tasks_label"
+        android:protectionLevel="dangerous" />
+    <permission
+        android:name="${applicationId}.permission.WRITE_TASKS"
+        android:description="@string/permission_write_tasks_description"
+        android:label="@string/permission_write_tasks_label"
+        android:protectionLevel="dangerous" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -37,6 +50,7 @@
     <application
         android:name=".AgendulaApp"
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -232,6 +246,16 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- The own store under the OpenTasks contract. Empty, and refusing
+             writes, while External mode is active. -->
+        <provider
+            android:name=".data.tasks.provider.AgendulaTaskProvider"
+            android:authorities="${applicationId}.tasks"
+            android:exported="true"
+            android:readPermission="${applicationId}.permission.READ_TASKS"
+            android:writePermission="${applicationId}.permission.WRITE_TASKS"
+            tools:ignore="SystemPermissionTypo" />
 
         <!-- WorkManager's on-demand initialisation. Removing the default
              initializer is what lets AgendulaApp supply a HiltWorkerFactory, so

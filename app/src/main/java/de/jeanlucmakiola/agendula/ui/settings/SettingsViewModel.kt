@@ -22,6 +22,7 @@ import de.jeanlucmakiola.agendula.data.tasks.transfer.TransferCounts
 import de.jeanlucmakiola.agendula.data.tasks.transfer.TransferResult
 import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.floret.reminders.ReminderLead
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -219,12 +220,12 @@ class SettingsViewModel @Inject constructor(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { prefs.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { prefs.setDynamicColor(enabled) }
     fun setDefaultList(id: Long?) = viewModelScope.launch { prefs.setDefaultListId(id) }
-    fun setDefaultReminderMinutes(minutes: List<Int>) = viewModelScope.launch {
-        prefs.setDefaultReminderMinutes(minutes)
+    fun setDefaultReminders(leads: List<ReminderLead>) = viewModelScope.launch {
+        prefs.setDefaultReminders(leads)
         resyncReminders()
     }
-    fun setDefaultAllDayReminderMinutes(minutes: List<Int>) = viewModelScope.launch {
-        prefs.setDefaultAllDayReminderMinutes(minutes)
+    fun setDefaultAllDayReminders(leads: List<ReminderLead>) = viewModelScope.launch {
+        prefs.setDefaultAllDayReminders(leads)
         resyncReminders()
     }
     fun setAllDayReminderMinuteOfDay(minuteOfDay: Int) = viewModelScope.launch {

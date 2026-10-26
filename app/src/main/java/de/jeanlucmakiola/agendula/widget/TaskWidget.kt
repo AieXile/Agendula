@@ -183,12 +183,15 @@ private fun TaskWidgetBody(
             modifier = GlanceModifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
             TaskWidgetHeader(title, filter, ready?.singleListId)
-            Spacer(GlanceModifier.height(2.dp))
             when (data) {
                 null -> Unit
-                TaskWidgetData.Unavailable -> WidgetMessage(context.getString(R.string.widget_unavailable))
+                TaskWidgetData.Unavailable -> {
+                    Spacer(GlanceModifier.height(R.dimen.widget_tasks_header_gap_tight))
+                    WidgetMessage(context.getString(R.string.widget_unavailable))
+                }
                 is TaskWidgetData.Ready ->
                     if (data.rows.isEmpty()) {
+                        Spacer(GlanceModifier.height(R.dimen.widget_tasks_header_gap_tight))
                         WidgetDoneState(context.getString(R.string.widget_empty), context.getString(R.string.widget_empty_hint))
                     } else {
                         val allSections = widgetSections(
@@ -213,6 +216,12 @@ private fun TaskWidgetBody(
                         val redundantHeader = onlyHeader != null && redundantDueKind != null &&
                             onlyHeader.key == "due:${redundantDueKind.name}"
                         val sections = if (redundantHeader) allSections.filterNot { it is WidgetSection.Header } else allSections
+                        val leadingGap = if (sections.firstOrNull() is WidgetSection.TaskItem) {
+                            R.dimen.widget_tasks_header_gap
+                        } else {
+                            R.dimen.widget_tasks_header_gap_tight
+                        }
+                        Spacer(GlanceModifier.height(leadingGap))
                         LazyColumn(modifier = GlanceModifier.fillMaxSize()) {
                             items(sections.size) { index ->
                                 when (val section = sections[index]) {

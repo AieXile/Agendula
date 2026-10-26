@@ -2,9 +2,11 @@ package de.jeanlucmakiola.agendula.data.reminders
 
 import com.google.common.truth.Truth.assertThat
 import de.jeanlucmakiola.agendula.data.prefs.Settings
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.allDayInstantOf
 import de.jeanlucmakiola.agendula.domain.testTask
+import de.jeanlucmakiola.agendula.domain.asReminderLead
+import de.jeanlucmakiola.floret.reminders.asReminderLeads
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -36,6 +38,28 @@ class ReminderPlannerTest {
     fun `the lead counts back from the all-day time`() {
         val trigger = ReminderPlanner.triggerAt(allDayInstantOf(date), true, 24 * 60, 8 * 60 + 30, berlin)
         assertThat(trigger).isEqualTo(millis(date.minusDays(1).atTime(8, 30), berlin))
+    }
+
+    @Test
+    fun `a default from before the task existed does not ring`() {
+        val created = Instant.fromEpochMilliseconds(millis(date.atTime(14, 0), berlin))
+        val task = testTask(id = 1, due = allDayInstantOf(date), isAllDay = true, created = created)
+        val plan = ReminderPlanner.plan(
+            tasks = listOf(task),
+            perTask = emptyMap(),
+            settings = Settings(allDayReminderMinuteOfDay = 9 * 60),
+            now = created.toEpochMilliseconds(),
+            zone = berlin,
+        )
+        assertThat(plan).isEmpty()
+        val own = ReminderPlanner.plan(
+            tasks = listOf(task),
+            perTask = mapOf(1L to listOf(TaskReminder(0))),
+            settings = Settings(allDayReminderMinuteOfDay = 9 * 60),
+            now = created.toEpochMilliseconds(),
+            zone = berlin,
+        )
+        assertThat(own).hasSize(1)
     }
 
     @Test
@@ -89,7 +113,7 @@ class ReminderPlannerTest {
         fun plan(perTask: Map<Long, List<TaskReminder>>) = ReminderPlanner.plan(
             tasks = listOf(testTask(id = 4, due = due)),
             perTask = perTask,
-            settings = Settings(defaultReminderMinutes = listOf(15)),
+            settings = Settings(defaultReminders = listOf(15).asReminderLeads()),
             now = now,
             zone = berlin,
         )
@@ -120,8 +144,8 @@ class ReminderPlannerTest {
             tasks = listOf(task),
             perTask = emptyMap(),
             settings = Settings(
-                defaultReminderMinutes = listOf(5),
-                defaultAllDayReminderMinutes = listOf(0, 24 * 60),
+                defaultReminders = listOf(5).asReminderLeads(),
+                defaultAllDayReminders = listOf(0, 24 * 60).asReminderLeads(),
             ),
             now = millis(date.minusDays(2).atTime(12, 0), berlin),
             zone = berlin,
@@ -205,7 +229,7 @@ class ReminderPlannerTest {
         val plan = ReminderPlanner.plan(
             tasks = listOf(task),
             perTask = mapOf(4L to listOf(TaskReminder(0), TaskReminder(60))),
-            settings = Settings(defaultReminderMinutes = listOf(15)),
+            settings = Settings(defaultReminders = listOf(15).asReminderLeads()),
             now = millis(date.atTime(0, 0), berlin),
             zone = berlin,
         )
@@ -222,7 +246,7 @@ class ReminderPlannerTest {
         val plan = ReminderPlanner.plan(
             tasks = listOf(task),
             perTask = emptyMap(),
-            settings = Settings(defaultReminderMinutes = listOf(5, 30)),
+            settings = Settings(defaultReminders = listOf(5, 30).asReminderLeads()),
             now = millis(date.atTime(0, 0), berlin),
             zone = berlin,
         )
@@ -238,5 +262,66 @@ class ReminderPlannerTest {
         val task = testTask(id = 5, due = due).copy(isRecurring = true, occurrenceStart = due)
         val plan = ReminderPlanner.plan(listOf(task), emptyMap(), Settings(), millis(date.atTime(0, 0), berlin), berlin)
         assertThat(plan.single().occurrenceStart).isEqualTo(due.toEpochMilliseconds())
+    }
+
+    @Test
+    fun `an all-day reminder with a time of its own rings at it`() {
+        val nine = TaskReminder.allDay(daysBefore = 0, minuteOfDay = 9 * 60)
+        val fivePmBefore = TaskReminder.allDay(daysBefore = 1, minuteOfDay = 17 * 60)
+        assertThat(ReminderPlanner.triggerAt(allDayInstantOf(date), true, nine.minutesBefore, 7 * 60, berlin))
+            .isEqualTo(millis(date.atTime(9, 0), berlin))
+        assertThat(ReminderPlanner.triggerAt(allDayInstantOf(date), true, fivePmBefore.minutesBefore, 7 * 60, berlin))
+            .isEqualTo(millis(date.minusDays(1).atTime(17, 0), berlin))
+    }
+
+    @Test
+    fun `several times on one all-day task each ring`() {
+        val task = testTask(id = 6, due = allDayInstantOf(date)).copy(isAllDay = true)
+        val reminders = listOf(TaskReminder.allDay(0, 9 * 60), TaskReminder.allDay(0, 17 * 60))
+        val plan = ReminderPlanner.plan(listOf(task), mapOf(6L to reminders), Settings(), millis(date.atTime(0, 0), berlin), berlin)
+        assertThat(plan).containsExactly(
+            ScheduledReminder(6, millis(date.atTime(9, 0), berlin)),
+            ScheduledReminder(6, millis(date.atTime(17, 0), berlin)),
+        )
+    }
+
+    @Test
+    fun `a default counts only from a date the task has`() {
+        val start = Instant.fromEpochMilliseconds(millis(date.atTime(9, 0), berlin))
+        val due = Instant.fromEpochMilliseconds(millis(date.atTime(18, 0), berlin))
+        val both = testTask(id = 7, due = due).copy(start = start)
+        val dueOnly = testTask(id = 8, due = due)
+        val startOnly = testTask(id = 9).copy(start = start)
+        val defaults = listOf(TaskReminder(60, fromStart = true), TaskReminder(0)).map { it.asReminderLead() }
+        val now = millis(date.atTime(0, 0), berlin)
+
+        val plan = ReminderPlanner.plan(
+            listOf(both, dueOnly, startOnly),
+            emptyMap(),
+            Settings(defaultReminders = defaults),
+            now,
+            berlin,
+        )
+
+        assertThat(plan).containsExactly(
+            ScheduledReminder(7, millis(date.atTime(8, 0), berlin)),
+            ScheduledReminder(7, due.toEpochMilliseconds()),
+            ScheduledReminder(8, due.toEpochMilliseconds()),
+            ScheduledReminder(9, millis(date.atTime(8, 0), berlin)),
+        )
+    }
+
+    @Test
+    fun `a task's own reminder counts from the other date when its own is missing`() {
+        val start = Instant.fromEpochMilliseconds(millis(date.atTime(9, 0), berlin))
+        val task = testTask(id = 10).copy(start = start)
+        val plan = ReminderPlanner.plan(
+            listOf(task),
+            mapOf(10L to listOf(TaskReminder(15))),
+            Settings(),
+            millis(date.atTime(0, 0), berlin),
+            berlin,
+        )
+        assertThat(plan).containsExactly(ScheduledReminder(10, millis(date.atTime(8, 45), berlin)))
     }
 }

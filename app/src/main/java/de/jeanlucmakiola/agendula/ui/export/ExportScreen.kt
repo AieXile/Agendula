@@ -70,6 +70,7 @@ private const val EXTERNAL_STORAGE = "com.android.externalstorage.documents"
 @Composable
 fun ExportScreen(
     onBack: () -> Unit,
+    visible: Boolean,
     modifier: Modifier = Modifier,
     viewModel: ExportViewModel = hiltViewModel(),
 ) {
@@ -89,6 +90,8 @@ fun ExportScreen(
         title = stringResource(R.string.settings_export),
         onBack = onBack,
         modifier = modifier,
+        predictiveBack = true,
+        visible = visible,
     ) {
         Text(
             text = stringResource(R.string.export_hint),

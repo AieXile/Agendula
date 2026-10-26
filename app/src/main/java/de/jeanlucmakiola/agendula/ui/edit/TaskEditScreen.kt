@@ -26,11 +26,14 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import de.jeanlucmakiola.agendula.ui.common.RecurringScopeDialog
+import de.jeanlucmakiola.agendula.ui.common.ReminderAnchorToggle
 import de.jeanlucmakiola.agendula.ui.common.ReminderLeadPicker
 import de.jeanlucmakiola.agendula.ui.common.icon
 import de.jeanlucmakiola.agendula.ui.common.labelRes
 import de.jeanlucmakiola.agendula.ui.common.recurrenceText
-import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.agendula.ui.common.TimePickerAlert
+import de.jeanlucmakiola.agendula.ui.common.formatMinuteOfDay
+import de.jeanlucmakiola.agendula.ui.common.taskReminderLabel
 import de.jeanlucmakiola.floret.components.revealOnFocus
 import de.jeanlucmakiola.floret.components.FullScreenPicker
 import de.jeanlucmakiola.floret.components.GroupedListInset
@@ -48,6 +51,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -123,6 +127,8 @@ import de.jeanlucmakiola.agendula.domain.Task
 import de.jeanlucmakiola.agendula.domain.TaskFormError
 import de.jeanlucmakiola.agendula.domain.TaskFormField
 import de.jeanlucmakiola.agendula.domain.TaskList
+import de.jeanlucmakiola.agendula.domain.TaskReminder
+import de.jeanlucmakiola.agendula.domain.DAY_MINUTES
 import de.jeanlucmakiola.agendula.domain.TaskSection
 import de.jeanlucmakiola.agendula.domain.TaskSections
 import de.jeanlucmakiola.floret.components.GroupedRow
@@ -263,6 +269,8 @@ private fun EditContent(
     // the title takes the target list's colour.
     val accent = selectedList?.let { pastelize(it.color, dark) } ?: MaterialTheme.colorScheme.primary
     val gap = 12.dp
+    // A reminder's anchor only says something when the task has both to choose from.
+    val bothDates = state.start != null && state.due != null
 
     var pickerTarget by rememberSaveable { mutableStateOf<PickerTarget?>(null) }
     var showListPicker by rememberSaveable { mutableStateOf(false) }
@@ -559,23 +567,25 @@ private fun EditContent(
             Spacer(Modifier.height(gap))
             // One card per reminder, connected, the last row adding another.
             val rows = state.reminders.size + 1
-            state.reminders.forEachIndexed { index, minutes ->
+            state.reminders.forEachIndexed { index, reminder ->
                 ReminderItemCard(
                     position = positionOf(index, rows),
-                    title = reminderLeadTimeLabel(minutes, state.isAllDay),
-                    onRemove = { viewModel.removeReminder(minutes) },
+                    title = taskReminderLabel(reminder, state.isAllDay, state.allDayMinuteOfDay, anchored = bothDates),
+                    onRemove = { viewModel.removeReminder(reminder) },
                 )
             }
             AddReminderCard(
                 position = positionOf(state.reminders.size, rows),
                 label = stringResource(
-                    if (state.reminders.isEmpty()) R.string.edit_reminder_add_first else R.string.edit_reminder_add,
+                    // Only a set the user has not chosen still falls back to the default.
+                    if (state.reminders.isEmpty() && !state.remindersChosen) R.string.edit_reminder_add_first
+                    else R.string.edit_reminder_add,
                 ),
                 onClick = { showReminderPicker = true },
             )
-            if (TaskFormError.REMINDER_WITHOUT_DUE in state.errors) {
+            if (TaskFormError.REMINDER_WITHOUT_DATE in state.errors) {
                 Spacer(Modifier.height(4.dp))
-                FieldError(R.string.error_reminder_without_due)
+                FieldError(R.string.error_reminder_without_date)
             }
         }
 
@@ -688,18 +698,73 @@ private fun EditContent(
     }
 
     if (showReminderPicker) {
+        var fromStart by rememberSaveable { mutableStateOf(state.start != null) }
+        var minuteOfDay by rememberSaveable { mutableIntStateOf(state.allDayMinuteOfDay) }
+        var pickingTime by rememberSaveable { mutableStateOf(false) }
         ReminderLeadPicker(
             title = stringResource(R.string.edit_reminder_add),
             selected = ReminderOverride.Inherit,
             allowInherit = false,
             allowNone = false,
             allDay = state.isAllDay,
+            header = if (bothDates || state.isAllDay) {
+                {
+                    if (bothDates) {
+                        ReminderAnchorToggle(fromStart = fromStart, onChange = { fromStart = it })
+                        Spacer(Modifier.height(16.dp))
+                    }
+                    if (state.isAllDay) {
+                        GroupedRow(
+                            title = stringResource(R.string.reminder_time),
+                            position = Position.Alone,
+                            trailing = {
+                                Text(
+                                    formatMinuteOfDay(minuteOfDay, LocalUse24HourFormat.current),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            onClick = { pickingTime = true },
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
+            } else {
+                null
+            },
             onSelect = { choice ->
-                (choice as? ReminderOverride.Minutes)?.minutes?.firstOrNull()?.let(viewModel::addReminder)
+                (choice as? ReminderOverride.Minutes)?.minutes?.firstOrNull()?.let { minutes ->
+                    // A task with one date counts from that one, whatever the toggle said.
+                    val anchorStart = if (bothDates) fromStart else state.due == null
+                    viewModel.addReminder(
+                        if (state.isAllDay) {
+                            // The default time is left unnamed, so the reminder follows the setting.
+                            TaskReminder.allDay(
+                                daysBefore = minutes / DAY_MINUTES,
+                                minuteOfDay = minuteOfDay.takeIf { it != state.allDayMinuteOfDay },
+                                fromStart = anchorStart,
+                            )
+                        } else {
+                            TaskReminder(minutes, fromStart = anchorStart)
+                        },
+                    )
+                }
                 showReminderPicker = false
             },
             onDismiss = { showReminderPicker = false },
         )
+        if (pickingTime) {
+            TimePickerAlert(
+                initial = LocalTime.of(minuteOfDay / 60, minuteOfDay % 60),
+                onConfirm = {
+                    val picked = it.hour * 60 + it.minute
+                    // The default time stays unnamed; any other is one an all-day reminder can name.
+                    minuteOfDay = if (picked == state.allDayMinuteOfDay) picked else TaskReminder.allDayMinuteOfDay(picked)
+                    pickingTime = false
+                },
+                onDismiss = { pickingTime = false },
+            )
+        }
     }
 
     if (showRecurrencePicker) {
@@ -819,6 +884,7 @@ private fun InlineField(
  * affordance appears once a value is set. Tappable values read as links
  * (primary); an error flips them to the error colour.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScheduleRow(
     label: String,
@@ -829,43 +895,76 @@ private fun ScheduleRow(
     isError: Boolean = false,
 ) {
     val valueColor = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        if (value == null) {
+    val valueModifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp)
+    LabelledValueLayout(
+        label = {
             Text(
-                text = stringResource(R.string.edit_set),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp),
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp),
             )
-        } else {
-            Text(
-                text = value.formatDate(allDay),
-                style = MaterialTheme.typography.titleMedium,
-                color = valueColor,
-                modifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp),
-            )
-            if (!allDay) {
-                Text(
-                    text = value.formatTime(LocalUse24HourFormat.current),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = valueColor,
-                    modifier = Modifier.clickable(onClick = onPick).padding(vertical = 8.dp, horizontal = 6.dp),
-                )
+        },
+        value = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (value == null) {
+                    Text(
+                        text = stringResource(R.string.edit_set),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = valueModifier,
+                    )
+                } else {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.End,
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false),
+                    ) {
+                        Text(
+                            text = value.formatDate(allDay),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = valueColor,
+                            modifier = valueModifier,
+                        )
+                        if (!allDay) {
+                            Text(
+                                text = value.formatTime(LocalUse24HourFormat.current),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = valueColor,
+                                modifier = valueModifier,
+                            )
+                        }
+                    }
+                    IconButton(onClick = onClear, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            Icons.Rounded.Clear,
+                            contentDescription = stringResource(R.string.edit_clear),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
-            IconButton(onClick = onClear, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    Icons.Rounded.Clear,
-                    contentDescription = stringResource(R.string.edit_clear),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+        },
+    )
+}
+
+/**
+ * [label] at the start and [value] at the end of one line when both fit, else
+ * [value] on its own line below, still end-aligned — so large font scales wrap
+ * rather than clip either side (#76).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LabelledValueLayout(label: @Composable () -> Unit, value: @Composable () -> Unit) {
+    FlowRow(
+        itemVerticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        label()
+        // Its whole width as its minimum, so the value wraps as one piece.
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            Box(Modifier.width(IntrinsicSize.Max)) { value() }
         }
     }
 }

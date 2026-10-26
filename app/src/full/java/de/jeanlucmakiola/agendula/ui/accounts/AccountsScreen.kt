@@ -48,6 +48,7 @@ internal fun AccountsScreen(
     onOpenStorage: () -> Unit,
     onBack: () -> Unit,
     viewModel: AccountsViewModel,
+    visible: Boolean,
 ) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val usable by viewModel.accountsUsable.collectAsStateWithLifecycle()
@@ -60,6 +61,8 @@ internal fun AccountsScreen(
     CollapsingScaffold(
         title = stringResource(R.string.settings_section_accounts),
         onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
     ) {
         val loaded = accounts ?: return@CollapsingScaffold
 

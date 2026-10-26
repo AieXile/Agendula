@@ -7,7 +7,7 @@ import androidx.datastore.preferences.core.edit
 import de.jeanlucmakiola.agendula.data.di.ExternalStore
 import de.jeanlucmakiola.agendula.data.di.IoDispatcher
 import de.jeanlucmakiola.agendula.data.tasks.ProviderResolver
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.data.tasks.TasksDataSource
 import de.jeanlucmakiola.agendula.data.tasks.room.toAlarmEntity
 import de.jeanlucmakiola.agendula.data.tasks.room.TaskEntity

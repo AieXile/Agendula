@@ -7,19 +7,68 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-26
+
+### Added
+- A reminder can count from the task's start as well as from its due date, and
+  tasks with only a start date get reminders too. Default reminders can mix
+  both, e.g. a day before the start and an hour before the due date; each
+  applies to tasks that have its date (#72).
+- An all-day task's reminders can each have their own time, so one task can
+  remind you at 09:00 and again at 17:00 (#78).
+- Other apps can read the tasks kept in Agendula's own database through an
+  OpenTasks-compatible provider, once you grant them permission. Apps that
+  already support OpenTasks or tasks.org need only a small change to support
+  Agendula too (#43).
+- With a second permission, other apps can also add, edit, complete and delete
+  those tasks, including their reminders and tags. They can tick off a single
+  occurrence of a recurring task. Task lists stay read-only for them (#63).
+
 ### Changed
+- A new task no longer takes a default reminder whose time has already
+  passed, so a start of "today" does not ring the moment the task is saved.
+- All-day default reminders are whole days; one set in hours rounds to the
+  nearest day.
+- Switching a task between timed and all-day converts its reminders right
+  away in the editor, so what you see is what gets saved.
+- The editor shows the default reminders a new task, or a newly added date,
+  will get, before you save. Removing them leaves the task without a reminder
+  instead of falling back to the default.
 - Reminders now sync. A reminder set on a task is uploaded as a standard alarm
   (`VALARM`), so it also notifies in macOS and iOS Reminders, Thunderbird,
   tasks.org and jtx Board, and alarms set in those apps now fire in Agendula
   instead of the default reminder. Removing a task's alarm in another app
   turns it off here too, rather than falling back to the default (#52).
-- A new task with a due date, or one that gets its first due date, takes the
-  default reminder as its own, so it travels with the task to the server.
+- A new task with a date, or one that gets a new date, takes the default
+  reminder for that date as its own, so it travels with the task to the server.
   Changing the default later no longer changes those tasks; tasks that rely on
   the default today are left as they are.
 - On upgrade, reminders on open, synced tasks that so far stayed on this
   device are uploaded once.
 - Alarms imported from an `.ics` file become reminders on the task.
+- Screens now open and close the way they do in Calendula: they slide in, and
+  a back swipe previews the screen behind before closing (#66).
+- Settings now use Calendula's names and layout. Reminders is now
+  Notifications, Task form is now New task form, and export and import moved
+  out of Storage into a new Backup & restore section (#66).
+
+### Fixed
+- Fixed a crash when a task's date was shown in Russian and other languages
+  whose dates put a word after the year (#70).
+- Widgets no longer turn into the Today widget or show "Can't load content"
+  after a task is ticked off (#92).
+- Ticking off a task in the Tasks and Up next widgets now works in release
+  builds; until now the tap did nothing (#75).
+- The Tasks widget leaves the same gap under its header as its preview (#86).
+- The Starts and Due labels in the task form no longer get cut off at large
+  font sizes (#76).
+- Adding an account by email address finds the server again for providers
+  that publish it in DNS, such as mailbox.org and Posteo. The DNS lookup never
+  reached the network, so they ended in "isn't a CalDAV server". It now goes
+  through Android's resolver and respects Private DNS (#97).
+- When the server can't be found from your email address, account setup asks
+  for the server address straight away and keeps your email as the username,
+  instead of stopping at an error (#97).
 
 ## [1.1.0] - 2026-10-10
 

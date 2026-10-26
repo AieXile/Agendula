@@ -300,7 +300,9 @@ private fun StepTitle(step: AddAccountStep) {
             R.string.add_account_provider_title to R.string.add_account_provider_body
         is AddAccountStep.PrepareAccess ->
             step.quirk.setupTitle to R.string.add_account_setup_body
-        is AddAccountStep.EnterAddress -> if (step.choice.provider?.hosted == true) {
+        is AddAccountStep.EnterAddress -> if (step.manualServer) {
+            R.string.add_account_server_title to R.string.add_account_server_fallback_body
+        } else if (step.asksForEmail) {
             R.string.add_account_email_title to R.string.add_account_email_body
         } else {
             R.string.add_account_server_title to R.string.add_account_server_body

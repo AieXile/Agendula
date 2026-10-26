@@ -7,8 +7,8 @@
 # nothing calls it directly — Room then throws InstantiationException, reported
 # as "Failed to create an instance of ...". This first bit us through a
 # transitive Room (Glance -> WorkManager -> WorkDatabase, built at startup:
-# issue #1); Glance is gone and Room is now our own task store, so the rule
-# matters more, not less — TasksDatabase is built on the first store read.
+# issue #1); Room is now also our own task store, so the rule matters more,
+# not less — TasksDatabase is built on the first store read.
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 
 # Compose Compiler may keep its own; defaults are fine

@@ -76,6 +76,8 @@ private val PICK_TYPES = arrayOf("text/calendar", "text/x-vcalendar", "applicati
 fun ImportScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    predictiveBack: Boolean = false,
+    visible: Boolean? = null,
     initialUri: Uri? = null,
     onOpenStorage: (() -> Unit)? = null,
     viewModel: ImportViewModel = hiltViewModel(),
@@ -105,6 +107,8 @@ fun ImportScreen(
         title = stringResource(R.string.import_title),
         onBack = onBack,
         modifier = modifier,
+        predictiveBack = predictiveBack,
+        visible = visible,
     ) {
         Text(
             text = stringResource(R.string.import_hint),

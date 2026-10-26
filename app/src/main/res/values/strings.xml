@@ -122,8 +122,8 @@
     <string name="reminder_unit_days">Days</string>
     <string name="reminder_unit_weeks">Weeks</string>
     <string name="settings_list_reminders_title">Per-list reminders</string>
-    <string name="settings_list_reminders_hint">Override the default reminder for individual lists</string>
-    <string name="settings_list_notifications">Notifications</string>
+    <string name="settings_list_reminders_hint">Override the default per list — separately for timed and all-day tasks. A list can keep the default, drop it, or set its own.</string>
+    <string name="settings_list_notifications">Sound &amp; vibration</string>
     <string name="settings_list_notifications_hint">Sound, vibration and importance for this list’s reminders</string>
     <string name="settings_list_reminder_inherits">Default (%1$s)</string>
 
@@ -181,7 +181,7 @@
     <string name="error_blank_title">Enter a title.</string>
     <string name="error_no_list">Choose a list.</string>
     <string name="error_due_before_start">Due can\'t be before the start.</string>
-    <string name="error_reminder_without_due">Set a due date to use a reminder.</string>
+    <string name="error_reminder_without_date">Set a start or due date to use a reminder.</string>
     <string name="error_recurrence_without_date">A repeating task needs a start or due date.</string>
     <string name="edit_recurrence_label">Repeat</string>
     <string name="edit_recurrence_none">Does not repeat</string>
@@ -199,7 +199,15 @@
     <string name="edit_reminder_add">Add reminder</string>
     <string name="edit_reminder_add_first">Add a reminder (otherwise the default applies)</string>
     <string name="edit_reminder_remove">Remove reminder</string>
-    <string name="detail_reminder_before_start">%1$s (before start)</string>
+    <string name="reminder_at_start">At start time</string>
+    <string name="reminder_at_due_time">At due time</string>
+    <string name="reminder_on_start_date">On the start date</string>
+    <string name="reminder_on_due_date">On the due date</string>
+    <!-- An all-day reminder's day and its time: "On the day at 09:00", "1 day before at 17:00" -->
+    <string name="reminder_at_time">%1$s at %2$s</string>
+    <string name="reminder_anchor_start">From start</string>
+    <string name="reminder_anchor_due">From due date</string>
+    <string name="reminder_time">Time</string>
     <string name="subtask_progress">%1$d / %2$d</string>
     <string name="progress_fraction_compact">%1$d/%2$d</string>
     <string name="detail_delete_title">Delete task?</string>
@@ -359,7 +367,7 @@
 
     <!-- First run: backup -->
     <string name="onboarding_backup_title">Keep a copy</string>
-    <string name="onboarding_backup_body_later">Without an account, your lists live only on this device. Save them as iCalendar files any other task or calendar app can read, any time from Settings → Storage → Export.</string>
+    <string name="onboarding_backup_body_later">Without an account, your lists live only on this device. Save them as iCalendar files any other task or calendar app can read, any time from Settings → Backup &amp; restore → Export.</string>
     <string name="onboarding_backup_continue">Continue</string>
 
     <!-- First run: quick add bar -->
@@ -394,10 +402,10 @@
     <!-- Group of reference links at the foot of the settings hub. -->
     <string name="settings_group_about">About</string>
     <string name="settings_section_appearance">Appearance</string>
-    <string name="settings_appearance_subtitle">Theme, colour and time format</string>
-    <string name="settings_section_task_form">Task form</string>
-    <string name="settings_task_form_subtitle">Default fields, list and subtasks</string>
-    <string name="settings_reminders_subtitle">Notifications for due tasks</string>
+    <string name="settings_appearance_subtitle">Theme, colours, time format</string>
+    <string name="settings_section_task_form">New task form</string>
+    <string name="settings_task_form_subtitle">Default fields and behaviour</string>
+    <string name="settings_reminders_subtitle">Reminders and delivery</string>
     <string name="settings_form_fields_hint">Fields shown by default on a new task. The rest sit behind \"More fields\".</string>
     <string name="settings_dynamic_color_unavailable">Available on Android 12 and later</string>
     <string name="settings_autofocus_title">Focus title on new task</string>
@@ -442,13 +450,13 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_dynamic_color">Dynamic colour</string>
     <string name="settings_dynamic_color_hint">Use colours from your wallpaper</string>
-    <string name="settings_section_reminders">Reminders</string>
-    <string name="settings_reminders">Due reminders</string>
+    <string name="settings_section_reminders">Notifications</string>
+    <string name="settings_reminders">Task reminders</string>
     <string name="settings_reminders_hint">Notify me when a task is due</string>
     <string name="settings_notifications_blocked">Notifications are off</string>
     <string name="settings_notifications_blocked_hint">Reminders can\u2019t reach you. Tap to allow notifications for Agendula.</string>
-    <string name="settings_default_reminder">When to remind</string>
-    <string name="settings_allday_reminder_time">Time for all-day reminders</string>
+    <string name="settings_default_reminder">Default reminder</string>
+    <string name="settings_allday_reminder_time">All-day reminder time</string>
     <string name="settings_allday_reminder_time_summary">All-day tasks count back from %1$s</string>
     <string name="settings_default_reminder_allday">All-day tasks</string>
     <string name="settings_allday_reminder_fires_at">Notifies at %1$s</string>
@@ -472,9 +480,11 @@
 
     <!-- Storage and export -->
     <string name="settings_section_storage">Storage</string>
-    <string name="settings_storage_subtitle">Where tasks are kept, and export</string>
+    <string name="settings_storage_subtitle">Where your tasks are kept</string>
+    <string name="settings_section_backup">Backup &amp; restore</string>
+    <string name="settings_backup_subtitle">Export and import</string>
     <string name="settings_task_store">Task store</string>
-    <string name="settings_task_store_hint">Each store keeps its own tasks. Switching does not move them across — copy them over first, or export them.</string>
+    <string name="settings_task_store_hint">Each store keeps its own tasks. Switching does not move them across — copy them over first, or export them from Backup &amp; restore.</string>
     <string name="settings_store_own">On this device</string>
     <string name="settings_store_own_hint">Agendula\'s own storage. Nothing else to install.</string>
     <string name="settings_store_external">Another task app</string>
@@ -594,6 +604,38 @@
         <item quantity="one">%1$d week before</item>
         <item quantity="other">%1$d weeks before</item>
     </plurals>
+    <plurals name="reminder_minutes_before_start">
+        <item quantity="one">%1$d minute before the start</item>
+        <item quantity="other">%1$d minutes before the start</item>
+    </plurals>
+    <plurals name="reminder_hours_before_start">
+        <item quantity="one">%1$d hour before the start</item>
+        <item quantity="other">%1$d hours before the start</item>
+    </plurals>
+    <plurals name="reminder_days_before_start">
+        <item quantity="one">%1$d day before the start</item>
+        <item quantity="other">%1$d days before the start</item>
+    </plurals>
+    <plurals name="reminder_weeks_before_start">
+        <item quantity="one">%1$d week before the start</item>
+        <item quantity="other">%1$d weeks before the start</item>
+    </plurals>
+    <plurals name="reminder_minutes_before_due">
+        <item quantity="one">%1$d minute before the due date</item>
+        <item quantity="other">%1$d minutes before the due date</item>
+    </plurals>
+    <plurals name="reminder_hours_before_due">
+        <item quantity="one">%1$d hour before the due date</item>
+        <item quantity="other">%1$d hours before the due date</item>
+    </plurals>
+    <plurals name="reminder_days_before_due">
+        <item quantity="one">%1$d day before the due date</item>
+        <item quantity="other">%1$d days before the due date</item>
+    </plurals>
+    <plurals name="reminder_weeks_before_due">
+        <item quantity="one">%1$d week before the due date</item>
+        <item quantity="other">%1$d weeks before the due date</item>
+    </plurals>
 
     <!-- CalDAV accounts -->
     <string name="settings_section_accounts">Accounts</string>
@@ -676,6 +718,7 @@
     <string name="add_account_summary_body">Agendula will keep these lists in sync from now on. You can change what syncs in Settings.</string>
     <string name="add_account_summary_done">Done</string>
     <string name="add_account_server_title">Where are your tasks?</string>
+    <string name="add_account_server_fallback_body">Agendula couldn\u2019t find the server from your email address. Enter the CalDAV server address your provider gives for calendars instead.</string>
     <string name="add_account_server_body">Enter the address of your CalDAV server. An email address works too, if the server publishes itself under its domain.</string>
     <string name="add_account_credentials_title">Sign in</string>
     <string name="add_account_credentials_body">Use an app password if your provider offers one \u2014 it can be revoked without changing your account password.</string>
@@ -854,4 +897,10 @@
     <string name="widget_lists_config_title">Lists to show</string>
     <string name="widget_week_label">Week</string>
     <string name="widget_week_description">A seven-day strip of task counts</string>
+    <!-- Permission another app requests to read Agendula's tasks -->
+    <string name="permission_read_tasks_label">read Agendula tasks</string>
+    <string name="permission_read_tasks_description">Allows the app to read your task lists and tasks stored in Agendula, including their reminders and tags.</string>
+    <!-- Permission another app requests to add, change or delete Agendula's tasks -->
+    <string name="permission_write_tasks_label">add, change and delete Agendula tasks</string>
+    <string name="permission_write_tasks_description">Allows the app to add, change, complete and delete tasks stored in Agendula, including their reminders and tags. It cannot change or delete task lists.</string>
 </resources>

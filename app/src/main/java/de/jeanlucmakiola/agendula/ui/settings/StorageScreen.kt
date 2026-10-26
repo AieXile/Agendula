@@ -55,9 +55,8 @@ import de.jeanlucmakiola.floret.components.SelectedCheck
 @Composable
 internal fun StorageScreen(
     viewModel: SettingsViewModel,
-    onOpenExport: () -> Unit,
-    onOpenImport: () -> Unit,
     onBack: () -> Unit,
+    visible: Boolean,
 ) {
     val context = LocalContext.current
     val storage by viewModel.storage.collectAsStateWithLifecycle()
@@ -85,11 +84,17 @@ internal fun StorageScreen(
     // permission dialog too, and would wipe the refusal before it is read.
     OnResume { viewModel.refreshStorage() }
 
-    CollapsingScaffold(title = stringResource(R.string.settings_section_storage), onBack = onBack) {
+    CollapsingScaffold(
+        title = stringResource(R.string.settings_section_storage),
+        onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
+    ) {
+        val canCopy = storage?.canCopyFromExternal == true
         GroupedRow(
             title = stringResource(R.string.settings_task_store),
             summary = storage?.let { storeLabel(it) },
-            position = Position.Top,
+            position = if (canCopy) Position.Top else Position.Alone,
             // Nothing to pick until the stored mode has landed; opening the picker
             // on the seeded state would offer the wrong store as the current one.
             onClick = storage?.let {
@@ -99,31 +104,19 @@ internal fun StorageScreen(
                 }
             },
         )
-        if (storage?.canCopyFromExternal == true) {
+        if (canCopy) {
             GroupedRow(
                 title = stringResource(
                     R.string.settings_copy_from_external,
                     storage?.let { externalTitle(it.external, it.externalLabel) }.orEmpty(),
                 ),
                 summary = stringResource(R.string.settings_copy_from_external_hint),
-                position = Position.Middle,
+                position = Position.Bottom,
                 leading = { Icon(Icons.Rounded.MoveDown, contentDescription = null) },
                 // Inert while a copy is in flight; the receipt below says so.
                 onClick = if (transfer.running) null else viewModel::startCopyFromExternal,
             )
         }
-        GroupedRow(
-            title = stringResource(R.string.settings_export),
-            summary = stringResource(R.string.settings_export_hint),
-            position = Position.Middle,
-            onClick = onOpenExport,
-        )
-        GroupedRow(
-            title = stringResource(R.string.import_title),
-            summary = stringResource(R.string.settings_import_hint),
-            position = Position.Bottom,
-            onClick = onOpenImport,
-        )
 
         TransferStatus(transfer)
 

@@ -41,6 +41,8 @@ import androidx.core.net.toUri
 import de.jeanlucmakiola.agendula.R
 import de.jeanlucmakiola.agendula.data.prefs.SNOOZE_PRESETS
 import de.jeanlucmakiola.agendula.data.reminders.TaskNotifier
+import de.jeanlucmakiola.agendula.domain.TaskReminderOrder
+import de.jeanlucmakiola.agendula.domain.asTaskReminder
 import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
 import de.jeanlucmakiola.agendula.ui.common.OnResume
 import de.jeanlucmakiola.agendula.ui.common.canScheduleExactAlarms
@@ -48,7 +50,7 @@ import de.jeanlucmakiola.agendula.ui.common.openExactAlarmSettings
 import de.jeanlucmakiola.agendula.ui.common.ReminderDefaultPicker
 import de.jeanlucmakiola.agendula.ui.common.TimePickerAlert
 import de.jeanlucmakiola.agendula.ui.common.formatMinuteOfDay
-import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.agendula.ui.common.reminderLabel
 import de.jeanlucmakiola.floret.components.CollapsingScaffold
 import de.jeanlucmakiola.floret.components.GroupedRow
 import de.jeanlucmakiola.floret.components.OptionPicker
@@ -57,16 +59,18 @@ import de.jeanlucmakiola.floret.components.SelectedCheck
 import de.jeanlucmakiola.floret.components.pastelize
 import de.jeanlucmakiola.floret.identity.collapseExit
 import de.jeanlucmakiola.floret.identity.expandEnter
+import de.jeanlucmakiola.floret.reminders.ReminderLead
 import de.jeanlucmakiola.floret.reminders.ReminderOverride
 import de.jeanlucmakiola.floret.reminders.reminderOverrideFor
 import java.time.LocalTime
 
 /** Whether due tasks notify at all, how far ahead, and which lists differ. */
 @Composable
-internal fun RemindersScreen(
+internal fun NotificationsScreen(
     state: SettingsUiState,
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
+    visible: Boolean,
 ) {
     val context = LocalContext.current
     var notificationsAllowed by remember { mutableStateOf(context.notificationsAllowed()) }
@@ -119,7 +123,12 @@ internal fun RemindersScreen(
     )
     val lists = state.lists.filter { it.id > 0L }
 
-    CollapsingScaffold(title = stringResource(R.string.settings_section_reminders), onBack = onBack) {
+    CollapsingScaffold(
+        title = stringResource(R.string.settings_section_reminders),
+        onBack = onBack,
+        predictiveBack = true,
+        visible = visible,
+    ) {
         if (state.settings.remindersEnabled && !notificationsAllowed) {
             GroupedRow(
                 title = stringResource(R.string.settings_notifications_blocked),
@@ -153,13 +162,13 @@ internal fun RemindersScreen(
         }
         GroupedRow(
             title = stringResource(R.string.settings_default_reminder),
-            summary = reminderChoiceLabel(state.settings.defaultReminderMinutes),
+            summary = reminderChoiceLabel(state.settings.defaultReminders),
             position = Position.Middle,
             onClick = { showOffset = true },
         )
         GroupedRow(
             title = stringResource(R.string.settings_default_reminder_allday),
-            summary = reminderChoiceLabel(state.settings.defaultAllDayReminderMinutes, allDay = true),
+            summary = reminderChoiceLabel(state.settings.defaultAllDayReminders, allDay = true),
             position = Position.Middle,
             onClick = { showAllDay = true },
         )
@@ -245,7 +254,7 @@ internal fun RemindersScreen(
                                     title = stringResource(R.string.settings_default_reminder),
                                     summary = listOverrideSummary(
                                         state.settings.perListReminderOverride.reminderOverrideFor(list.id),
-                                        state.settings.defaultReminderMinutes,
+                                        state.settings.defaultReminders,
                                         allDay = false,
                                     ),
                                     position = Position.Middle,
@@ -255,7 +264,7 @@ internal fun RemindersScreen(
                                     title = stringResource(R.string.settings_default_reminder_allday),
                                     summary = listOverrideSummary(
                                         state.settings.perListAllDayReminderOverride.reminderOverrideFor(list.id),
-                                        state.settings.defaultAllDayReminderMinutes,
+                                        state.settings.defaultAllDayReminders,
                                         allDay = true,
                                     ),
                                     position = Position.Middle,
@@ -278,24 +287,24 @@ internal fun RemindersScreen(
     if (showOffset) {
         ReminderDefaultPicker(
             title = stringResource(R.string.settings_default_reminder),
-            selected = state.settings.defaultReminderMinutes.let {
-                if (it.isEmpty()) ReminderOverride.None else ReminderOverride.Minutes(it)
+            selected = state.settings.defaultReminders.let {
+                if (it.isEmpty()) ReminderOverride.None else ReminderOverride.Minutes.of(it)
             },
             allowInherit = false,
-            onSelect = { viewModel.setDefaultReminderMinutes((it as? ReminderOverride.Minutes)?.minutes.orEmpty()) },
+            onSelect = { viewModel.setDefaultReminders((it as? ReminderOverride.Minutes)?.leads.orEmpty()) },
             onDismiss = { showOffset = false },
         )
     }
     if (showAllDay) {
         ReminderDefaultPicker(
             title = stringResource(R.string.settings_default_reminder_allday),
-            selected = state.settings.defaultAllDayReminderMinutes.let {
-                if (it.isEmpty()) ReminderOverride.None else ReminderOverride.Minutes(it)
+            selected = state.settings.defaultAllDayReminders.let {
+                if (it.isEmpty()) ReminderOverride.None else ReminderOverride.Minutes.of(it)
             },
             allowInherit = false,
             allDay = true,
             leadTimeSummary = allDayFiresAt,
-            onSelect = { viewModel.setDefaultAllDayReminderMinutes((it as? ReminderOverride.Minutes)?.minutes.orEmpty()) },
+            onSelect = { viewModel.setDefaultAllDayReminders((it as? ReminderOverride.Minutes)?.leads.orEmpty()) },
             onDismiss = { showAllDay = false },
         )
     }
@@ -350,19 +359,27 @@ private data class OverrideTarget(val listId: Long, val allDay: Boolean)
 
 /** Row summary for a list: its override, or the inherited global default. */
 @Composable
-private fun listOverrideSummary(choice: ReminderOverride, globalDefault: List<Int>, allDay: Boolean): String =
+private fun listOverrideSummary(choice: ReminderOverride, globalDefault: List<ReminderLead>, allDay: Boolean): String =
     when (choice) {
         ReminderOverride.Inherit ->
             stringResource(R.string.settings_list_reminder_inherits, reminderChoiceLabel(globalDefault, allDay))
         ReminderOverride.None -> stringResource(R.string.reminder_none)
-        is ReminderOverride.Minutes -> reminderChoiceLabel(choice.minutes, allDay)
+        is ReminderOverride.Minutes -> reminderChoiceLabel(choice.leads, allDay)
     }
 
-/** "30 minutes before, At due time", or "No reminder" for an empty set. */
+/**
+ * "30 minutes before, At due time", or "No reminder" for an empty set. Each
+ * names its date once any counts from the start.
+ */
 @Composable
-private fun reminderChoiceLabel(minutes: List<Int>, allDay: Boolean = false): String =
-    if (minutes.isEmpty()) stringResource(R.string.reminder_none)
-    else minutes.map { reminderLeadTimeLabel(it, allDay) }.joinToString(", ")
+private fun reminderChoiceLabel(leads: List<ReminderLead>, allDay: Boolean = false): String {
+    if (leads.isEmpty()) return stringResource(R.string.reminder_none)
+    val reminders = leads.map { it.asTaskReminder() }.sortedWith(TaskReminderOrder)
+    val anchored = reminders.any { it.fromStart }
+    return reminders.map { reminder ->
+        reminderLabel(reminder.minutesBefore, allDay, reminder.fromStart, anchored)
+    }.joinToString(", ")
+}
 
 /** SCHEDULE_EXACT_ALARM is user-granted from API 31; below that exact alarms need no grant. */
 private fun showExactAlarmRow(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

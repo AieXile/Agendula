@@ -108,7 +108,6 @@
     <string name="error_blank_title">Veuillez saisir un titre.</string>
     <string name="error_no_list">Sélectionnez une liste.</string>
     <string name="error_due_before_start">La date d\'échéance ne peut pas être antérieure au début.</string>
-    <string name="error_reminder_without_due">Fixez une date d\'échéance pour pourvoir définir un rappel.</string>
     <string name="lists_header">Listes</string>
     <string name="new_task">Nouvelle tâche</string>
     <string name="lists_failure">Impossible de lire vos tâches.</string>

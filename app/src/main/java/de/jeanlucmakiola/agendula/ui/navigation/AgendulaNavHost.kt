@@ -3,12 +3,14 @@ package de.jeanlucmakiola.agendula.ui.navigation
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import de.jeanlucmakiola.agendula.domain.Task
 import kotlin.time.Instant
@@ -27,6 +29,7 @@ import de.jeanlucmakiola.agendula.ui.lists.ListsScreen
 import de.jeanlucmakiola.agendula.ui.settings.SettingsScreen
 import de.jeanlucmakiola.agendula.ui.tasklist.TaskListScreen
 import de.jeanlucmakiola.agendula.ui.tasklist.TaskListViewModel
+import de.jeanlucmakiola.floret.identity.predictiveBackExit
 
 /**
  * The single in-app back stack: lists → task list → detail / edit.
@@ -37,6 +40,7 @@ import de.jeanlucmakiola.agendula.ui.tasklist.TaskListViewModel
  * `SavedStateHandle`). Screens receive plain navigation lambdas so they stay
  * unaware of the nav library.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AgendulaNavHost(
     modifier: Modifier = Modifier,
@@ -70,19 +74,19 @@ fun AgendulaNavHost(
         onNavRequestConsumed()
     }
 
+    val slideSpec = MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()
+    val overlayExit = predictiveBackExit()
+
     NavHost(
         navController = nav,
         startDestination = Dest.LISTS,
         modifier = modifier,
-        // Only the screen on top moves; the background is always held static.
-        // Forward is a plain fade-in over the held screen — calm, not a slide.
-        // Back is the predictive-back peek: navigation-compose composes the
-        // screen being revealed underneath and seeks popExit with the gesture, so
-        // the leaving screen scales down to reveal the (unmoved) previous screen.
-        enterTransition = { fadeIn() },
+        // Calendula's overlay motion. NavHost's own back handler seeks the exit
+        // over the previous screen, so destinations don't add a preview of their own.
+        enterTransition = { slideInHorizontally(slideSpec) { it } + fadeIn() },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
-        popExitTransition = { scaleOut(targetScale = 0.9f) + fadeOut() },
+        popExitTransition = { overlayExit },
     ) {
         composable(Dest.LISTS) {
             ReadableWidth {

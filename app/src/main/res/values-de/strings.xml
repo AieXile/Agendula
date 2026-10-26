@@ -78,7 +78,6 @@
     <string name="error_blank_title">Gebe einen Titel ein.</string>
     <string name="error_no_list">Wähle eine Liste.</string>
     <string name="error_due_before_start">Fälligkeit darf nicht vor dem Start liegen.</string>
-    <string name="error_reminder_without_due">Setze ein Fälligkeits-Datum für Erinnerungen.</string>
     <string name="lists_header">Listen</string>
     <string name="new_task">Neue Aufgabe</string>
     <string name="lists_failure">Deine Aufgaben konnten nicht gelesen werden.</string>

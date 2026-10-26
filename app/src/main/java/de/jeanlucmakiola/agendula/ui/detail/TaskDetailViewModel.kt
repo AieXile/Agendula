@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import de.jeanlucmakiola.agendula.data.prefs.DEFAULT_ALL_DAY_REMINDER_MINUTE
+import de.jeanlucmakiola.agendula.data.prefs.SettingsPrefs
+import de.jeanlucmakiola.agendula.domain.taskReminderDisplayOrder
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
 import de.jeanlucmakiola.agendula.data.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +35,9 @@ sealed interface TaskDetailUiState {
     data class Content(
         val detail: TaskDetail,
         /** The task's own reminders; empty when the list's or app default applies. */
-        val reminders: List<de.jeanlucmakiola.agendula.data.tasks.TaskReminder> = emptyList(),
+        val reminders: List<de.jeanlucmakiola.agendula.domain.TaskReminder> = emptyList(),
+        /** The time an all-day reminder without one of its own rings at. */
+        val allDayMinuteOfDay: Int = DEFAULT_ALL_DAY_REMINDER_MINUTE,
     ) : TaskDetailUiState
 }
 
@@ -38,6 +45,7 @@ sealed interface TaskDetailUiState {
 @HiltViewModel
 class TaskDetailViewModel @Inject constructor(
     private val repository: TasksRepository,
+    private val settingsPrefs: SettingsPrefs,
     @ApplicationScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -46,14 +54,18 @@ class TaskDetailViewModel @Inject constructor(
     val state: StateFlow<TaskDetailUiState> =
         target.filterNotNull()
             .flatMapLatest { (id, occurrence) ->
+                val allDayMinute = settingsPrefs.settings.map { it.allDayReminderMinuteOfDay }.distinctUntilChanged()
                 repository.taskDetail(id, occurrence)
-                    .map<TaskDetail?, TaskDetailUiState> { detail ->
-                        if (detail == null) {
+                    .map { detail -> detail?.let { it to repository.remindersFor(it.task.taskId) } }
+                    .combine(allDayMinute) { loaded, minute ->
+                        if (loaded == null) {
                             TaskDetailUiState.NotFound
                         } else {
+                            val (detail, reminders) = loaded
                             TaskDetailUiState.Content(
                                 detail = detail,
-                                reminders = repository.remindersFor(detail.task.taskId),
+                                reminders = reminders.sortedWith(taskReminderDisplayOrder(detail.task.isAllDay, minute)),
+                                allDayMinuteOfDay = minute,
                             )
                         }
                     }

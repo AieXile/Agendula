@@ -58,7 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.core.net.toUri
-import de.jeanlucmakiola.agendula.data.tasks.TaskReminder
+import de.jeanlucmakiola.agendula.domain.TaskReminder
 import de.jeanlucmakiola.agendula.domain.TaskStatus
 import de.jeanlucmakiola.agendula.domain.recurrence.RecurringScope
 import de.jeanlucmakiola.agendula.ui.common.LocalUse24HourFormat
@@ -66,7 +66,7 @@ import de.jeanlucmakiola.agendula.ui.common.RecurringScopeDialog
 import de.jeanlucmakiola.agendula.ui.common.TagChip
 import de.jeanlucmakiola.agendula.ui.common.linkified
 import de.jeanlucmakiola.agendula.ui.common.recurrenceText
-import de.jeanlucmakiola.agendula.ui.common.reminderLeadTimeLabel
+import de.jeanlucmakiola.agendula.ui.common.taskReminderLabel
 import de.jeanlucmakiola.floret.locale.currentLocale
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -198,6 +198,7 @@ fun TaskDetailScreen(
                 detail = s.detail,
                 inner = inner,
                 reminders = s.reminders,
+                allDayMinuteOfDay = s.allDayMinuteOfDay,
                 onToggle = { viewModel.toggleComplete(s.detail.task) },
                 onToggleSubtask = { viewModel.toggleComplete(it) },
                 onAddSubtask = { viewModel.addSubtask(it) },
@@ -251,6 +252,7 @@ private fun DetailBody(
     detail: TaskDetail,
     inner: androidx.compose.foundation.layout.PaddingValues,
     reminders: List<TaskReminder>,
+    allDayMinuteOfDay: Int,
     onToggle: () -> Unit,
     onToggleSubtask: (Task) -> Unit,
     onAddSubtask: (String) -> Unit,
@@ -352,8 +354,12 @@ private fun DetailBody(
                     DetailCard(icon = Icons.Rounded.Notifications, iconContentDescription = stringResource(R.string.edit_reminder_label)) {
                         reminders.forEach { reminder ->
                             Text(
-                                if (reminder.fromStart) stringResource(R.string.detail_reminder_before_start, reminderLeadTimeLabel(reminder.minutesBefore))
-                                else reminderLeadTimeLabel(reminder.minutesBefore, task.isAllDay),
+                                taskReminderLabel(
+                                    reminder,
+                                    task.isAllDay,
+                                    allDayMinuteOfDay,
+                                    anchored = task.start != null && task.due != null,
+                                ),
                                 style = MaterialTheme.typography.titleMedium,
                             )
                         }

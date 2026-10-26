@@ -86,6 +86,12 @@ object TasksContract {
 
         const val UID = "_uid"
         const val DELETED = "_deleted"
+
+        const val HAS_ALARMS = "has_alarms"
+        const val ORIGINAL_INSTANCE_ALLDAY = "original_instance_allday"
+        const val LIST_OWNER = "list_owner"
+        const val LIST_ACCESS_LEVEL = "list_access_level"
+        const val VISIBLE = "visible"
     }
 
     /**
@@ -103,6 +109,7 @@ object TasksContract {
         const val INSTANCE_DUE_SORTING = "instance_due_sorting"
         const val DISTANCE_FROM_CURRENT = "distance_from_current"
         const val IS_RECURRING = "is_recurring"
+        const val INSTANCE_DURATION = "instance_duration"
 
         /**
          * The occurrence's `RECURRENCE-ID` — the time this occurrence was
@@ -118,6 +125,10 @@ object TasksContract {
         const val PROPERTY_ID = "property_id"
         const val TASK_ID = "task_id"
         const val MIMETYPE = "mimetype"
+        const val DATA0 = "data0"
+        const val DATA1 = "data1"
+        const val DATA2 = "data2"
+        const val DATA3 = "data3"
     }
 
     /**
@@ -164,6 +175,9 @@ object TasksContract {
 
         /** `data1` — the tag as spelled. */
         const val NAME = "data1"
+
+        /** `data2` — the tag's colour, if any. */
+        const val COLOR = "data2"
     }
 
     fun propertiesUri(authority: String): Uri = "content://$authority/${Properties.PATH}".toUri()

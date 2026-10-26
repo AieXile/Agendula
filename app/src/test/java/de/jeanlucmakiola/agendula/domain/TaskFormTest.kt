@@ -31,9 +31,15 @@ class TaskFormTest {
     }
 
     @Test
-    fun `a reminder requires a due date`() {
-        val errors = TaskForm(title = "x", listId = 1, reminders = listOf(10)).validate()
-        assertThat(errors).contains(TaskFormError.REMINDER_WITHOUT_DUE)
+    fun `a reminder requires a start or due date`() {
+        val errors = TaskForm(title = "x", listId = 1, reminders = listOf(TaskReminder(10))).validate()
+        assertThat(errors).contains(TaskFormError.REMINDER_WITHOUT_DATE)
+    }
+
+    @Test
+    fun `a start alone is enough for a reminder`() {
+        val errors = TaskForm(title = "x", listId = 1, start = Instant.fromEpochSeconds(0), reminders = listOf(TaskReminder(10))).validate()
+        assertThat(errors).doesNotContain(TaskFormError.REMINDER_WITHOUT_DATE)
     }
 
     @Test

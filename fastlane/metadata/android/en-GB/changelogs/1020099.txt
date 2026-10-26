@@ -1,0 +1,11 @@
+### Added
+- Reminders can count from a task's start as well as its due date.
+- All-day tasks can have reminders at set times, e.g. 09:00 and 17:00.
+- Other apps can read and edit your local tasks through an OpenTasks provider, with your permission.
+
+### Changed
+- Reminders sync as VALARMs, so they also ring in Apple Reminders, Thunderbird and tasks.org.
+
+### Fixed
+- Widgets work again after ticking off tasks.
+- Signing in by email works again for mailbox.org and Posteo.

@@ -11,18 +11,20 @@ data class SrvRecord(
     val target: String,
 )
 
+/** The SRV and TXT records published under one name. */
+data class DnsRecords(val srv: List<SrvRecord>, val txt: List<String>)
+
 /**
  * DNS lookups for RFC 6764. Behind an interface so the pipeline is testable
  * without a network, and so the resolver can be swapped per platform.
  */
 interface DnsResolver {
-    fun srv(name: String): List<SrvRecord>
-    fun txt(name: String): List<String>
+    /** The SRV and TXT records for [name], looked up together. */
+    fun lookup(name: String): DnsRecords
 
     /** For the base-URL path, where DNS is never consulted. */
     object None : DnsResolver {
-        override fun srv(name: String) = emptyList<SrvRecord>()
-        override fun txt(name: String) = emptyList<String>()
+        override fun lookup(name: String) = DnsRecords(emptyList(), emptyList())
     }
 }
 
@@ -112,14 +114,16 @@ object ServiceDiscovery {
         val domain = domainOf(trimmed) ?: return emptyList()
         val candidates = mutableListOf<Candidate>()
 
-        val srv = dns.srv("$SRV_SERVICE.$domain")
+        val records = dns.lookup("$SRV_SERVICE.$domain")
+        val srv = records.srv
             .filterNot { it.target == "." || it.target.isEmpty() || it.port == 0 }
-            // DNS names are case-insensitive and dnsjava returns the wire case, so
+            // DNS names are case-insensitive and answers keep the wire case, so
             // "Calendar.Google.com." would otherwise walk straight past the guard.
             .filterNot { it.target.trimEnd('.').lowercase() in SRV_DEAD_ENDS }
             // ⚠️ RFC 2782 does not require a target to live inside the domain it
-            // was queried for, and this ladder is walked over plain UDP DNS with
-            // no DNSSEC — then walked *again* after a 401, with the
+            // was queried for, and the answer is not DNSSEC-validated (Private
+            // DNS encrypts the hop, it does not authenticate the zone) — and
+            // this ladder is walked *again* after a 401, with the
             // authenticated client. An out-of-domain target is also one the
             // credential would never be offered to, since CalDavHttp scopes it
             // to the typed address's registrable domain, so following it can
@@ -131,7 +135,7 @@ object ServiceDiscovery {
 
         // The TXT path applies to the SRV target, and to the bare domain when
         // there is no SRV record — that is the GMX/Web.de shape.
-        val txtPath = dns.txt("$SRV_SERVICE.$domain")
+        val txtPath = records.txt
             .firstNotNullOfOrNull { record ->
                 record.split(' ', ';')
                     .firstOrNull { it.startsWith("path=", ignoreCase = true) }
@@ -203,6 +207,19 @@ object ServiceDiscovery {
             return null
         }
         return input.toHttpUrlOrNull()
+    }
+
+    /**
+     * The email address [input] names, without a `mailto:` prefix, or null when
+     * it is a URL or a bare domain — the same split [candidatesFor] makes.
+     */
+    fun emailOf(input: String): String? {
+        val trimmed = input.trim()
+        if (asBaseUrl(trimmed) != null) return null
+        val email = trimmed.removePrefix("mailto:").removePrefix("MAILTO:")
+        return email.takeIf {
+            it.substringBeforeLast('@', "").isNotEmpty() && domainOf(it) != null
+        }
     }
 
     /** The domain of an email address, a `mailto:` URI, or a bare domain. */

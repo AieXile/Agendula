@@ -195,6 +195,15 @@ jobs:
         if: steps.scope.outputs.code == 'true'
         run: ./gradlew assembleDebug
 
+      # Debug builds aren't minified, so a keep rule that drops a reflectively
+      # created class's constructor only breaks release builds (#1, #75). The
+      # releaseTest twin is R8-shrunk with the release rules and debug-signed.
+      - name: R8 keeps reflective constructors
+        if: steps.scope.outputs.code == 'true'
+        run: |
+          ./gradlew assembleFullReleaseTest
+          python3 scripts/check_r8_keeps.py
+
       - name: Trivy filesystem scan
         if: steps.scope.outputs.code == 'true'
         run: |
