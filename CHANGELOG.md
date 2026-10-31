@@ -12,6 +12,13 @@ Weblate, F-Droid). This fork's own changes are listed in [FORK.md](FORK.md).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-01
+
+### Added
+- This fork is published under its own application id, `com.aiexile.agendula`,
+  and its builds are distributed through GitHub releases. It installs alongside
+  the upstream app rather than replacing it; see [FORK.md](FORK.md).
+
 ### Changed
 - The home screen's search, settings and new-list actions are plain round tonal
   buttons again. They no longer use the scalloped Material Shapes, and pressing

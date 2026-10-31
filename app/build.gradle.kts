@@ -30,8 +30,8 @@ android {
         // scripts/version_info.sh (1.0.x: 1.0.0 -> 10000; from 1.1.0:
         // 1.1.0-beta.1 -> 1010001, 1.1.0 -> 1010099), and CI fails if the
         // committed one doesn't match. See docs/RELEASING.md.
-        versionCode = 1020099
-        versionName = "1.2.0"
+        versionCode = 1030099
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
