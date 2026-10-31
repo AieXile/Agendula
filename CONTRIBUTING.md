@@ -24,6 +24,16 @@ layer.
   account (a local Radicale is the quickest).
 - Clone with `--recurse-submodules`: the `floret-kit` component library is a
   submodule.
+- The SDK is found through `sdk.dir` in `local.properties` or `ANDROID_HOME`.
+  Set `ANDROID_HOME` rather than only `local.properties`: `floret-kit` is a
+  composite build with its own project directory, so it cannot read this
+  repository's `local.properties`.
+- The Gradle daemon is pinned to **JetBrains Runtime 21** by
+  `gradle/gradle-daemon-jvm.properties`, so Gradle downloads that JDK when no
+  JVM is specified. Avoid the download by pointing Gradle at an installed JDK 21
+  instead: `JAVA_HOME=/path/to/jdk-21 ./gradlew …`, or in Android Studio
+  Settings → Build, Execution, Deployment → Build Tools → Gradle → **Gradle
+  JDK** choose a 21 (not the bundled JBR). CI installs JBR 21 explicitly.
 
 ## Build, test, lint
 
@@ -33,21 +43,19 @@ layer.
 ./gradlew lintFullDebug lintOfflineDebug  # Android lint (CI runs this on every PR)
 ```
 
-CI (`.forgejo/workflows/ci.yaml`, on Codeberg) runs a reproducible-release invariant check,
+CI (`.github/workflows/ci.yml`) runs a reproducible-release invariant check,
 then lint → unit tests → debug build on every pull request, so run these locally
 before opening a PR. Keep CI green.
 
 ## Translations
 
-**Never edit a `values-*/strings.xml` file in a pull request.** Translations are
-owned by a self-hosted Weblate that writes to this repository directly, and a
-hand-edit is overwritten on the next sync.
+Translations are plain resource files in this repository and are edited like any
+other source: `app/src/main/res/values-*/strings.xml`. This fork has no Weblate
+instance, so a pull request that fixes or adds a translation is normal work.
 
-→ **[Translate Agendula on Weblate](https://weblate.dev.jeanlucmakiola.de/engage/agendula/)**
-
-Adding a *new* English string to `values/strings.xml` is normal PR work; Weblate
-picks it up and offers it to translators. Partial translations are expected and
-fine — missing keys are informational. Stale and orphaned keys are not, so run
+Adding a *new* English string to `values/strings.xml` is also normal PR work.
+Partial translations are expected and fine — missing keys are informational.
+Stale and orphaned keys are not, so run
 
 ```sh
 python3 scripts/check_translations.py
@@ -95,11 +103,11 @@ truth for both the in-app picker and the Android 13+ per-app language setting.
 - Write focused commits with clear messages (the existing history uses short,
   scoped subjects like `UI: ...` / `M1 ...`).
 - Update [`CHANGELOG.md`](CHANGELOG.md) under `[Unreleased]` for any
-  user-visible change — its sections feed the release notes and F-Droid "What's
-  New" (see [`docs/RELEASING.md`](docs/RELEASING.md)).
+  user-visible change — its sections become the GitHub release notes
+  (see [`docs/RELEASING.md`](docs/RELEASING.md)).
 - Don't bump `versionName` / `versionCode` in a regular PR — the committed
-  `versionName` is bumped only when **cutting a release** (that bump reaching
-  `main` is what triggers the release; the pipeline then mints the tag). See
+  `versionName` is bumped only when **cutting a release**; tagging that commit
+  with `vX.Y.Z` is what publishes the APKs. See
   [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Scope

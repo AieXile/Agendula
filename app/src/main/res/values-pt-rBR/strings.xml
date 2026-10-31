@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Agendula</string>
     <string name="task_untitled">Tarefa sem título</string>
@@ -87,9 +87,6 @@
     <string name="smart_overdue">Prazo expirado</string>
     <string name="smart_upcoming">A seguir</string>
     <string name="smart_all">Tudo</string>
-    <string name="home_today_all_done">Tudo pronto 🎉</string>
-    <string name="home_today_empty">Nada terminando hoje 🎉</string>
-    <string name="home_upcoming_view_all">Ver tudo</string>
     <string name="home_due_today">Hoje</string>
     <string name="home_due_tomorrow">Amanhã</string>
     <string name="home_search_hint">Buscar tarefas</string>
@@ -121,17 +118,14 @@
     <string name="settings_reminders_subtitle">Notificações para tarefas com prazo acabando</string>
     <string name="settings_form_fields_hint">Campos mostrados por padrão em uma nova tarefa. O resto está atrás de \"Mais campos\".</string>
     <string name="settings_dynamic_color_unavailable">Disponível no Android 12 e mais recente</string>
-    <string name="settings_about_author">por Jean-Luc Makiola</string>
+    <string name="settings_about_author">por AieXile</string>
     <string name="settings_about_source">Código-fonte</string>
-    <string name="settings_license">Licença</string>
     <string name="settings_about_support">Apoie o desenvolvimento</string>
     <string name="settings_about_version">Versão %1$s</string>
     <string name="settings_about_logo_desc">Ícone de app do Agendula</string>
     <string name="settings_language">Idioma do app</string>
     <string name="settings_language_auto">Padrão do sistema</string>
-    <string name="settings_translate">Ajude a traduzir</string>
-    <string name="settings_translate_hint">Adicione ou melhore um idioma no Weblate</string>
-    <string name="settings_report_problem">Relate um problema</string>
+    <string name="settings_translate">Ajude a traduzir</string>    <string name="settings_report_problem">Relate um problema</string>
     <string name="settings_report_problem_hint">Abrir o rastreador de problemas</string>
     <string name="crash_report_issue_title">Relatório de quebra</string>
     <string name="settings_theme">Tema</string>

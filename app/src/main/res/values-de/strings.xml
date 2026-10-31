@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="back">Zurück</string>
     <string name="save">Speichern</string>
@@ -86,9 +86,6 @@
     <string name="smart_overdue">Überfällig</string>
     <string name="smart_upcoming">Anstehend</string>
     <string name="smart_all">Alle</string>
-    <string name="home_today_all_done">Alles erledigt 🎉</string>
-    <string name="home_today_empty">Heute keine Fälligkeiten 🎉</string>
-    <string name="home_upcoming_view_all">Alle anzeigen</string>
     <string name="home_due_today">Heute</string>
     <string name="home_due_tomorrow">Morgen</string>
     <string name="home_search_hint">Aufgaben suchen</string>
@@ -120,9 +117,8 @@
     <string name="settings_reminders_subtitle">Benachrichtigungen für fällige Aufgaben</string>
     <string name="settings_form_fields_hint">Standardmäßig angezeigte Felder — alles Weitere liegt hinter „Weitere Felder“.</string>
     <string name="settings_dynamic_color_unavailable">Verfügbar für Android 12 und höher</string>
-    <string name="settings_about_author">von Jean-Luc Makiola</string>
+    <string name="settings_about_author">von AieXile</string>
     <string name="settings_about_source">Quellcode</string>
-    <string name="settings_license">Lizenz</string>
     <string name="settings_about_support">Entwicklung unterstützen</string>
     <string name="settings_about_version">Version %1$s</string>
     <string name="settings_about_logo_desc">Calendula-App-Symbol</string>
@@ -166,9 +162,7 @@
         <item quantity="one">%1$d Woche vorher</item>
         <item quantity="other">%1$d Wochen vorher</item>
     </plurals>
-    <string name="settings_translate">Hilf beim Übersetzen</string>
-    <string name="settings_translate_hint">Füge eine Sprache auf Weblate hinzu oder verbessere sie</string>
-    <string name="task_completed">Fertig</string>
+    <string name="settings_translate">Hilf beim Übersetzen</string>    <string name="task_completed">Fertig</string>
     <string name="cd_repeats">Wiederholt</string>
     <string name="shortcut_new_task">Neue Aufgabe</string>
     <string name="shortcut_today">Heute</string>
@@ -260,10 +254,6 @@
     <string name="reminder_on_the_day">Ab dem Tag</string>
     <string name="recurrence_next">Als nächstes: %1$s</string>
     <string name="recurrence_end_until">An einem Tag</string>
-    <plurals name="home_today_remaining_count">
-        <item quantity="one">%1$d übrig</item>
-        <item quantity="other">%1$d übrig</item>
-    </plurals>
     <string name="reminder_day_today">heute</string>
     <string name="reminder_day_tomorrow">morgen</string>
     <string name="reminder_day_yesterday">gestern</string>
@@ -318,10 +308,6 @@
     <string name="list_color_blue">Blau</string>
     <string name="list_color_purple">Lila</string>
     <string name="list_color_pink">Rosa</string>
-    <plurals name="home_today_progress_count">
-        <item quantity="one">%1$d von %2$d abgeschlossen</item>
-        <item quantity="other">%1$d von %2$d abgeschlossen</item>
-    </plurals>
     <string name="settings_group_look">Aussehen und Verhalten</string>
     <string name="settings_group_data">Daten</string>
     <string name="settings_group_app">App</string>

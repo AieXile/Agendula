@@ -7,7 +7,6 @@ Syncs over CalDAV, or keeps your tasks on the device. Open standards, no account
 required.</p>
 
 <p>
-<a href="https://codeberg.org/jlmakiola/agendula/actions"><img src="https://codeberg.org/jlmakiola/agendula/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI"></a>
 <img src="https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white" alt="Android 10+">
 <img src="https://img.shields.io/badge/Kotlin-Compose-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin + Compose">
 <img src="https://img.shields.io/badge/Material%203-Expressive-4285F4" alt="Material 3 Expressive">
@@ -15,34 +14,34 @@ required.</p>
 </p>
 
 <p>
-<a href="https://f-droid.org/packages/de.jeanlucmakiola.agendula/"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="56"></a>
-&nbsp;
-<a href="https://play.google.com/store/apps/details?id=de.jeanlucmakiola.agendula"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="56"></a>
-&nbsp;
-<a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula"><img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png?raw=true" alt="Get it on Obtainium" height="56"></a>
-&nbsp;
-<a href="https://ko-fi.com/jeanlucmakiola"><img src="https://storage.ko-fi.com/cdn/brandasset/v2/support_me_on_kofi_badge_beige.png" alt="Support me on Ko-fi" height="56"></a>
-</p>
-
-<p>
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01.png" alt="Home screen: today's progress, overdue and upcoming tasks, and your lists" width="18%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02.png" alt="Onboarding: sync with your own CalDAV server" width="18%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" alt="Upcoming list with a task expanded into its subtasks" width="18%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" alt="Task detail: a monthly recurring task with a reminder and priority" width="18%">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05.png" alt="Reminder notification with Done and Snooze actions" width="18%">
+<img src="assets/screenshots/01.png" alt="Home screen: every open task in a scrollable feed, then your lists" width="18%">
+<img src="assets/screenshots/02.png" alt="Onboarding: sync with your own CalDAV server" width="18%">
+<img src="assets/screenshots/03.png" alt="Upcoming list with a task expanded into its subtasks" width="18%">
+<img src="assets/screenshots/04.png" alt="Task detail: a monthly recurring task with a reminder and priority" width="18%">
+<img src="assets/screenshots/05.png" alt="Reminder notification with Done and Snooze actions" width="18%">
 </p>
 
 </div>
 
-Agendula is the task-list sibling to [Calendula](https://codeberg.org/jlmakiola/calendula).
-It keeps its own task store, designed around RFC 5545's `VTODO`, and syncs it
-with any CalDAV server — Nextcloud, Radicale, Baïkal and the rest. No account is
-needed to use it: without one, your tasks simply stay on the phone.
+**English | [简体中文](README.zh.md)**
 
-The name rhymes with its sibling on purpose: **Agendula** is *agenda* — Latin for
-“things to be done” — given Calendula's `-ula` ending. Calendula keeps your days;
-Agendula keeps your to-dos. (A Calendula flower head is botanically a cluster of
-many small *florets* — so the two apps are florets of one bloom.)
+> **This is a fork.** The app itself is
+> [Agendula](https://codeberg.org/jlmakiola/agendula) by
+> [Jean-Luc Makiola](https://codeberg.org/jlmakiola), released under the MIT
+> licence. This fork is maintained by **AieXile** and published under its own
+> application id, `com.aiexile.agendula`, so it installs and updates
+> independently of the original. See [FORK.md](FORK.md) for what changed and
+> which licence obligations come with the fork, and [LICENSE](LICENSE) for the
+> notices that must travel with any redistribution.
+
+Agendula keeps its own task store, designed around RFC 5545's `VTODO`, and syncs
+it with any CalDAV server — Nextcloud, Radicale, Baïkal and the rest. No account
+is needed to use it: without one, your tasks simply stay on the phone.
+
+**Agendula** is *agenda* — Latin for "things to be done" — named in the style of
+its upstream sibling [Calendula](https://codeberg.org/jlmakiola/calendula). A
+Calendula flower head is botanically a cluster of many small *florets*, and the
+two apps share a component library, `floret-kit`.
 
 ## What it does
 
@@ -83,13 +82,9 @@ does not quietly lose fields another client wrote.
 
 ### Tested With
 
-The following CalDAV Services have been Tested
-
-
-
 | Service | Version | Date | Status | User |
 |---|---|---|---|---|
-| **Nextcloud** | 25.0.0 | Oct 9th 2026 | ✅ | [@jlmakiola](https://codeberg.org/jlmakiola) [@Schanbro](https://codeberg.org/Schanbro)
+| **Nextcloud** | 25.0.0 | Oct 9th 2026 | ✅ | [@jlmakiola](https://codeberg.org/jlmakiola) [@Schanbro](https://codeberg.org/Schanbro) |
 
 ## Where your tasks live
 
@@ -116,90 +111,48 @@ proprietary, and open standards — CalDAV and iCalendar — are the lane.
 
 ## Install
 
-### F-Droid (recommended)
+This fork is distributed only as
+[GitHub releases](https://github.com/AieXile/Agendula/releases) — there is no
+F-Droid or Google Play listing, and no store metadata in this repository. The
+original Agendula entries on F-Droid and Play install the upstream app, with a
+different application id, and are not updated by this fork. To run this fork,
+install a release APK or build it yourself:
 
-Agendula is in the official [F-Droid](https://f-droid.org) repository. Search
-for Agendula in any F-Droid client, or
-[install it from f-droid.org](https://f-droid.org/packages/de.jeanlucmakiola.agendula/).
+```sh
+git clone --recurse-submodules https://github.com/AieXile/Agendula.git
+cd Agendula
+./gradlew :app:assembleDebug
+adb install app/build/outputs/apk/full/debug/app-full-debug.apk
+```
 
-F-Droid builds from source on its own schedule, so a new version usually shows
-up there a few days after release.
+Tagging `vX.Y.Z` builds, signs and attaches the release APKs — one universal
+APK per flavour, no per-ABI splits — to
+[GitHub releases](https://github.com/AieXile/Agendula/releases). For automatic
+updates from that feed, use [Obtainium](https://github.com/ImranR98/Obtainium).
 
-### Self-hosted F-Droid repo (fastest updates)
-
-The release pipeline builds, signs and publishes every release to a
-self-hosted F-Droid repository, so new versions land there first. Add it once
-and your F-Droid client handles updates from then on:
-
-1. In your F-Droid client, open *Settings → Repositories → Add* (or open the
-   link below on your phone):
-
-   ```
-   https://apps.dev.jeanlucmakiola.de/dev/fdroid/repo?fingerprint=C2C0640402BF458FC0ED957AF0B37AA4C14022E72F89CE90B5965B458CF73425
-   ```
-
-2. Refresh, search for **Agendula**, install.
-
-### Codeberg release / Obtainium
-
-Every release is also published on
-**[Codeberg](https://codeberg.org/jlmakiola/agendula/releases)** with the signed
-APK and a `.sha256` checksum attached — the same APK the F-Droid repository
-serves. For automatic updates from there, use
-**[Obtainium](https://github.com/ImranR98/Obtainium)** and
-**[add Agendula in one tap](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://codeberg.org/jlmakiola/agendula)**.
-Each release carries two APKs (see [Offline version](#offline-version)), so set
-*Filter APKs by regular expression* to `^agendula_v` to always get the regular
-app.
-Betas of upcoming versions are published there too, as pre-releases; to test
-them, switch on *Include prereleases* for Agendula in Obtainium.
-
-### Google Play
-
-Agendula is on
-[Google Play](https://play.google.com/store/apps/details?id=de.jeanlucmakiola.agendula).
-
-Play builds are signed with Google's key rather than mine, so switching between
-Play and any other channel means uninstalling first. Tasks kept only in
-Agendula's own database go with it, so sync them to a CalDAV account first.
+JDK 17 and the Android SDK are all it needs; see
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for tests and lint, and
+[`docs/RELEASING.md`](docs/RELEASING.md) for signing a release build.
 
 ### Offline version
 
-Each Codeberg release also carries `agendula-offline_v<version>.apk`: Agendula
-without CalDAV sync and **without the network permission**, so it cannot
-connect to anything. It installs alongside the regular app rather than replacing
-it; move tasks between the two with Settings → Backup & restore → Export / Import. In
-Obtainium, pick it with *Filter APKs by regular expression* set to
-`^agendula-offline_v`.
-
-### Build from source
-
-```sh
-git clone --recurse-submodules https://codeberg.org/jlmakiola/agendula.git
-cd agendula
-./gradlew :app:assembleDebug
-```
-
-JDK 17 and the Android SDK are all it needs; see
-[`CONTRIBUTING.md`](CONTRIBUTING.md) for tests and lint.
+The `offline` flavour is Agendula without CalDAV sync and **without the network
+permission**, so it cannot connect to anything. It installs alongside the
+regular app rather than replacing it; move tasks between the two with
+Settings → Backup & restore → Export / Import.
 
 ## Translations
 
-Translations are managed on a self-hosted **Weblate**, and partial ones are
-fine — an untranslated string simply falls back to English.
-
-<a href="https://weblate.dev.jeanlucmakiola.de/engage/agendula/"><img src="https://weblate.dev.jeanlucmakiola.de/widget/agendula/multi-auto.svg" alt="Translation status" width="600"></a>
-
-**→ [Help translate Agendula](https://weblate.dev.jeanlucmakiola.de/engage/agendula/)**
-
-No coding needed: register on the Weblate server, pick (or request) a language,
-and translate the strings in your browser. You can also reach this link in the
-app from the top of **Settings → App language**.
+Translations live in this repository (`app/src/main/res/values-*/strings.xml`);
+partial ones are fine — an untranslated string simply falls back to English.
+Adding or improving a language is a normal pull request; see
+[`CONTRIBUTING.md`](CONTRIBUTING.md). You can also reach that link in the app
+from the top of **Settings → App language**.
 
 ## Contributing
 
 Issues and pull requests live on
-**[Codeberg](https://codeberg.org/jlmakiola/agendula)**.
+**[GitHub](https://github.com/AieXile/Agendula)**.
 [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the practical how.
 
 ## Privacy
@@ -208,8 +161,18 @@ No analytics, no advertising, no tracking, no third-party SDK, and no server of
 the developer's. Your tasks stay on your device unless you add a CalDAV account
 yourself, and then they go only to the server you chose.
 
-**→ [Privacy policy](https://jeanlucmakiola.de/agendula/privacy)**
+**→ [Privacy policy](docs/PRIVACY.md)**
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+The fork as a whole is MIT — see [LICENSE](LICENSE), which keeps the original
+copyright notice and adds the fork's. Two exceptions travel with the code:
+
+- **`dav/`** is a vendored copy of
+  [dav4jvm](https://github.com/bitfireAT/dav4jvm) and stays **MPL-2.0**
+  (`dav/LICENSE`). Modified files there must be made available under MPL-2.0,
+  and their licence headers must be kept — see [`dav/PROVENANCE.md`](dav/PROVENANCE.md).
+- **`floret-kit`** (the submodule component library) is MIT, © Jean-Luc Makiola.
+
+The in-app **Settings → About → Open source licenses** screen lists every third
+party component and its licence; keep it current when adding a dependency.

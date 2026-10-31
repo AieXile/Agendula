@@ -3,9 +3,10 @@
 **Upstream:** [bitfireAT/dav4jvm](https://github.com/bitfireAT/dav4jvm),
 tag **2.2.1**, commit `f434c9d19b322228916c106beaebd8634b85ddb1`.
 **Licence:** MPL-2.0 (`dav/LICENSE`, verbatim). Every file keeps its upstream
-header, as §3.4 requires. Agendula's own code is MIT and unaffected — MPL is
-file-level copyleft, which is why this lives in its own module rather than
-inside `:app`.
+MPL header, as §3.4 requires — except three files whose upstream 2.2.1 header
+was a stale GPLv3 text; see [Licence headers](#licence-headers). The app's own
+code is MIT and unaffected — MPL is file-level copyleft, which is why this lives
+in its own module rather than inside `:app`.
 
 62 source files, ~4,200 lines, plus upstream's 15 test classes.
 
@@ -197,8 +198,8 @@ is *strictly safer* than obeying the redirect as sent, and it preserves the
 invariant that matters — credentials never travel in cleartext. A cross-host
 downgrade still throws.
 
-Found against a real server, not by reading: `cloud.jeanlucmakiola.de` returns
-`301 → http://cloud.jeanlucmakiola.de/remote.php/dav/`.
+Found against a real server, not by reading: such a server answers
+`301 → http://<same-host>/remote.php/dav/`.
 
 ## Change 8 — the credential is scoped by the public-suffix list, not by a label split
 
@@ -309,3 +310,17 @@ single spaced value (`qop=" auth"`) matched nothing at all — dropping into the
 RFC 2069 legacy branch, which emits a response with no `qop`, `nc` or `cnonce`.
 An RFC 7616 server rejects that outright: a permanent 401 against a server
 behaving perfectly legally. Values are trimmed and compared case-insensitively.
+
+## Licence headers
+
+Upstream 2.2.1 is MPL-2.0 (`LICENSE`, and the header on every other file in
+this tree), but `Error.kt`, `PropStat.kt` and `Response.kt` still carried the
+**GPLv3** header from before the relicensing. That was stale upstream text, not a
+second licence: upstream replaced those three headers with the MPL-2.0 notice in
+3.0.0.
+
+Leaving a GPLv3 notice on MPL-2.0 files is a known factual inaccuracy and would
+misstate the licence to anyone redistributing this tree, so the same three
+headers are corrected here to MPL-2.0's Exhibit A notice. The copyright line is
+kept. Nothing else in those files changed — their bodies are byte-for-byte
+upstream 2.2.1.

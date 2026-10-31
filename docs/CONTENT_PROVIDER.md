@@ -8,11 +8,11 @@ using a different authority and permissions.
 
 | | |
 |---|---|
-| Authority | `de.jeanlucmakiola.agendula.tasks` (offline build: `de.jeanlucmakiola.agendula.offline.tasks`) |
-| Read permission | `de.jeanlucmakiola.agendula.permission.READ_TASKS` (offline build: `de.jeanlucmakiola.agendula.offline.permission.READ_TASKS`) |
-| Write permission | `de.jeanlucmakiola.agendula.permission.WRITE_TASKS` (offline build: `de.jeanlucmakiola.agendula.offline.permission.WRITE_TASKS`) |
+| Authority | `com.aiexile.agendula.tasks` (offline build: `com.aiexile.agendula.offline.tasks`) |
+| Read permission | `com.aiexile.agendula.permission.READ_TASKS` (offline build: `com.aiexile.agendula.offline.permission.READ_TASKS`) |
+| Write permission | `com.aiexile.agendula.permission.WRITE_TASKS` (offline build: `com.aiexile.agendula.offline.permission.WRITE_TASKS`) |
 | Protection level | `dangerous`: request them at runtime |
-| Package visibility | add `<provider android:authorities="de.jeanlucmakiola.agendula.tasks" />` to your `<queries>` |
+| Package visibility | add `<provider android:authorities="com.aiexile.agendula.tasks" />` to your `<queries>` |
 
 Both names are derived from the installed package name, so every build has its
 own and they can be installed side by side: the authority is
@@ -21,12 +21,12 @@ own and they can be installed side by side: the authority is
 
 | Build | Package |
 |---|---|
-| Release | `de.jeanlucmakiola.agendula` |
-| Release, offline | `de.jeanlucmakiola.agendula.offline` |
-| Debug | `de.jeanlucmakiola.agendula.debug` |
-| Debug, offline | `de.jeanlucmakiola.agendula.offline.debug` |
-| Release test | `de.jeanlucmakiola.agendula.releasetest` |
-| Release test, offline | `de.jeanlucmakiola.agendula.offline.releasetest` |
+| Release | `com.aiexile.agendula` |
+| Release, offline | `com.aiexile.agendula.offline` |
+| Debug | `com.aiexile.agendula.debug` |
+| Debug, offline | `com.aiexile.agendula.offline.debug` |
+| Release test | `com.aiexile.agendula.releasetest` |
+| Release test, offline | `com.aiexile.agendula.offline.releasetest` |
 
 ## Tables
 

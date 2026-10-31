@@ -3,9 +3,41 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/); the `versionName` committed in
 `app/build.gradle.kts` is the source of truth for a release (see
-`docs/RELEASING.md`), and the `vX.Y.Z` tag is minted by the pipeline.
+`docs/RELEASING.md`), and you tag the matching `vX.Y.Z` yourself when you
+publish a build.
+
+Entries below `1.2.0` describe upstream releases and are kept as history, so
+they may still mention the upstream project's infrastructure (Codeberg,
+Weblate, F-Droid). This fork's own changes are listed in [FORK.md](FORK.md).
 
 ## [Unreleased]
+
+### Changed
+- The home screen's search, settings and new-list actions are plain round tonal
+  buttons again. They no longer use the scalloped Material Shapes, and pressing
+  one only dips it — the shape no longer spins and the add action no longer
+  morphs before it fires.
+- The home screen's three tiles (today's progress, overdue and all) are replaced
+  by one scrollable feed of every open task, with its header opening the full
+  list. The "Upcoming" preview below is gone, as the feed already shows those
+  tasks.
+- Settings no longer shows the separate "License" link beside Source and
+  Privacy; the open-source notices keep their own row.
+
+### Fixed
+- Going back from a second-level screen is no longer a blank cut: the page
+  slides out to the right over the page it returns to, which grows back in
+  behind it. Opening one now leaves the page underneath receding to 95% rather
+  than sitting unchanged, and the settings hub's sub-screens move the same way.
+  Both directions follow the M3 Expressive motion scheme and share one
+  definition in `ui/navigation/NavTransitions.kt`, dropping to a plain fade
+  when the system "remove animations" setting is on.
+- The crash-report dialog and the static widget previews in the widget picker
+  now follow the app's language instead of staying English under Chinese.
+- The heading above the lists of the device-only store now reads "This device"
+  instead of the data layer's `Local` placeholder.
+- The undo / confirmation chip's drop shadow falls away from the pill like any
+  other floating control, instead of being cut off at the chip's edges.
 
 ## [1.2.0] - 2026-10-26
 

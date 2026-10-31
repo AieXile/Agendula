@@ -1,1 +1,0 @@
-Une appli de tâches Material 3 Expressive avec synchro CalDAV.

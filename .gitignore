@@ -50,12 +50,8 @@ google-services.json
 .DS_Store
 Thumbs.db
 
-# F-Droid local artifacts (the pipeline generates them in CI)
-/fdroid/
-
-# Release-pipeline scratch files. release.yaml writes these into the workspace
-# while cutting a release; a self-hosted runner reuses that workspace, so they
-# must never end up committed (release-notes.md did, through 0.3.2).
+# Release-script scratch files. Keeping them out of the tree means a reused
+# workspace cannot leak them into a commit.
 /release-notes.md
 /payload.json
 /existing.json
@@ -73,14 +69,6 @@ Thumbs.db
 # Scratch backlog. Says so in its own header — dumped items get turned into
 # real work, not committed as a list.
 /req_changes.md
-
-# Google Play service-account key (fastlane/Appfile). Never committed.
-/play-service-account.json
-# fastlane run output
-/fastlane/report.xml
-/fastlane/README.md
-/vendor/bundle/
-/.bundle/
 
 # Emulator captures (scripts/emulator_screenshot.sh); regenerate from design/store/sample.
 /design/store/raw/

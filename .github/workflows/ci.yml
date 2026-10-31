@@ -1,0 +1,209 @@
+name: CI
+
+# One gate per pull request. Pushes to a branch are not built on their own, so a
+# change is built once on its PR (covering feature -> release/* and
+# release/* -> main) instead of once per push and again on the merge to main.
+# Merging is a plain merge; tagging is what publishes a build (release.yml).
+on:
+  pull_request:
+
+# Cancel superseded runs for the same PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Single job named `ci` so the required "CI" status check is always reported,
+  # even for docs-only PRs: those just skip the Android build and the job still
+  # succeeds (fast green check) instead of being filtered out and leaving the
+  # required check pending forever.
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # The runner image ships the SDK here; android-actions/setup-android keeps
+      # the same path, so the cache key below covers both cases.
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so the base..HEAD diff below has a merge-base.
+          fetch-depth: 0
+          # floret-kit is a submodule, included as a composite build.
+          submodules: recursive
+
+      # Cheap, always-on guard: the release build must stay reproducible for
+      # F-Droid (no AGP VCS-info embedding). Runs regardless of change scope so
+      # a regression can't slip through on a "docs-only" PR.
+      - name: Reproducible-release invariant
+        run: bash scripts/check_reproducible_release.sh
+
+      # The committed versionName must parse (X.Y.Z or X.Y.Z-beta.N) and the
+      # committed versionCode must be the one it derives, so a tag built from
+      # this commit is well-formed. A beta must never reach main: betas belong
+      # on release/* branches (docs/RELEASING.md).
+      - name: Committed version is well-formed
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -e
+          bash scripts/version_info.sh --check
+          if [ "${BASE#refs/heads/}" = "main" ] && [ "$(bash scripts/version_info.sh channel)" = "beta" ]; then
+            echo "ERROR: versionName $(bash scripts/version_info.sh version) is a beta." >&2
+            echo "Set the stable version (and its versionCode) before merging into main." >&2
+            exit 1
+          fi
+
+      # Translations are plain resource files in this repository; stale or
+      # orphaned keys are the usual mistake, and this reports them far more
+      # clearly than lint's MissingTranslation does.
+      - name: Translation parity
+        run: python3 scripts/check_translations.py
+
+      # Decide whether anything that affects the app build changed. Docs,
+      # licence texts and forge housekeeping don't, so those PRs skip the SDK +
+      # Gradle work below but still report a green `ci`.
+      - name: Classify change scope
+        id: scope
+        env:
+          # Deliberately a skip-list, not a build-list: a path nobody thought
+          # about defaults to building. Only paths the Gradle build provably
+          # never reads belong here — note that the workflows themselves, the
+          # `.gitmodules` submodule pointer and `scripts/` are *not* in it.
+          SKIP_RE: '(\.md$|^docs/|^assets/|^Gemfile$|^\.github/ISSUE_TEMPLATE/|^\.editorconfig$|^\.gitattributes$|^\.gitignore$|^LICENSE$)'
+        run: |
+          set -e
+          BASE="${{ github.base_ref }}"
+          # Normally the bare branch name; tolerate a full ref, which would
+          # otherwise make the merge-base lookup fail and quietly degrade this
+          # guard into "always build".
+          BASE="${BASE#refs/heads/}"
+          if [ -z "$BASE" ]; then
+            echo "No base branch on this event — running the full build to be safe."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Full (not --depth=1) base fetch so the merge-base is present even when
+          # the PR branch forked several commits back; a shallow tip has no merge
+          # base with a divergent branch and `git diff base...HEAD` aborts.
+          git fetch --no-tags origin "$BASE"
+          MB=$(git merge-base "origin/$BASE" HEAD 2>/dev/null || true)
+          if [ -z "$MB" ]; then
+            # No common ancestor available — don't risk skipping the build.
+            echo "No merge base with origin/$BASE — running the full build to be safe."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$MB" HEAD)
+          echo "Changed files:"; echo "$CHANGED"
+          RELEVANT=$(echo "$CHANGED" | grep -vE "$SKIP_RE" || true)
+          if [ -n "$RELEVANT" ]; then
+            # Naming them makes "why did my docs PR build for four minutes?"
+            # answerable from the log alone.
+            echo "Build-relevant changes:"; echo "$RELEVANT"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs/metadata-only change — skipping the Android build."
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Java
+        if: steps.scope.outputs.code == 'true'
+        # JetBrains 21 is what gradle-daemon-jvm.properties asks for; installing
+        # it here keeps Gradle from provisioning its own.
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        if: steps.scope.outputs.code == 'true'
+        uses: android-actions/setup-android@v3
+        with:
+          # Default ("tools platform-tools") drags in the Android Emulator
+          # (~300 MB) which the build never uses.
+          packages: ''
+
+      - name: Setup Android SDK cache
+        if: steps.scope.outputs.code == 'true'
+        # The SDK lives in a shared runner directory; a restore failure only
+        # costs download time, so it must not fail the job.
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk
+          key: ${{ runner.os }}-android-sdk-37-36.0.0
+
+      - name: Install Android SDK packages
+        if: steps.scope.outputs.code == 'true'
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle cache
+        if: steps.scope.outputs.code == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml', 'floret-kit/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        if: steps.scope.outputs.code == 'true'
+        run: chmod +x ./gradlew
+
+      # No --no-daemon: the daemon lives only as long as this job and lets the
+      # following steps skip JVM startup + reconfiguration.
+      - name: Lint (debug variants only)
+        if: steps.scope.outputs.code == 'true'
+        run: ./gradlew lintFullDebug lintOfflineDebug
+
+      # :dav is a plain JVM module, so it has no testDebugUnitTest — naming only
+      # that task would compile the vendored suite and run none of it, which is
+      # the whole safety argument in dav/PROVENANCE.md.
+      - name: Unit tests
+        if: steps.scope.outputs.code == 'true'
+        run: ./gradlew testFullDebugUnitTest testOfflineDebugUnitTest :dav:test :caldav:test
+
+      - name: Assemble debug APKs
+        if: steps.scope.outputs.code == 'true'
+        run: ./gradlew assembleDebug
+
+      # Debug builds aren't minified, so a keep rule that drops a reflectively
+      # created class's constructor only breaks release builds (#1, #75). The
+      # releaseTest twin is R8-shrunk with the release rules and debug-signed.
+      - name: R8 keeps reflective constructors
+        if: steps.scope.outputs.code == 'true'
+        run: |
+          ./gradlew assembleFullReleaseTest
+          python3 scripts/check_r8_keeps.py
+
+      - name: Trivy filesystem scan
+        if: steps.scope.outputs.code == 'true'
+        run: |
+          set -e
+          SUDO=""
+          if command -v sudo >/dev/null 2>&1; then
+            SUDO="sudo"
+          fi
+          if command -v apt-get >/dev/null 2>&1; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y wget apt-transport-https gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | $SUDO tee /usr/share/keyrings/trivy.gpg > /dev/null
+            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | $SUDO tee /etc/apt/sources.list.d/trivy.list
+            $SUDO apt-get update
+            $SUDO apt-get install -y trivy
+          fi
+          trivy filesystem --severity HIGH,CRITICAL --exit-code 0 .
+        continue-on-error: true

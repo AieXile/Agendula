@@ -63,7 +63,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="Water the plants"
+                android:text="@string/widget_preview_task_plants"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />
@@ -97,7 +97,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="Call the dentist"
+                android:text="@string/widget_preview_task_dentist"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />
@@ -138,7 +138,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="Pick up groceries"
+                android:text="@string/widget_preview_task_groceries"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@color/widget_preview_on_surface"
                 android:textSize="14sp" />

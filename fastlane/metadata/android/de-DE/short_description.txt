@@ -1,1 +1,0 @@
-Eine Aufgaben-App in Material 3 Expressive, mit CalDAV-Sync.

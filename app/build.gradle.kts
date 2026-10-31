@@ -17,22 +17,19 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "de.jeanlucmakiola.agendula"
+    namespace = "com.aiexile.agendula"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "de.jeanlucmakiola.agendula"
+        applicationId = "com.aiexile.agendula"
         minSdk = 29
         targetSdk = 36
-        // These committed values ARE the source of truth for a release: merging
-        // a bumped versionName into main triggers .gitea/workflows/release.yaml,
-        // which builds this version and then creates the matching vX.Y.Z tag +
-        // release itself. A versionName of X.Y.Z-beta.N pushed to a release/*
-        // branch instead cuts a Codeberg-only pre-release (beta.yaml).
-        // versionCode is derived from versionName by scripts/version_info.sh
-        // (1.0.x: 1.0.0 -> 10000; from 1.1.0: 1.1.0-beta.1 -> 1010001,
-        // 1.1.0 -> 1010099), and CI fails if the committed one doesn't match.
-        // See docs/RELEASING.md.
+        // These committed values ARE the source of truth for a release: bump
+        // both, build and sign the artifacts yourself, then tag the matching
+        // vX.Y.Z. versionCode is derived from versionName by
+        // scripts/version_info.sh (1.0.x: 1.0.0 -> 10000; from 1.1.0:
+        // 1.1.0-beta.1 -> 1010001, 1.1.0 -> 1010099), and CI fails if the
+        // committed one doesn't match. See docs/RELEASING.md.
         versionCode = 1020099
         versionName = "1.2.0"
 
@@ -43,8 +40,8 @@ android {
         // Derived from applicationId so the debug and releaseTest builds get
         // their own and can be installed alongside the real app without their
         // accounts colliding. Must stay in step with SyncContract.
-        resValue("string", "account_type", "de.jeanlucmakiola.agendula.caldav")
-        resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.sync")
+        resValue("string", "account_type", "com.aiexile.agendula.caldav")
+        resValue("string", "sync_authority", "com.aiexile.agendula.sync")
     }
 
     // `offline` (#39): no sync code, network libraries or network permission.
@@ -74,7 +71,7 @@ android {
 
     buildTypes {
         release {
-            // Keep release builds reproducible for F-Droid: don't let AGP embed
+            // Keep release builds reproducible: don't let AGP embed
             // build-environment git metadata (META-INF/version-control-info.textproto),
             // whose `revision`/path content varies by build machine and is the only
             // thing that otherwise differs from a clean from-source rebuild.
@@ -92,8 +89,8 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
-            resValue("string", "account_type", "de.jeanlucmakiola.agendula.debug.caldav")
-            resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.debug.sync")
+            resValue("string", "account_type", "com.aiexile.agendula.debug.caldav")
+            resValue("string", "sync_authority", "com.aiexile.agendula.debug.sync")
         }
         // A locally-installable twin of `release`: same R8 shrinking + obfuscation
         // and resource shrinking, but debug-signed and given its own applicationId
@@ -110,8 +107,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             matchingFallbacks += "release"
-            resValue("string", "account_type", "de.jeanlucmakiola.agendula.releasetest.caldav")
-            resValue("string", "sync_authority", "de.jeanlucmakiola.agendula.releasetest.sync")
+            resValue("string", "account_type", "com.aiexile.agendula.releasetest.caldav")
+            resValue("string", "sync_authority", "com.aiexile.agendula.releasetest.sync")
         }
     }
 
@@ -130,10 +127,10 @@ android {
     }
 
     // Don't embed AGP's dependency-metadata block in the APK signing block. It's
-    // a Play-oriented blob, and F-Droid's reproducible-build scanner rejects any
-    // "extra signing block" — so leaving it in blocks publishing to the official
-    // repo. It lives in the signing block, not the zip entries, so disabling it
-    // doesn't change the build output (reproducibility is unaffected).
+    // a Play-oriented blob that this fork's releases have no use for, and it makes
+    // the signing block differ from a plain rebuild. It lives in the signing
+    // block, not the zip entries, so disabling it doesn't change the build
+    // output (reproducibility is unaffected).
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -145,7 +142,7 @@ android {
         }
         // Ship the prebuilt .so files (datastore's shared counter) exactly as the
         // AAR has them. AGP strips them only when an NDK happens to be installed,
-        // so CI and F-Droid's buildserver would otherwise disagree on the bytes.
+        // so two build machines would otherwise disagree on the bytes.
         jniLibs {
             keepDebugSymbols += "**/*.so"
         }

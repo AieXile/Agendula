@@ -31,7 +31,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:maxLines="2"
-                android:text="Home"
+                android:text="@string/widget_preview_list_home"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@android:color/white"
                 android:textSize="13sp" />
@@ -81,7 +81,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:maxLines="2"
-                android:text="Work"
+                android:text="@string/widget_preview_list_work"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@android:color/white"
                 android:textSize="13sp" />
@@ -131,7 +131,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:maxLines="2"
-                android:text="Groceries"
+                android:text="@string/widget_preview_list_groceries"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@android:color/white"
                 android:textSize="13sp" />
@@ -181,7 +181,7 @@
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:maxLines="2"
-                android:text="Ideas"
+                android:text="@string/widget_preview_list_ideas"
                 android:fontFamily="sans-serif-medium"
                 android:textColor="@android:color/white"
                 android:textSize="13sp" />

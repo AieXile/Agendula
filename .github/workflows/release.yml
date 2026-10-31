@@ -1,0 +1,187 @@
+name: Release
+
+# Tagging is what publishes a build. `git tag vX.Y.Z && git push origin vX.Y.Z`
+# on a commit whose versionName is X.Y.Z builds, signs and attaches the APKs to
+# a GitHub release; the release notes are the tag's CHANGELOG.md section.
+#
+# One APK per flavour, universal — the app has no ABI splits, so there is
+# nothing to pick between on an ARM device.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   KEYSTORE_BASE64     base64 of the release keystore (.jks)
+#   KEYSTORE_PASSWORD   store password
+#   KEY_ALIAS           key alias inside the keystore
+#   KEY_PASSWORD        key password
+#
+#   base64 -w0 release.jks > keystore.b64    # macOS: base64 -i release.jks -o keystore.b64
+#
+# See docs/RELEASING.md.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish, e.g. v1.2.0'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # A tag push is guarded by the version check below, so the tag and the
+          # committed versionName must agree before anything is built.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Tag matches the committed version
+        id: ver
+        run: |
+          set -e
+          bash scripts/version_info.sh --check
+          VERSION=$(bash scripts/version_info.sh version)
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "ERROR: tag '$TAG' does not match versionName '$VERSION'." >&2
+            echo "Bump versionName (and its derived versionCode) or move the tag." >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$(bash scripts/version_info.sh prerelease)" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION ($(bash scripts/version_info.sh channel))."
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          # JetBrains 21 is what gradle-daemon-jvm.properties asks for; installing
+          # it here keeps Gradle from provisioning its own.
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # Default ("tools platform-tools") drags in the Android Emulator
+          # (~300 MB) which the build never uses.
+          packages: ''
+
+      - name: Setup Android SDK cache
+        # The SDK lives in a shared runner directory; a restore failure only
+        # costs download time, so it must not fail the release.
+        continue-on-error: true
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk
+          key: ${{ runner.os }}-android-sdk-37-36.0.0
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-release-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml', 'floret-kit/**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # The release build only signs when key.properties exists
+      # (app/build.gradle.kts); writing it from secrets here is what keeps an
+      # unsigned APK from ever reaching a release page.
+      - name: Configure signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          missing=""
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "$(printf '%s' "${!name}")" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ERROR: missing repository secret(s):$missing" >&2
+            echo "Set them under Settings -> Secrets and variables -> Actions (docs/RELEASING.md)." >&2
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+          {
+            echo "storeFile=../keystore.jks"   # relative to app/, the module that reads it
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > key.properties
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # Both flavours, each one universal APK: full (CalDAV sync) and offline
+      # (no sync, no network permission).
+      - name: Build release APKs
+        run: ./gradlew :app:assembleFullRelease :app:assembleOfflineRelease
+
+      - name: Name the artifacts
+        run: |
+          set -e
+          OUT=app/build/outputs/apk
+          test -f "$OUT/full/release/app-full-release.apk" || { echo "ERROR: full APK missing" >&2; exit 1; }
+          test -f "$OUT/offline/release/app-offline-release.apk" || { echo "ERROR: offline APK missing" >&2; exit 1; }
+          cp "$OUT/full/release/app-full-release.apk" "Agendula-${TAG}.apk"
+          cp "$OUT/offline/release/app-offline-release.apk" "Agendula-${TAG}-offline.apk"
+          sha256sum Agendula-*.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Write release notes
+        run: |
+          set -e
+          VERSION=$(bash scripts/version_info.sh version)
+          bash scripts/release_notes.sh "$VERSION" > release-notes.md
+          {
+            echo
+            echo '---'
+            echo
+            echo "- \`Agendula-${TAG}.apk\` — full build (CalDAV sync), universal APK."
+            echo "- \`Agendula-${TAG}-offline.apk\` — offline build: no sync code and no network permission, universal APK."
+            echo
+            echo 'One APK per build, no per-ABI splits. The two flavours install side by side,'
+            echo 'and both install alongside the upstream app, which uses a different application id.'
+            echo
+            echo 'Verify the download with `sha256sum -c SHA256SUMS.txt`.'
+          } >> release-notes.md
+          cat release-notes.md
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Agendula ${{ env.TAG }}
+          body_path: release-notes.md
+          prerelease: ${{ steps.ver.outputs.prerelease == 'true' }}
+          files: |
+            Agendula-${{ env.TAG }}.apk
+            Agendula-${{ env.TAG }}-offline.apk
+            SHA256SUMS.txt
+          fail_on_unmatched_files: true
+          generate_release_notes: false

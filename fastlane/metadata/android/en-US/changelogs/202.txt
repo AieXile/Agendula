@@ -1,5 +1,0 @@
-### Fixed
-- Release automation now reliably mirrors each release to the Codeberg mirror
-  (signed APK + SHA-256 checksum). The 0.2.1 attempt failed when the release tag
-  had already been synced to Codeberg.
-

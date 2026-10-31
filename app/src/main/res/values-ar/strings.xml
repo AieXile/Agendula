@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="task_untitled">مهمة بلا عنوان</string>
     <string name="back">رجوع</string>
@@ -51,7 +51,6 @@
     <string name="settings_title">الإعدادات</string>
     <string name="settings_section_appearance">المظهر</string>
     <string name="settings_about_source">المصدر</string>
-    <string name="settings_license">الترخيص</string>
     <string name="settings_theme">السمة</string>
     <string name="settings_theme_light">فاتح</string>
     <string name="settings_theme_dark">داكن</string>
@@ -87,7 +86,7 @@
     <string name="settings_store_permission_denied">رُفِض الإذن</string>
     <string name="settings_copy_running">جارٍ نسخ المهام…</string>
     <string name="settings_export">تصدير المهام</string>
-    <string name="settings_about_author">بواسطة Jean-Luc Makiola</string>
+    <string name="settings_about_author">بواسطة AieXile</string>
     <string name="settings_about_logo_desc">رمز تطبيق Agendula</string>
     <string name="settings_report_problem">الإبلاغ عن مشكلة</string>
     <string name="settings_default_reminder">متى لتذكير</string>
@@ -172,7 +171,6 @@
     <string name="lists_reorder_handle">اسحب لإعادة الترتيب</string>
     <string name="settings_list_notifications_hint">الصوت، الاهتزاز و الأهمية لتذكيرات هذه القائمة</string>
     <string name="smart_today">اليوم</string>
-    <string name="home_due_today">اليوم</string>
     <string name="reminder_day_today">اليوم</string>
     <string name="recurrence_title">التكرار</string>
     <string name="recurrence_every">كل</string>
@@ -232,7 +230,6 @@
     <string name="smart_upcoming">القادمة</string>
     <string name="smart_all">الكل</string>
     <string name="smart_overdue">المتأخرة</string>
-    <string name="home_due_tomorrow">غدًا</string>
     <string name="recurrence_custom">مخصص</string>
     <string name="recurrence_unit_days">أيام</string>
     <string name="recurrence_unit_weeks">أسابيع</string>
@@ -280,7 +277,8 @@
     <string name="add_account_server_hint">https://cloud.example.com</string>
     <string name="add_account_continue">متابعة</string>
     <string name="new_task">مهمة جديدة</string>
-    <string name="home_upcoming_view_all">عرض الكل</string>
+    <string name="home_due_today">اليوم</string>
+    <string name="home_due_tomorrow">غدًا</string>
     <string name="home_search_hint">ابحث عن المهام</string>
     <string name="home_search_clear">مسح البحث</string>
     <string name="reminder_channel_name">تذكيرات المهمة</string>
@@ -345,7 +343,6 @@
     <string name="tags_header">الوسوم</string>
     <string name="filter_section_tags">الوسوم</string>
     <string name="edit_tags_hint">أضف وسمًا</string>
-    <string name="home_today_empty">لا شيء مستحق اليوم 🎉</string>
     <plurals name="duration_minutes">
         <item quantity="zero">(%d) لا دقائق</item>
         <item quantity="one">%d دقيقة واحده</item>
@@ -484,7 +481,6 @@
     <string name="filters_empty_hint">اجمع بين مواعيد الاستحقاق، القوائم، الوسوم والأولوية إلى طريقة عرض من خاصّتك</string>
     <string name="filter_match_all_off">تحتاج مهمة إلى إحدى الوسوم التي اخترتها</string>
     <string name="filter_match_all_tags">مطابقة كل الوسوم</string>
-    <string name="home_today_all_done">انتهى كل شيء 🎉</string>
     <string name="lists_failure">تعذّر قراءة مهامك.</string>
     <string name="list_save_failed">تعذّر حفظ القائمة.</string>
     <string name="list_delete_failed">تعذّر حذف القائمة.</string>

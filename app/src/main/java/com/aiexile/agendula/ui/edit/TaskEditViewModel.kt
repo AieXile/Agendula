@@ -1,0 +1,499 @@
+package com.aiexile.agendula.ui.edit
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import com.aiexile.agendula.data.prefs.DEFAULT_ALL_DAY_REMINDER_MINUTE
+import com.aiexile.agendula.data.prefs.Settings
+import com.aiexile.agendula.data.prefs.SettingsPrefs
+import com.aiexile.agendula.data.reminders.ReminderScheduler
+import com.aiexile.agendula.data.tasks.TaskConflictException
+import com.aiexile.agendula.data.tasks.TasksRepository
+import com.aiexile.agendula.domain.Priority
+import com.aiexile.agendula.domain.SmartList
+import com.aiexile.agendula.domain.Task
+import com.aiexile.agendula.domain.TaskFilter
+import com.aiexile.agendula.domain.TaskForm
+import com.aiexile.agendula.domain.TaskFormError
+import com.aiexile.agendula.domain.TaskFormField
+import com.aiexile.agendula.domain.allDayInstantOf
+import com.aiexile.agendula.domain.TaskList
+import com.aiexile.agendula.domain.TaskReminder
+import com.aiexile.agendula.domain.taskReminderDisplayOrder
+import com.aiexile.agendula.data.tasks.StoredReminders
+import java.time.ZoneId
+import com.aiexile.agendula.domain.populatedFields
+import com.aiexile.agendula.domain.htmlToPlainText
+import com.aiexile.agendula.domain.looksLikeHtml
+import com.aiexile.agendula.domain.newTaskPreset
+import com.aiexile.agendula.domain.normalizeTags
+import com.aiexile.agendula.domain.tagsInUse
+import com.aiexile.agendula.domain.rebasedForAllDay
+import com.aiexile.agendula.domain.readableDescription
+import com.aiexile.agendula.domain.recurrence.RecurringScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Instant
+
+/**
+ * Editable form state for creating or editing a task. The screen renders these
+ * fields and calls the `on*` setters; [save] validates, writes, re-syncs
+ * reminders, and flips [TaskEditUiState.saved] for the screen to navigate back.
+ */
+data class TaskEditUiState(
+    val loading: Boolean = true,
+    val isNew: Boolean = true,
+    val title: String = "",
+    val description: String = "",
+    /** The stored description when it was HTML, written back as-is unless its text is edited. */
+    val descriptionHtml: String? = null,
+    val listId: Long? = null,
+    val start: Instant? = null,
+    val due: Instant? = null,
+    val isAllDay: Boolean = false,
+    val priority: Priority = Priority.NONE,
+    val parentId: Long? = null,
+    val percentComplete: Int? = null,
+    val reminders: List<TaskReminder> = emptyList(),
+    /** Whether the user added or removed a reminder; until then the defaults follow the form. */
+    val remindersTouched: Boolean = false,
+    /** Whether [reminders] are stored as they are — see [TaskForm.remindersChosen]. */
+    val remindersChosen: Boolean = false,
+    /** The time an all-day reminder without one of its own rings at. */
+    val allDayMinuteOfDay: Int = DEFAULT_ALL_DAY_REMINDER_MINUTE,
+    val location: String = "",
+    val url: String = "",
+    val tags: List<String> = emptyList(),
+    /** What is typed in the tag field and not added yet. Saving still takes it. */
+    val tagDraft: String = "",
+    /** Every tag already in use, for completing what the user types. */
+    val tagSuggestions: List<String> = emptyList(),
+    val rrule: String? = null,
+    /** Editing one occurrence of a series: saving asks how far the edit reaches. */
+    val isOccurrence: Boolean = false,
+    /** The series' rule as loaded; a changed rule rules out "only this task". */
+    val originalRule: String? = null,
+    /** Something differs from what was loaded — back asks before discarding it. */
+    val isDirty: Boolean = false,
+    val lists: List<TaskList> = emptyList(),
+    /** Top-level tasks in the current list this task can be filed under (reparent). */
+    val parentCandidates: List<Task> = emptyList(),
+    /** Optional sections currently shown (core Title / List / When are always on). */
+    val visibleFields: Set<TaskFormField> = emptySet(),
+    /** Optional sections still tucked behind "More fields". */
+    val hiddenFields: List<TaskFormField> = emptyList(),
+    val errors: Set<TaskFormError> = emptySet(),
+    val saveFailed: Boolean = false,
+    /** The task changed underneath us; the screen asks to overwrite or cancel. */
+    val saveConflict: Boolean = false,
+    val saved: Boolean = false,
+    /** A fresh task whose title should take focus once the form shows. */
+    val autofocusTitle: Boolean = false,
+) {
+    /** The currently-selected parent task, if this task is filed under one. */
+    val parent: Task? get() = parentCandidates.firstOrNull { it.taskId == parentId }
+
+    /** Lists a task can be saved into: read-only shares drop out, except the one it is already in. */
+    val writableLists: List<TaskList> get() = lists.filter { it.acceptsWrites || it.id == listId }
+
+    val recurrenceChanged: Boolean get() = rrule != originalRule
+}
+
+@HiltViewModel
+class TaskEditViewModel @Inject constructor(
+    private val repository: TasksRepository,
+    private val settingsPrefs: SettingsPrefs,
+    private val reminderScheduler: ReminderScheduler,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(TaskEditUiState())
+    val state: StateFlow<TaskEditUiState> = _state.asStateFlow()
+
+    private var editingTaskId: Long? = null
+    private var editingOccurrence: Instant? = null
+
+    /** The form as loaded, to tell a real edit from an untouched one. */
+    private var baseline: TaskForm? = null
+
+    /**
+     * Whether the form has already been populated. The host `LaunchedEffect`
+     * re-fires whenever the composition restarts — an Activity recreation
+     * (rotation, theme/font/display-size change, split-screen, unfolding) — while
+     * this ViewModel survives on the nav back stack. Without this guard the
+     * rebind would overwrite in-progress edits with the untouched provider row.
+     */
+    private var bound = false
+
+    /** `last_modified` captured when the form loaded — the conflict-check baseline. */
+    private var baselineLastModified: Instant? = null
+
+    /** Sections shown by default (a setting); the rest unfold via [revealField]. */
+    private var defaultFields: Set<TaskFormField> = emptySet()
+
+    /** The settings as the form was bound, for the defaults an all-day switch swaps in. */
+    private var settings: Settings = Settings()
+
+    /** The reminders before the last all-day switch, and what it made of them. */
+    private var lastSwitch: Pair<List<TaskReminder>, List<TaskReminder>>? = null
+
+    /** The reminders the task was loaded with, and the dates it had then. */
+    private var storedReminders: Set<TaskReminder> = emptySet()
+
+    /** [storedReminders] as the task's current kind, timed or all-day. */
+    private var loadedReminders: List<TaskReminder> = emptyList()
+    private var loadedStart: Instant? = null
+    private var loadedDue: Instant? = null
+
+    /** Start a fresh task, optionally pre-selecting a list / parent. */
+    fun bindNew(
+        presetListId: Long? = null,
+        parentId: Long? = null,
+        initialTitle: String? = null,
+        presetTag: String? = null,
+        presetFilterId: Long? = null,
+    ) {
+        if (bound) return
+        bound = true
+        editingTaskId = null
+        baselineLastModified = null
+        viewModelScope.launch {
+            val settings = settingsPrefs.settings.first()
+            this@TaskEditViewModel.settings = settings
+            defaultFields = settings.defaultEditFields
+            val lists = runCatching { repository.taskLists().first() }.getOrElse { emptyList() }
+            val preset = presetFilterId?.let { settingsPrefs.savedFilter(it).first() }
+                ?.newTaskPreset(LocalDate.now())
+            // A read-only or vanished default — or a widget's preset list, if it was
+            // since deleted or turned read-only — would give the task a list it
+            // cannot be saved to.
+            val writable = lists.filter { it.acceptsWrites }
+            val filterLists = preset?.listIds.orEmpty()
+            val defaultList = presetListId?.takeIf { id -> writable.any { it.id == id } }
+                ?: settings.defaultListId?.takeIf { id -> writable.any { it.id == id } && (filterLists.isEmpty() || id in filterLists) }
+                ?: writable.firstOrNull { it.id in filterLists }?.id
+                ?: writable.firstOrNull { !it.isLocal }?.id
+                ?: writable.firstOrNull()?.id
+            _state.value = withFields(
+                TaskEditUiState(
+                    loading = false,
+                    isNew = true,
+                    autofocusTitle = settings.autofocusTitle,
+                    allDayMinuteOfDay = settings.allDayReminderMinuteOfDay,
+                    listId = defaultList,
+                    // A preset due is all-day, so a default start has to be too, or
+                    // today's start would land after a due of today.
+                    start = when {
+                        !settings.defaultStartToday -> null
+                        preset?.dueDate != null -> allDayInstantOf(LocalDate.now())
+                        else -> Clock.System.now()
+                    },
+                    // The same all-day value picking the date in the date field gives.
+                    due = preset?.dueDate?.let(::allDayInstantOf),
+                    isAllDay = preset?.dueDate != null,
+                    priority = preset?.priority ?: Priority.NONE,
+                    parentId = parentId,
+                    lists = lists,
+                    parentCandidates = loadParents(defaultList, selfId = null),
+                    title = initialTitle.orEmpty(),
+                    tags = (listOfNotNull(presetTag) + preset?.tags.orEmpty()).distinct(),
+                ).withDefaultReminders(),
+            ).also { baseline = it.toForm().copy(title = "") }
+        }
+    }
+
+    /** Load an existing task for editing. */
+    fun bindEdit(taskId: Long, occurrenceStart: Instant? = null) {
+        if (bound && editingTaskId == taskId) return
+        bound = true
+        editingTaskId = taskId
+        editingOccurrence = occurrenceStart
+        viewModelScope.launch {
+            val settings = settingsPrefs.settings.first()
+            this@TaskEditViewModel.settings = settings
+            defaultFields = settings.defaultEditFields
+            val lists = runCatching { repository.taskLists().first() }.getOrElse { emptyList() }
+            val task = runCatching { repository.taskDetail(taskId, occurrenceStart).first()?.task }.getOrNull()
+            if (task == null) {
+                _state.value = _state.value.copy(loading = false, lists = lists)
+                return@launch
+            }
+            baselineLastModified = task.lastModified
+            loadedReminders = repository.remindersFor(taskId).map { it.lead }.distinct()
+            storedReminders = loadedReminders.toSet()
+            loadedStart = task.start
+            loadedDue = task.due
+            _state.value = withFields(
+                TaskEditUiState(
+                    loading = false,
+                    isNew = false,
+                    title = task.title,
+                    description = task.description?.readableDescription().orEmpty(),
+                    descriptionHtml = task.description?.takeIf { it.looksLikeHtml() },
+                    listId = task.listId,
+                    start = task.start,
+                    due = task.due,
+                    isAllDay = task.isAllDay,
+                    priority = task.priority,
+                    parentId = task.parentId,
+                    percentComplete = task.percentComplete,
+                    reminders = loadedReminders
+                        .sortedWith(taskReminderDisplayOrder(task.isAllDay, settings.allDayReminderMinuteOfDay)),
+                    allDayMinuteOfDay = settings.allDayReminderMinuteOfDay,
+                    location = task.location.orEmpty(),
+                    url = task.url.orEmpty(),
+                    tags = task.tags,
+                    rrule = task.recurrenceRule,
+                    originalRule = task.recurrenceRule,
+                    isOccurrence = task.isOccurrence,
+                    lists = lists,
+                    parentCandidates = loadParents(task.listId, selfId = taskId),
+                ),
+            ).also { baseline = it.toForm() }
+            editingOccurrence = task.occurrenceStart
+        }
+    }
+
+    /**
+     * Tasks the edited task can be filed under: active, top-level tasks in
+     * [listId], minus the task itself (a task can't parent itself). Restricting to
+     * top-level keeps the hierarchy one level deep (matching the detail screen),
+     * and to active so you don't file work under something already done/cancelled.
+     */
+    private suspend fun loadParents(listId: Long?, selfId: Long?): List<Task> {
+        if (listId == null) return emptyList()
+        val tasks = runCatching { repository.tasks(TaskFilter.OfList(listId)).first() }.getOrElse { emptyList() }
+        return tasks.filter { !it.isClosed && !it.isSubtask && it.taskId != selfId }
+    }
+
+    private var suggestionsRequested = false
+
+    /** Tags on open tasks, read once the user starts typing one rather than on every bind. */
+    private fun loadTagSuggestions() {
+        if (suggestionsRequested) return
+        suggestionsRequested = true
+        viewModelScope.launch {
+            val tasks = runCatching { repository.tasks(TaskFilter.Smart(SmartList.ALL)).first() }.getOrElse { emptyList() }
+            _state.value = _state.value.copy(tagSuggestions = tagsInUse(tasks))
+        }
+    }
+
+    /** Reveal an optional section (one tap from the "More fields" picker). */
+    fun revealField(field: TaskFormField) = update {
+        val visible = it.visibleFields + field
+        it.copy(visibleFields = visible, hiddenFields = hiddenOf(visible))
+    }
+
+    /**
+     * Resolve which optional sections are visible: the default set, plus any
+     * field that already carries a value (so editing never hides real data).
+     */
+    private fun withFields(state: TaskEditUiState): TaskEditUiState {
+        val visible = defaultFields + state.toForm().populatedFields()
+        return state.copy(visibleFields = visible, hiddenFields = hiddenOf(visible))
+    }
+
+    private fun hiddenOf(visible: Set<TaskFormField>): List<TaskFormField> =
+        TaskFormField.entries.filterNot { it in visible }
+
+    fun onTitleChange(value: String) = update { it.copy(title = value, errors = emptySet()) }
+    fun onDescriptionChange(value: String) = update { it.copy(description = value) }
+
+    /** Switching list invalidates the parent (it lived in the old list); reload candidates. */
+    fun onListChange(listId: Long) {
+        if (_state.value.listId == listId) return // re-picking the same list keeps the parent
+        update { it.copy(listId = listId, parentId = null, errors = emptySet()).withDefaultReminders() }
+        viewModelScope.launch {
+            val candidates = loadParents(listId, selfId = editingTaskId)
+            update { it.copy(parentCandidates = candidates) }
+        }
+    }
+
+    fun onStartChange(value: Instant?) = update { it.copy(start = value).withDefaultReminders() }
+    fun onDueChange(value: Instant?) = update { it.copy(due = value).withDefaultReminders() }
+    /**
+     * All-day and timed values use different conventions (UTC midnight vs. a real
+     * instant in the device zone), so the switch has to move the timestamps too —
+     * flipping the flag alone makes an all-day task read back as "02:00", which
+     * looks to the user like the time reset itself. The reminders are made
+     * the new kind's here, so the editor shows what will be stored; switching
+     * straight back gives the old ones back.
+     */
+    fun onAllDayChange(value: Boolean) = update {
+        if (it.isAllDay == value) return@update it
+        val switched = it.copy(
+            isAllDay = value,
+            start = it.start?.rebasedForAllDay(value),
+            due = it.due?.rebasedForAllDay(value),
+        )
+        if (!it.remindersTouched) {
+            loadedReminders = carried(loadedReminders, switched)
+            return@update switched.withDefaultReminders()
+        }
+        switched.copy(reminders = carried(it.reminders, switched).sortedForDisplay(switched))
+    }
+
+    /** [reminders] as [switched]'s kind; straight back after a switch, the ones before it. */
+    private fun carried(reminders: List<TaskReminder>, switched: TaskEditUiState): List<TaskReminder> {
+        val previous = lastSwitch
+        val carried = if (previous != null && previous.second == reminders) {
+            previous.first
+        } else {
+            StoredReminders.switched(reminders, switched.toForm(), settings, nowMillis(), ZoneId.systemDefault())
+        }
+        lastSwitch = reminders to carried
+        return carried
+    }
+
+    /**
+     * The reminders the task will be saved with while the user has not
+     * touched them: those it was loaded with, plus the defaults of the dates
+     * it has gained — all of them, for a new task. Shown so they are noted
+     * before saving rather than added unseen.
+     */
+    private fun TaskEditUiState.withDefaultReminders(): TaskEditUiState {
+        if (remindersTouched) return this
+        val reminders = StoredReminders.withDefaults(
+            toForm().copy(reminders = loadedReminders),
+            loadedStart,
+            loadedDue,
+            settings,
+            nowMillis(),
+            ZoneId.systemDefault(),
+        ).sortedForDisplay(this)
+        val visible = if (reminders.isEmpty()) visibleFields else visibleFields + TaskFormField.Reminder
+        return copy(
+            reminders = reminders,
+            // A new task's, or defaults added to the ones it had: stored as shown.
+            remindersChosen = isNew || reminders.toSet() != storedReminders,
+            visibleFields = visible,
+            hiddenFields = hiddenOf(visible),
+        )
+    }
+
+    private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
+    fun onPriorityChange(value: Priority) = update { it.copy(priority = value) }
+    fun onPercentChange(value: Int?) = update { it.copy(percentComplete = value?.coerceIn(0, 100)) }
+    fun onParentChange(parentId: Long?) = update { it.copy(parentId = parentId) }
+    fun addReminder(reminder: TaskReminder) = update {
+        it.copy(
+            reminders = (it.reminders + reminder).distinct().sortedForDisplay(it),
+            remindersTouched = true,
+            remindersChosen = true,
+            errors = emptySet(),
+        )
+    }
+    fun removeReminder(reminder: TaskReminder) = update {
+        it.copy(reminders = it.reminders - reminder, remindersTouched = true, remindersChosen = true)
+    }
+    fun onLocationChange(value: String) = update { it.copy(location = value) }
+    fun onUrlChange(value: String) = update { it.copy(url = value) }
+    fun addTag(name: String) = update { it.copy(tags = normalizeTags(it.tags + name), tagDraft = "") }
+
+    /** A typed comma adds what came before it. */
+    fun onTagDraftChange(value: String) {
+        loadTagSuggestions()
+        update {
+            if (',' in value) it.copy(tags = it.withDraft(value), tagDraft = "") else it.copy(tagDraft = value)
+        }
+    }
+
+    fun commitTagDraft() = update { it.copy(tags = it.withDraft(it.tagDraft), tagDraft = "") }
+    fun removeTag(name: String) = update { it.copy(tags = it.tags - name) }
+    fun onRecurrenceChange(rrule: String?) = update { it.copy(rrule = rrule, errors = emptySet()) }
+
+    /** Dismiss the conflict prompt without saving (the user keeps editing). */
+    fun dismissConflict() = update { it.copy(saveConflict = false) }
+
+    /** Whether saving needs the "this / following / all" choice first. */
+    fun needsScope(): Boolean {
+        val current = _state.value
+        return !current.isNew && current.isOccurrence && current.toForm().validate().isEmpty()
+    }
+
+    /**
+     * [force] = overwrite even if the task changed since it loaded (conflict prompt).
+     * [scope] only matters when editing one occurrence of a series.
+     */
+    fun save(force: Boolean = false, scope: RecurringScope = lastScope) {
+        lastScope = scope
+        val current = _state.value
+        val form = current.toForm()
+        val errors = form.validate()
+        if (errors.isNotEmpty()) {
+            _state.value = current.copy(errors = errors)
+            return
+        }
+        viewModelScope.launch {
+            runCatching {
+                val id = editingTaskId
+                if (id == null) {
+                    // ⚠️ Remembered. A second Save on this screen would otherwise
+                    // take the create path again and write a second task —
+                    // whatever sent the user back to it.
+                    editingTaskId = repository.createTask(form)
+                } else {
+                    repository.updateTask(
+                        taskId = id,
+                        form = form,
+                        expectedLastModified = if (force) null else baselineLastModified,
+                        occurrenceStart = editingOccurrence,
+                        scope = scope,
+                    )
+                }
+                // ⚠️ Outside the write's own result. The task is saved by this
+                // point, and reporting a scheduling failure as a *save* failure
+                // sends the user back to tap Save again — on a screen whose
+                // editingTaskId is still null, which creates a second task. The
+                // reminder is re-synced on the next data change and on launch;
+                // the duplicate is forever.
+                runCatching { reminderScheduler.sync() }
+            }.onSuccess {
+                _state.value = _state.value.copy(saved = true, saveFailed = false, saveConflict = false)
+            }.onFailure { error ->
+                _state.value = if (error is TaskConflictException) {
+                    _state.value.copy(saveConflict = true, saveFailed = false)
+                } else {
+                    _state.value.copy(saveFailed = true)
+                }
+            }
+        }
+    }
+
+    private var lastScope: RecurringScope = RecurringScope.ThisOccurrence
+
+    private inline fun update(block: (TaskEditUiState) -> TaskEditUiState) {
+        val next = block(_state.value)
+        _state.value = next.copy(isDirty = baseline != null && next.toForm() != baseline)
+    }
+}
+
+/** The order the editor lists [state]'s reminders in. */
+private fun List<TaskReminder>.sortedForDisplay(state: TaskEditUiState): List<TaskReminder> =
+    sortedWith(taskReminderDisplayOrder(state.isAllDay, state.allDayMinuteOfDay))
+
+/** Snapshot the editable state as a validated [TaskForm]. */
+private fun TaskEditUiState.toForm(): TaskForm = TaskForm(
+    title = title,
+    listId = listId ?: 0L,
+    description = descriptionHtml?.takeIf { it.htmlToPlainText() == description } ?: description.ifBlank { null },
+    start = start,
+    due = due,
+    isAllDay = isAllDay,
+    priority = priority,
+    parentId = parentId,
+    percentComplete = percentComplete,
+    reminders = reminders,
+    remindersChosen = remindersChosen,
+    location = location.ifBlank { null },
+    url = url.ifBlank { null },
+    tags = withDraft(tagDraft),
+    rrule = rrule,
+)
+
+private fun TaskEditUiState.withDraft(draft: String): List<String> = normalizeTags(tags + draft.split(','))

@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agendula</string>
 
     <!-- Generic -->
@@ -294,24 +294,12 @@
     <string name="smart_upcoming">Upcoming</string>
     <string name="smart_all">All</string>
 
-    <!-- Home: Today progress hero -->
-    <plurals name="home_today_progress_count">
-        <item quantity="one">%1$d of %2$d done</item>
-        <item quantity="other">%1$d of %2$d done</item>
-    </plurals>
-    <plurals name="home_today_remaining_count">
-        <item quantity="one">%1$d left</item>
-        <item quantity="other">%1$d left</item>
-    </plurals>
-    <string name="home_today_all_done">All done 🎉</string>
-    <string name="home_today_empty">Nothing due today 🎉</string>
-
-    <!-- Home: Upcoming preview -->
-    <string name="home_upcoming_view_all">View all</string>
-    <string name="home_due_today">Today</string>
-    <string name="home_due_tomorrow">Tomorrow</string>
+    <!-- Home: the open-task feed -->
+    <string name="home_tasks_empty">No open tasks</string>
 
     <!-- Home: search -->
+    <string name="home_due_today">Today</string>
+    <string name="home_due_tomorrow">Tomorrow</string>
     <string name="home_search_hint">Search tasks</string>
     <string name="home_search_clear">Clear search</string>
     <string name="home_search_empty">No tasks match “%1$s”</string>
@@ -418,10 +406,12 @@
     <string name="settings_week_start">Week starts on</string>
     <string name="settings_week_start_auto">Automatic</string>
     <string name="settings_week_start_auto_summary">Currently %1$s</string>
+    <!-- The account a device-only list belongs to; the data layer keeps the
+         OpenTasks contract's "Local" label, which is translated in the UI. -->
+    <string name="account_local">This device</string>
     <!-- About -->
-    <string name="settings_about_author">by Jean-Luc Makiola</string>
+    <string name="settings_about_author">by AieXile</string>
     <string name="settings_about_source">Source</string>
-    <string name="settings_license">License</string>
     <string name="settings_about_support">Support development</string>
     <string name="settings_licences">Open source licenses</string>
     <string name="settings_licences_subtitle">The projects Agendula is built on</string>
@@ -434,16 +424,27 @@
     <string name="settings_language">App language</string>
     <string name="settings_language_auto">System default</string>
     <string name="settings_translate">Help translate</string>
-    <string name="settings_translate_hint">Add or improve a language on Weblate</string>
+    <string name="settings_translate_hint">Add or improve a language in the repository</string>
     <string name="settings_report_problem">Report a problem</string>
     <string name="settings_report_problem_hint">Open the issue tracker</string>
-    <string name="about_source_url" translatable="false">https://codeberg.org/jlmakiola/agendula</string>
+    <string name="about_source_url" translatable="false">https://github.com/AieXile/Agendula</string>
     <string name="crash_report_issue_title">Crash report</string>
-    <string name="report_issue_url" translatable="false">https://codeberg.org/jlmakiola/agendula/issues/new</string>
-    <string name="about_license_url" translatable="false">https://codeberg.org/jlmakiola/agendula/src/branch/main/LICENSE</string>
-    <string name="about_privacy_url" translatable="false">https://jeanlucmakiola.de/agendula/privacy</string>
-    <string name="about_support_url" translatable="false">https://ko-fi.com/jeanlucmakiola</string>
-    <string name="about_translate_url" translatable="false">https://weblate.dev.jeanlucmakiola.de/engage/agendula/</string>
+    <string name="report_issue_url" translatable="false">https://github.com/AieXile/Agendula/issues/new</string>
+    <!--
+      The crash-report dialog lives in floret-kit, which ships it in English and
+      lets an app override any string through resource merge. Mirroring the
+      library's wording here is what makes the dialog follow the app's language.
+    -->
+    <string name="crash_dialog_title">%1$s crashed</string>
+    <string name="crash_dialog_message">%1$s closed unexpectedly last time. You can help fix it by sending this report as an issue. It stays on your device until you choose to share it, and includes no personal data or app content — only the technical details below.</string>
+    <string name="crash_dialog_report">Report</string>
+    <string name="crash_dialog_dismiss">Not now</string>
+    <string name="crash_report_clip_label">%1$s crash report</string>
+    <string name="crash_report_copied">Report copied to your clipboard</string>
+    <string name="crash_report_open_failed">Couldn\'t open the issue tracker. The report is on your clipboard.</string>
+    <string name="about_privacy_url" translatable="false">https://github.com/AieXile/Agendula/blob/main/docs/PRIVACY.md</string>
+    <string name="about_support_url" translatable="false"></string>
+    <string name="about_translate_url" translatable="false">https://github.com/AieXile/Agendula/blob/main/CONTRIBUTING.md</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">Follow system</string>
     <string name="settings_theme_light">Light</string>
@@ -897,6 +898,22 @@
     <string name="widget_lists_config_title">Lists to show</string>
     <string name="widget_week_label">Week</string>
     <string name="widget_week_description">A seven-day strip of task counts</string>
+    <!--
+      Content of the static mocks shown in the widget picker. They are sample
+      data rather than live tasks, but they are still what the user reads while
+      choosing a widget, so they are translated like any other visible text.
+    -->
+    <string name="widget_preview_list_home">Home</string>
+    <string name="widget_preview_list_work">Work</string>
+    <string name="widget_preview_list_groceries">Groceries</string>
+    <string name="widget_preview_list_ideas">Ideas</string>
+    <string name="widget_preview_task_plants">Water the plants</string>
+    <string name="widget_preview_task_dentist">Call the dentist</string>
+    <string name="widget_preview_task_groceries">Pick up groceries</string>
+    <string name="widget_preview_weekday_mon">Mon</string>
+    <string name="widget_preview_weekday_tue">Tue</string>
+    <string name="widget_preview_weekday_wed">Wed</string>
+    <string name="widget_preview_weekday_thu">Thu</string>
     <!-- Permission another app requests to read Agendula's tasks -->
     <string name="permission_read_tasks_label">read Agendula tasks</string>
     <string name="permission_read_tasks_description">Allows the app to read your task lists and tasks stored in Agendula, including their reminders and tags.</string>

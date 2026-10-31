@@ -2,7 +2,7 @@
 """Validate Android translation resources against the base strings.xml.
 
 Community translations live in ``app/src/main/res/values-<locale>/strings.xml``
-and are produced via Weblate. This guard keeps incoming translation PRs honest:
+and are edited in normal pull requests. This guard keeps translation PRs honest:
 
   * every translation file must be well-formed XML;
   * a translation must not define keys absent from the base — those are stale
@@ -14,8 +14,8 @@ Missing keys are *allowed* and only reported as coverage: a missing string
 falls back to the English base at runtime, so partial translations are fine
 (this mirrors the lint config, which downgrades ``MissingTranslation``).
 
-Exits non-zero if any error is found. Errors are emitted as Gitea/GitHub
-Actions ``::error`` annotations so they surface inline on the PR.
+Exits non-zero if any error is found. Errors are emitted as GitHub Actions
+``::error`` annotations so they surface inline on the PR.
 """
 from __future__ import annotations
 

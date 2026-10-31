@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = ROOT / "app/build/outputs/mapping/fullReleaseTest"
-PACKAGES = ("de.jeanlucmakiola.",)
+PACKAGES = ("com.aiexile.",)
 
 
 def kept_classes(seeds: Path) -> set[str]:

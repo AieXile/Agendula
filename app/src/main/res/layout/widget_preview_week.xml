@@ -34,7 +34,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:text="Mon"
+                    android:text="@string/widget_preview_weekday_mon"
                     android:fontFamily="sans-serif-medium"
                     android:textColor="@color/widget_preview_on_primary"
                     android:textSize="10sp" />
@@ -95,7 +95,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:text="Tue"
+                    android:text="@string/widget_preview_weekday_tue"
                     android:fontFamily="sans-serif-medium"
                     android:textColor="@color/widget_preview_variant"
                     android:textSize="10sp" />
@@ -156,7 +156,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:text="Wed"
+                    android:text="@string/widget_preview_weekday_wed"
                     android:fontFamily="sans-serif-medium"
                     android:textColor="@color/widget_preview_variant"
                     android:textSize="10sp" />
@@ -217,7 +217,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:text="Thu"
+                    android:text="@string/widget_preview_weekday_thu"
                     android:fontFamily="sans-serif-medium"
                     android:textColor="@color/widget_preview_variant"
                     android:textSize="10sp" />

@@ -1,0 +1,33 @@
+name: Translations
+
+# Fast, SDK-free parity check for translation resources, so PRs that only touch
+# values-*/strings.xml get quick feedback without the full Android build (which
+# the `ci` job skips for such PRs anyway). The deeper checks still run there via
+# lintFullDebug (ExtraTranslation).
+#
+# Runs on every PR (no path filter), like `ci`, so the required "Translations /
+# check" status is always reported: a path-filtered workflow is skipped on
+# unrelated PRs and never posts its status, which leaves that required check
+# pending forever and blocks the merge of any code-only PR into a release/*
+# branch. The check itself is cheap and simply passes when the committed
+# translations are consistent, so always running it costs nothing.
+on:
+  pull_request:
+
+concurrency:
+  group: translations-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check translation parity
+        run: python3 scripts/check_translations.py

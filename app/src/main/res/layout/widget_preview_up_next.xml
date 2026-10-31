@@ -47,7 +47,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:maxLines="1"
-            android:text="Call the dentist"
+            android:text="@string/widget_preview_task_dentist"
             android:fontFamily="sans-serif-medium"
             android:textColor="@color/widget_preview_on_surface"
             android:textSize="15sp" />

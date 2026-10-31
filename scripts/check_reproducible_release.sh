@@ -1,22 +1,17 @@
 #!/usr/bin/env bash
-# Reproducibility guard for the official F-Droid repo (de.jeanlucmakiola.agendula).
+# Reproducibility guard: a rebuild of the published APK, from the same tag and
+# on another machine, should produce the same bytes. Nothing here is about
+# publishing to a store — it keeps the GitHub release verifiable.
 #
-# F-Droid only republishes OUR signed binary if a from-source build reproduces it
-# byte-for-byte and the binary carries no extra signing blocks. If any invariant
-# below regresses, the official repo silently stalls on the last good version
-# (fails safe — but you'd be stuck on an old release without noticing). So fail
-# loudly here, on every PR.
-#
-# Each invariant guards against a known fdroiddata CI rejection cause (learned on
-# the sibling Calendula repo's official-repo submission):
+# Each invariant guards against build metadata that would differ between two
+# machines (learned on the sibling Calendula repository):
 #   1. vcsInfo { include = false }          — else AGP embeds env-dependent git
 #      metadata (META-INF/version-control-info.textproto) -> not reproducible.
-#   2. no foojay toolchain resolver         — F-Droid's offline source scanner
-#      rejects org.gradle.toolchains.foojay-resolver (it can fetch a JDK over
-#      the network at build time).
+#   2. no foojay toolchain resolver         — an offline rebuild cannot fetch a
+#      JDK at build time, so a resolver would make the build machine-dependent.
 #   3. dependenciesInfo { includeInApk = false } — else AGP embeds a "Dependency
-#      metadata" block (id 0x504b4453) in the APK Signing Block, which F-Droid's
-#      binary scanner rejects as an extra signing block.
+#      metadata" block (id 0x504b4453) in the APK Signing Block, which differs
+#      from a plain rebuild and is not needed by this fork's releases.
 #   4. jniLibs { keepDebugSymbols += "**/*.so" } — else AGP strips prebuilt .so
 #      files only when an NDK is installed, so the bytes depend on the host.
 set -euo pipefail
@@ -37,8 +32,8 @@ fi
 
 # 2. The foojay toolchain resolver must not be present in any Gradle script.
 #    This includes the floret-kit submodule: it's an included build (composite
-#    build via `includeBuild`), so F-Droid evaluates its Gradle scripts too when
-#    building from source — the same offline-scanner bar applies to it.
+#    build via `includeBuild`), so its Gradle scripts run as part of this build
+#    too, and the same bar applies to it.
 gradle_files=("$SETTINGS" "$APP")
 [ -f build.gradle.kts ] && gradle_files+=(build.gradle.kts)
 if [ -d floret-kit ]; then

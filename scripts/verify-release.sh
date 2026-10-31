@@ -18,8 +18,8 @@ cd "$(dirname "$0")/.."
 
 FLAVOR="${1:-full}"
 case "$FLAVOR" in
-  full) PKG="de.jeanlucmakiola.agendula.releasetest" ;;
-  offline) PKG="de.jeanlucmakiola.agendula.offline.releasetest" ;;
+  full) PKG="com.aiexile.agendula.releasetest" ;;
+  offline) PKG="com.aiexile.agendula.offline.releasetest" ;;
   *) echo "Unknown flavor '$FLAVOR' (full|offline)." >&2; exit 2 ;;
 esac
 TASK="assemble${FLAVOR^}ReleaseTest"

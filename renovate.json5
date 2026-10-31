@@ -52,27 +52,16 @@
   prConcurrentLimit: 5,
   prHourlyLimit: 0,
 
-  // New branches/PRs only in the Monday window (UTC), which brackets the weekly
-  // cron in .gitea/workflows/renovate.yml with slack for a late start — keep
-  // the two in step, or the sweep lands outside the window and finds nothing.
-  // The same workflow also runs on every push to main; those runs fall outside
-  // the window and, via the default updateNotScheduled: true, only maintain
-  // existing branches — chiefly rebasing PRs a merge just conflicted.
+  // New branches/PRs only in the Monday window (UTC), so a scheduled sweep has
+  // slack for a late start — keep the cron of whatever runs Renovate for this
+  // repository in step, or the sweep lands outside the window and finds nothing.
+  // A run triggered by a push to main falls outside the window and, via the
+  // default updateNotScheduled: true, only maintains existing branches — chiefly
+  // rebasing PRs a merge just conflicted.
   schedule: ["* 4-6 * * 1"],
   // Rebase only on conflict, not every time main moves (automerge is off, so
   // this matches "auto"; spelled out because the on-merge trigger relies on it).
   rebaseWhen: "conflicted",
-
-  // Workflows are split by forge and neither directory is .github: CI lives in
-  // .forgejo/workflows (Codeberg) and the release/renovate jobs in
-  // .gitea/workflows (Gitea). Extend the github-actions manager (same syntax)
-  // to watch both — otherwise the pinned Renovate image tag and the action
-  // versions in either file would never get bumped. See docs/RELEASING.md.
-  // `fileMatch` is deprecated; the replacement takes the regex delimited, and
-  // Renovate's config migration was already rewriting this on every run.
-  "github-actions": {
-    managerFilePatterns: ["/^\\.(gitea|forgejo)/workflows/[^/]+\\.ya?ml$/"],
-  },
 
   packageRules: [
     // Cooling-off period, scaled by blast radius: how long a release should

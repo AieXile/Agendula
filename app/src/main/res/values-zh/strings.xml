@@ -1,0 +1,903 @@
+﻿<resources>
+    <string name="app_name">Agendula</string>
+
+    <!-- 通用 -->
+    <string name="task_untitled">无标题任务</string>
+    <string name="back">返回</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+
+    <!-- 任务清单 -->
+    <string name="tasks_title">任务</string>
+    <string name="task_list_empty">这里还没有任务。</string>
+    <string name="task_list_failure">无法加载这些任务。</string>
+    <string name="smart_no_date">无日期</string>
+    <string name="smart_completed">已完成</string>
+
+    <!-- 任务详情 -->
+    <string name="task_detail_title">任务</string>
+    <string name="task_detail_not_found">此任务已不存在。</string>
+    <string name="edit">编辑</string>
+
+    <!-- 任务编辑 -->
+    <string name="field_description">描述</string>
+    <string name="edit_save_failed">保存失败，请重试。</string>
+
+    <!-- 任务清单：行内添加与滑动 -->
+    <string name="add_task_hint">添加任务</string>
+    <string name="add_subtask_hint">添加子任务</string>
+    <string name="cd_add_task">添加任务</string>
+    <string name="cd_complete">完成</string>
+    <string name="cd_reopen">重新打开</string>
+    <string name="task_deleted">已删除</string>
+    <string name="task_completed">已完成</string>
+    <string name="cd_repeats">重复</string>
+    <string name="shortcut_new_task">新建任务</string>
+    <string name="shortcut_today">今天</string>
+    <string name="qs_tile_new_task">新建任务</string>
+    <string name="lists_reorder">调整清单顺序</string>
+    <string name="lists_reorder_done">完成调整</string>
+    <string name="lists_reorder_handle">拖动以调整顺序</string>
+    <string name="sort_title">排序方式</string>
+    <string name="view_options_title">排序与筛选</string>
+    <string name="view_filter_tags">按标签筛选</string>
+    <string name="view_filter_clear">清除筛选</string>
+    <string name="sort_due">到期日期</string>
+    <string name="sort_priority">优先级</string>
+    <string name="sort_title_alpha">标题</string>
+    <string name="sort_created">最近添加</string>
+    <string name="clear_completed_action">清除</string>
+    <string name="clear_completed_title">清除已完成任务？</string>
+    <plurals name="clear_completed_body">
+        <item quantity="other">此清单中的 %1$d 个已完成任务将被删除。</item>
+        <item quantity="one">此清单中的 %1$d 个已完成任务将被删除。</item>
+    </plurals>
+    <string name="clear_completed_confirm">删除</string>
+    <string name="undo">撤销</string>
+    <string name="cd_expand_subtasks">展开子任务</string>
+    <string name="cd_collapse_subtasks">收起子任务</string>
+
+    <!-- 分组（按到期日期） -->
+    <string name="section_overdue">已逾期</string>
+    <string name="section_today">今天</string>
+    <string name="section_upcoming">近期</string>
+    <string name="section_no_date">无日期</string>
+    <string name="section_completed">已完成</string>
+
+    <!-- 优先级 -->
+    <string name="priority_none">无</string>
+    <string name="priority_low">低</string>
+    <string name="priority_medium">中</string>
+    <string name="priority_high">高</string>
+
+    <!-- 任务详情 -->
+    <string name="detail_list">清单</string>
+    <string name="detail_due">到期</string>
+    <string name="detail_priority">优先级</string>
+    <string name="detail_progress">进度</string>
+    <string name="detail_subtasks">子任务</string>
+    <string name="detail_parent">父任务</string>
+    <string name="detail_part_of">属于</string>
+    <string name="percent_complete">%1$d%%</string>
+
+    <!-- 任务编辑 -->
+    <string name="edit_list_label">清单</string>
+    <string name="edit_start_label">开始</string>
+    <string name="edit_due_label">到期</string>
+    <string name="edit_all_day">全天</string>
+    <string name="edit_priority_label">优先级</string>
+    <string name="edit_progress_label">进度</string>
+    <string name="edit_parent_label">父任务</string>
+    <string name="edit_parent_none">无（顶层任务）</string>
+    <string name="edit_parent_search">搜索任务</string>
+    <string name="edit_parent_empty">此清单中没有匹配的任务。</string>
+    <string name="edit_reminder_label">提醒</string>
+    <string name="edit_set">设置</string>
+    <string name="edit_clear">清除</string>
+    <string name="edit_title_hint">任务标题</string>
+    <string name="edit_when">时间</string>
+    <string name="edit_more_fields">更多字段</string>
+    <string name="close">关闭</string>
+    <string name="dialog_cancel">取消</string>
+
+    <!-- 保存冲突 -->
+    <string name="edit_conflict_title">任务已在别处被修改</string>
+    <string name="edit_conflict_body">从你打开它之后，这个任务在别处（同步或其它应用）被更新过。要用你的修改覆盖那些变更吗？</string>
+    <string name="edit_conflict_overwrite">覆盖</string>
+
+    <!-- 提醒时间 -->
+    <string name="reminder_none">无</string>
+    <string name="reminder_at_due">任务时间当时</string>
+    <string name="reminder_on_the_day">当天</string>
+    <string name="detail_pane_empty">选择一个任务在这里查看</string>
+
+    <!-- 自定义提前量 + 按清单覆盖 -->
+    <string name="reminder_custom">自定义</string>
+    <string name="reminder_custom_with_value">自定义（%1$s）</string>
+    <string name="reminder_custom_set">设置</string>
+    <string name="reminder_custom_amount">输入数量</string>
+    <string name="reminder_use_default">使用默认</string>
+    <string name="reminder_unit_minutes">分钟</string>
+    <string name="reminder_unit_hours">小时</string>
+    <string name="reminder_unit_days">天</string>
+    <string name="reminder_unit_weeks">周</string>
+    <string name="settings_list_reminders_title">按清单的提醒</string>
+    <string name="settings_list_reminders_hint">按清单覆盖默认值——定时任务与全天任务分别设置。清单可以沿用默认、取消提醒，或设置自己的值。</string>
+    <string name="settings_list_notifications">声音与振动</string>
+    <string name="settings_list_notifications_hint">此清单提醒的声音、振动与重要性</string>
+    <string name="settings_list_reminder_inherits">默认（%1$s）</string>
+
+    <!-- 重复：读法与选择器 -->
+    <string name="recurrence_title">重复</string>
+    <string name="recurrence_generic">重复任务</string>
+    <string name="recurrence_daily">每天</string>
+    <string name="recurrence_weekly">每周</string>
+    <string name="recurrence_monthly">每月</string>
+    <string name="recurrence_yearly">每年</string>
+    <plurals name="recurrence_every_n_days">
+        <item quantity="other">每 %1$d 天</item>
+        <item quantity="one">每 %1$d 天</item>
+    </plurals>
+    <plurals name="recurrence_every_n_weeks">
+        <item quantity="other">每 %1$d 周</item>
+        <item quantity="one">每 %1$d 周</item>
+    </plurals>
+    <plurals name="recurrence_every_n_months">
+        <item quantity="other">每 %1$d 个月</item>
+        <item quantity="one">每 %1$d 个月</item>
+    </plurals>
+    <plurals name="recurrence_every_n_years">
+        <item quantity="other">每 %1$d 年</item>
+        <item quantity="one">每 %1$d 年</item>
+    </plurals>
+    <!-- %1$s 是规则（"每周"），%2$s 是星期（"周一和周五"）。 -->
+    <string name="recurrence_on_days">%1$s，在 %2$s</string>
+    <string name="recurrence_with_until">%1$s，直到 %2$s</string>
+    <plurals name="recurrence_with_count">
+        <item quantity="other">%1$s，共 %2$d 次</item>
+        <item quantity="one">%1$s，共 %2$d 次</item>
+    </plurals>
+    <string name="recurrence_none">不重复</string>
+    <string name="recurrence_custom">自定义</string>
+    <string name="recurrence_every">每</string>
+    <string name="recurrence_unit_days">天</string>
+    <string name="recurrence_unit_weeks">周</string>
+    <string name="recurrence_unit_months">个月</string>
+    <string name="recurrence_unit_years">年</string>
+    <string name="recurrence_incomplete">请输入 1 到 999 之间的数字</string>
+    <!-- %1$s 是接下来几个日期的列表，例如 "7月30日、8月6日 和 8月13日"。 -->
+    <string name="recurrence_next">接下来：%1$s</string>
+    <string name="recurrence_next_none">此规则永不重复</string>
+    <string name="recurrence_ends">结束</string>
+    <string name="recurrence_end_never">永不</string>
+    <string name="recurrence_end_until">在某一天</string>
+    <string name="recurrence_end_count">重复若干次后</string>
+    <string name="recurrence_times">次</string>
+    <string name="recurring_scope_occurrence">仅此任务</string>
+    <string name="recurring_scope_following">本次及之后的任务</string>
+    <string name="recurring_scope_series">系列中的全部任务</string>
+    <!-- 表单校验 -->
+    <string name="error_blank_title">请输入标题。</string>
+    <string name="error_no_list">请选择一个清单。</string>
+    <string name="error_due_before_start">到期时间不能早于开始时间。</string>
+    <string name="error_reminder_without_date">要使用提醒，请先设置开始或到期日期。</string>
+    <string name="error_recurrence_without_date">重复任务需要开始或到期日期。</string>
+    <string name="edit_recurrence_label">重复</string>
+    <string name="edit_recurrence_none">不重复</string>
+    <string name="edit_location_label">地点</string>
+    <string name="edit_url_label">链接</string>
+    <string name="edit_url_hint">https://…</string>
+    <string name="edit_tags_label">标签</string>
+    <string name="edit_tags_hint">添加标签</string>
+    <string name="edit_tag_remove">移除标签 %1$s</string>
+    <string name="edit_discard_title">放弃修改？</string>
+    <string name="edit_discard_body">你对这个任务的修改尚未保存。</string>
+    <string name="edit_discard_confirm">放弃</string>
+    <string name="edit_keep_editing">继续编辑</string>
+    <string name="edit_scope_title">保存重复任务的修改</string>
+    <string name="edit_reminder_add">添加提醒</string>
+    <string name="edit_reminder_add_first">添加一个提醒（否则使用默认值）</string>
+    <string name="edit_reminder_remove">移除提醒</string>
+    <string name="reminder_at_start">开始时间当时</string>
+    <string name="reminder_at_due_time">到期时间当时</string>
+    <string name="reminder_on_start_date">在开始日期</string>
+    <string name="reminder_on_due_date">在到期日期</string>
+    <!-- 全天提醒的日期与时间：如「当天 09:00」「提前 1 天 17:00」 -->
+    <string name="reminder_at_time">%1$s %2$s</string>
+    <string name="reminder_anchor_start">从开始时间</string>
+    <string name="reminder_anchor_due">从到期日期</string>
+    <string name="reminder_time">时间</string>
+    <string name="subtask_progress">%1$d / %2$d</string>
+    <string name="progress_fraction_compact">%1$d/%2$d</string>
+    <string name="detail_delete_title">删除任务？</string>
+    <string name="detail_delete_body">此任务将被删除。</string>
+    <plurals name="detail_delete_body_subtasks">
+        <item quantity="other">此任务及其 %1$d 个子任务将被删除。</item>
+        <item quantity="one">此任务及其子任务将被删除。</item>
+    </plurals>
+    <string name="detail_delete_recurring_title">删除重复任务</string>
+    <string name="detail_status_cancelled">已取消</string>
+    <string name="detail_status_in_process">进行中</string>
+    <string name="more_options">更多选项</string>
+    <string name="detail_cancel_task">取消任务</string>
+    <string name="detail_restore">恢复任务</string>
+    <string name="detail_duplicate">复制任务</string>
+
+    <!-- 清单总览 -->
+    <string name="lists_header">清单</string>
+    <string name="tags_header">标签</string>
+    <string name="filters_header">筛选器</string>
+    <string name="filters_empty_hint">把到期日期、清单、标签和优先级组合成你自己的视图</string>
+    <string name="filter_new_title">新建筛选器</string>
+    <string name="filter_edit_title">编辑筛选器</string>
+    <string name="filter_name_hint">筛选器名称</string>
+    <string name="filter_section_due">到期</string>
+    <string name="filter_section_priority">优先级</string>
+    <string name="filter_section_lists">清单</string>
+    <string name="filter_section_tags">标签</string>
+    <string name="filter_any_due">任意到期日期</string>
+    <string name="filter_any_list">任意清单</string>
+    <string name="filter_any_tag">任意标签，或没有标签</string>
+    <string name="filter_priority_any">任意优先级</string>
+    <string name="filter_priority_low">低及以上</string>
+    <string name="filter_priority_medium">中及以上</string>
+    <string name="filter_priority_high">仅高</string>
+    <string name="filter_match_all_tags">匹配所有标签</string>
+    <string name="filter_match_all_on">任务必须带有你选中的每一个标签</string>
+    <string name="filter_match_all_off">任务带有你选中的任一标签即可</string>
+    <string name="filter_delete">删除筛选器</string>
+    <string name="filter_delete_title">删除“%1$s”？</string>
+    <string name="filter_delete_body">只会删除筛选器本身，其任务仍留在原处。</string>
+    <string name="filter_delete_confirm">删除</string>
+    <string name="filter_missing">筛选器已删除</string>
+    <string name="new_task">新建任务</string>
+    <string name="lists_failure">无法读取你的任务。</string>
+    <string name="lists_empty">还没有任务清单。</string>
+    <string name="lists_empty_action">创建清单</string>
+
+    <!-- 任务清单：创建、编辑、删除 -->
+    <string name="list_add">新建清单</string>
+    <string name="list_new_title">新建清单</string>
+    <string name="list_edit_title">编辑清单</string>
+    <string name="list_name_hint">清单名称</string>
+    <string name="list_in_smart_lists">在智能清单中显示</string>
+    <string name="list_in_smart_lists_hint">把这个清单的任务纳入今天、近期、全部等智能清单</string>
+    <string name="list_color">颜色</string>
+    <string name="list_delete">删除清单</string>
+    <string name="list_save_failed">无法保存清单。</string>
+    <string name="list_delete_failed">无法删除清单。</string>
+    <string name="list_delete_confirm_title">删除清单？</string>
+    <string name="list_where">位置</string>
+    <string name="list_where_device">仅此设备</string>
+    <string name="list_read_only">这个清单以只读方式共享给你，名称和颜色由所有者修改。</string>
+    <string name="list_delete_confirm_message_synced">“%1$s”及其全部任务将从服务器删除，并从此账户登录的所有其它设备上删除。此操作无法撤销。</string>
+    <string name="list_save_failed_server">服务器不接受该修改。</string>
+    <string name="list_save_failed_offline">无法连接服务器。恢复联网后请重试。</string>
+    <string name="list_save_failed_read_only">该清单以只读方式共享给你。</string>
+    <string name="list_save_failed_unsupported">该账户不允许应用创建任务清单。</string>
+    <string name="list_delete_confirm_message">“%1$s”及其全部任务将被删除。此操作无法撤销。</string>
+    <string name="list_color_mauve">藕荷</string>
+    <string name="list_color_red">红</string>
+    <string name="list_color_orange">橙</string>
+    <string name="list_color_amber">琥珀</string>
+    <string name="list_color_olive">橄榄</string>
+    <string name="list_color_green">绿</string>
+    <string name="list_color_teal">青绿</string>
+    <string name="list_color_cyan">青</string>
+    <string name="list_color_blue">蓝</string>
+    <string name="list_color_indigo">靛蓝</string>
+    <string name="list_color_purple">紫</string>
+    <string name="list_color_pink">粉</string>
+    <string name="smart_today">今天</string>
+    <string name="smart_overdue">已逾期</string>
+    <string name="smart_upcoming">近期</string>
+    <string name="smart_all">全部</string>
+
+    <!-- 首页：任务清单区 -->
+    <string name="home_tasks_empty">没有未完成的任务</string>
+
+    <!-- 首页：搜索 -->
+    <string name="home_due_today">今天</string>
+    <string name="home_due_tomorrow">明天</string>
+    <string name="home_search_hint">搜索任务</string>
+    <string name="home_search_clear">清除搜索</string>
+    <string name="home_search_empty">没有与“%1$s”匹配的任务</string>
+
+    <!-- 提醒 -->
+    <string name="reminder_due_at">到期 %1$s</string>
+    <string name="reminder_day_today">今天</string>
+    <string name="reminder_day_tomorrow">明天</string>
+    <string name="reminder_day_yesterday">昨天</string>
+    <string name="reminder_action_done">完成</string>
+    <string name="reminder_action_snooze">稍后提醒 %1$d 分钟</string>
+    <string name="reminder_channel_name">任务提醒</string>
+    <string name="reminder_channel_desc">任务到期时的通知。</string>
+
+    <!-- provider / 权限引导 -->
+    <string name="onboarding_no_provider_title">需要一个任务应用</string>
+    <string name="onboarding_no_provider_body">你选择了把任务存在其它应用里，但没有安装兼容的应用。请安装 OpenTasks 或 tasks.org，或切回 Agendula 自己的存储。</string>
+    <string name="onboarding_permission_title">允许访问你的任务</string>
+    <string name="onboarding_permission_body">Agendula 需要权限来读写你的任务。这是它唯一会申请的权限。</string>
+    <string name="onboarding_permission_button">授予任务权限</string>
+
+    <!-- 首次启动：欢迎 -->
+    <string name="onboarding_welcome_title">你想做的每一件事</string>
+    <string name="onboarding_welcome_body">一个安静放置任务的地方，手机始终属于你。我们来设置一下——只需要一分钟。</string>
+    <string name="onboarding_welcome_button">开始</string>
+    <string name="onboarding_welcome_lists_title">清单与子任务</string>
+    <string name="onboarding_welcome_lists_body">把工作、家庭和某个项目分开，再把大任务拆小。</string>
+    <string name="onboarding_welcome_reminders_title">准时到来的提醒</string>
+    <string name="onboarding_welcome_reminders_body">有任务到期时通知你，按你的时间安排。</string>
+    <string name="onboarding_welcome_sync_title">用你的服务器，或者完全不用</string>
+    <string name="onboarding_welcome_sync_body">通过 CalDAV 与你选择的服务器同步，或把一切留在这台设备上。</string>
+    <string name="onboarding_welcome_offline_title">设计上不联网</string>
+    <string name="onboarding_welcome_offline_body">这个版本的 Agendula 没有网络访问权限，因此它自己无法同步或连接任何东西。</string>
+
+    <!-- 首次启动：同步邀请 -->
+    <string name="onboarding_sync_title">用自己的服务器同步？</string>
+    <string name="onboarding_sync_body">Agendula 使用 CalDAV——Nextcloud、Radicale、Posteo、Fastmail，以及任何支持它的服务。永远没有我们自己的账号。</string>
+    <string name="onboarding_sync_connect">连接账户</string>
+    <string name="onboarding_sync_skip">暂不</string>
+    <string name="onboarding_sync_devices_title">所有设备同步如一</string>
+    <string name="onboarding_sync_devices_body">在这里勾掉一项，所有地方都会同步勾掉。</string>
+    <string name="onboarding_sync_copy_title">一份不会随手机丢失的副本</string>
+    <string name="onboarding_sync_copy_body">任务同样保存在服务器上，设备丢了，工作不会丢。</string>
+    <string name="onboarding_sync_yours_title">由你选择</string>
+    <string name="onboarding_sync_yours_body">自建服务或你已在付费的服务商——Agendula 只保存密码。</string>
+
+    <!-- 首次启动：第一个清单 -->
+    <string name="onboarding_list_title">你的第一个清单</string>
+    <string name="onboarding_list_body">清单把事物分门别类。先建一个——之后随时可以添加更多，也可以重命名这个。</string>
+    <string name="onboarding_list_default_name">个人</string>
+    <string name="onboarding_list_create">创建清单</string>
+
+    <!-- 首次启动：备份 -->
+    <string name="onboarding_backup_title">留一份副本</string>
+    <string name="onboarding_backup_body_later">没有账户时，清单只存在于这台设备上。你可以随时在 设置 → 备份与恢复 → 导出 中把它们存成其它任务或日历应用都能读取的 iCalendar 文件。</string>
+    <string name="onboarding_backup_continue">继续</string>
+
+    <!-- 首次启动：快速添加栏 -->
+    <string name="onboarding_quick_add_title">你想怎样添加任务？</string>
+    <string name="onboarding_quick_add_bar">快速添加栏</string>
+    <string name="onboarding_quick_add_bar_hint">每个清单底部的一个输入框：输入、回车，接着下一个。</string>
+    <string name="onboarding_quick_add_button">新建任务按钮</string>
+    <string name="onboarding_quick_add_button_hint">一个打开完整表单的浮动按钮。</string>
+    <string name="onboarding_quick_add_done">完成</string>
+
+    <!-- 提醒引导（一次性，在授权之后） -->
+    <string name="reminder_onboarding_title">别让任务溜走</string>
+    <string name="reminder_onboarding_body">任务到期时 Agendula 会通知你，不必什么都记在脑子里。</string>
+    <string name="reminder_onboarding_enable_button">启用提醒</string>
+    <string name="reminder_onboarding_skip_button">暂不</string>
+    <string name="reminder_benefit_delivery_title">该提醒时就提醒</string>
+    <string name="reminder_benefit_delivery_body">每个有到期时间的任务都会有自己的通知。</string>
+    <string name="reminder_benefit_timing_title">按你的时间安排</string>
+    <string name="reminder_benefit_timing_body">选择提前多久提醒——全部统一，或按清单单独设置。</string>
+    <string name="reminder_benefit_reversible_title">随时可以更改</string>
+    <string name="reminder_benefit_reversible_body">想关就关，只是一个开关。</string>
+    <string name="onboarding_exact_alarms_title">准点到达</string>
+    <string name="onboarding_exact_alarms_body">Android 要求应用先获得许可，才能在精确的分钟提醒你。允许之后提醒会准时到达，否则可能晚几分钟。</string>
+    <string name="onboarding_exact_alarms_allow">允许精确时间</string>
+
+    <!-- 设置 -->
+    <string name="settings_title">设置</string>
+    <string name="settings_group_look">外观与行为</string>
+    <string name="settings_group_data">数据</string>
+    <string name="settings_group_app">应用</string>
+    <string name="settings_group_about">关于</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_appearance_subtitle">主题、颜色、时间格式</string>
+    <string name="settings_section_task_form">新建任务表单</string>
+    <string name="settings_task_form_subtitle">默认字段与行为</string>
+    <string name="settings_reminders_subtitle">提醒与送达</string>
+    <string name="settings_form_fields_hint">新建任务时默认显示的字段。其余字段收在“更多字段”里。</string>
+    <string name="settings_dynamic_color_unavailable">在 Android 12 及以上可用</string>
+    <string name="settings_autofocus_title">新建任务时聚焦标题</string>
+    <string name="settings_autofocus_title_hint">开始新建任务时，把光标放进标题并立即弹出键盘。</string>
+    <string name="settings_time_format">时间格式</string>
+    <string name="settings_time_format_auto">自动</string>
+    <string name="settings_time_format_12h">12 小时制（下午 2:00）</string>
+    <string name="settings_time_format_24h">24 小时制（14:00）</string>
+    <string name="settings_time_format_auto_summary">跟随系统：%1$s</string>
+    <string name="settings_week_start">一周开始于</string>
+    <string name="settings_week_start_auto">自动</string>
+    <string name="settings_week_start_auto_summary">当前为 %1$s</string>
+    <!-- 仅存于本机的清单所属的“账户” -->
+    <string name="account_local">本机</string>
+    <!-- 关于 -->
+    <string name="settings_about_author">作者 AieXile</string>
+    <string name="settings_about_source">源码</string>
+    <string name="settings_about_support">支持开发</string>
+    <string name="settings_licences">开源许可</string>
+    <string name="settings_licences_subtitle">Agendula 所基于的项目</string>
+    <string name="licences_title">开源许可</string>
+    <string name="licences_intro">Agendula 包含下列作品。点按任一条目可获取其源代码。</string>
+    <string name="licences_footer">其中部分代码以修改后的形式收录。这种情况下，每一处改动都列在上方链接的源码仓库中。</string>
+    <string name="settings_privacy">隐私政策</string>
+    <string name="settings_about_version">版本 %1$s</string>
+    <string name="settings_about_logo_desc">Agendula 应用图标</string>
+    <string name="settings_language">应用语言</string>
+    <string name="settings_language_auto">跟随系统</string>
+    <string name="settings_translate">帮助翻译</string>
+    <string name="settings_translate_hint">在仓库中新增或改进一门语言</string>
+    <string name="settings_report_problem">报告问题</string>
+    <string name="settings_report_problem_hint">打开问题反馈</string>
+    <string name="crash_report_issue_title">崩溃报告</string>
+    <!-- 覆盖 floret-kit 的崩溃报告对话框文案，使其跟随应用语言 -->
+    <string name="crash_dialog_title">%1$s 崩溃了</string>
+    <string name="crash_dialog_message">%1$s 上次意外关闭了。你可以把这份报告作为问题提交，帮助我们修复它。在你选择分享之前，它只留在你的设备上，不包含任何个人数据或应用内容——只有下面的技术细节。</string>
+    <string name="crash_dialog_report">提交报告</string>
+    <string name="crash_dialog_dismiss">暂不</string>
+    <string name="crash_report_clip_label">%1$s 崩溃报告</string>
+    <string name="crash_report_copied">报告已复制到剪贴板</string>
+    <string name="crash_report_open_failed">无法打开问题跟踪页。报告已放到你的剪贴板。</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic_color">动态取色</string>
+    <string name="settings_dynamic_color_hint">使用壁纸中的颜色</string>
+    <string name="settings_section_reminders">通知</string>
+    <string name="settings_reminders">任务提醒</string>
+    <string name="settings_reminders_hint">任务到期时通知我</string>
+    <string name="settings_notifications_blocked">通知已关闭</string>
+    <string name="settings_notifications_blocked_hint">提醒无法送达到你。点按以允许 Agendula 发送通知。</string>
+    <string name="settings_default_reminder">默认提醒</string>
+    <string name="settings_allday_reminder_time">全天任务提醒时间</string>
+    <string name="settings_allday_reminder_time_summary">全天任务从 %1$s 开始向前计算</string>
+    <string name="settings_default_reminder_allday">全天任务</string>
+    <string name="settings_allday_reminder_fires_at">在 %1$s 通知</string>
+    <string name="settings_exact_alarms">精确时间</string>
+    <string name="settings_exact_alarms_allowed">提醒会在准确时间触发</string>
+    <string name="settings_exact_alarms_blocked">已被阻止——点按以允许精确提醒</string>
+    <string name="settings_reliable_delivery">可靠送达</string>
+    <string name="settings_snooze_duration">稍后提醒时长</string>
+    <string name="settings_reliable_delivery_hint">Android 可能为了省电而推迟提醒。把 Agendula 加入例外，它们就会准时到达。</string>
+    <string name="settings_reliable_delivery_exempt">已免除电池优化——提醒准时到达。</string>
+    <string name="settings_default_list">默认清单</string>
+    <string name="settings_default_list_first">第一个可用清单</string>
+    <string name="settings_add_subtask_row">显示“添加子任务”行</string>
+    <string name="settings_add_subtask_row_hint">在展开任务的子任务末尾显示一个添加输入框</string>
+    <string name="settings_default_start_today">开始时间默认为今天</string>
+    <string name="settings_default_start_today_hint">新建任务的开始日期预填为今天</string>
+    <string name="settings_bottom_add_bar">底部快速添加栏</string>
+    <string name="settings_bottom_add_bar_hint">用固定在清单底部的输入栏添加任务，替代浮动按钮</string>
+
+    <string name="onboarding_use_own_store">改用本设备的存储</string>
+    <!-- 存储与导出 -->
+    <string name="settings_section_storage">存储</string>
+    <string name="settings_storage_subtitle">任务保存在哪里</string>
+    <string name="settings_section_backup">备份与恢复</string>
+    <string name="settings_backup_subtitle">导出与导入</string>
+    <string name="settings_task_store">任务库</string>
+    <string name="settings_task_store_hint">每个任务库都有自己的任务。切换不会搬运它们——请先复制过去，或从 备份与恢复 导出。</string>
+    <string name="settings_store_own">在此设备</string>
+    <string name="settings_store_own_hint">Agendula 自己的存储。无需安装其它应用。</string>
+    <string name="settings_store_external">其它任务应用</string>
+    <string name="settings_store_external_hint">与负责同步任务的应用共享任务</string>
+    <string name="settings_store_external_missing">未安装兼容的任务应用</string>
+    <string name="settings_store_permission_denied">权限被拒绝</string>
+    <string name="settings_store_permission_denied_hint">在你允许访问之前，其它应用的任务无法读取。点按打开应用设置。</string>
+
+    <!-- 切换任务库，以及从其它任务应用复制任务 -->
+    <string name="settings_store_switch_title">切换任务库？</string>
+    <string name="settings_store_switch_to_own">你的任务仍留在 %1$s，不会被搬走。Agendula 将显示自己的存储，除非你复制过去，否则它是空的。</string>
+    <string name="settings_store_switch_to_external">你的任务仍留在 %1$s，不会被搬走。Agendula 将改为显示其它应用的任务。</string>
+    <string name="settings_store_switch_confirm">切换</string>
+    <string name="settings_copy_from_external">从 %1$s 复制任务</string>
+    <string name="settings_copy_from_external_hint">把它们带入 Agendula 自己的存储。只复制一次——原始数据原样保留。</string>
+    <string name="settings_copy_confirm_title">复制任务过去？</string>
+    <string name="settings_copy_counting">正在统计要复制的内容…</string>
+    <string name="settings_copy_confirm_empty">%1$s 中没有可复制的任务。</string>
+    <plurals name="settings_copy_confirm_message">
+        <item quantity="other">%2$s 中的 %1$d 个任务将被复制到 Agendula 自己的存储。原始数据原样保留，此后两者不再保持一致——所以只提供一次。</item>
+        <item quantity="one">%2$s 中的 %1$d 个任务将被复制到 Agendula 自己的存储。原始数据原样保留，此后两者不再保持一致——所以只提供一次。</item>
+    </plurals>
+    <string name="settings_copy_confirm_action">复制</string>
+    <string name="settings_copy_running">正在复制任务…</string>
+    <plurals name="settings_copy_done">
+        <item quantity="other">已把 %1$d 个任务复制到 %2$d 个清单。请在上方选择“在此设备”查看。</item>
+        <item quantity="one">已把 %1$d 个任务复制到 %2$d 个清单。请在上方选择“在此设备”查看。</item>
+    </plurals>
+    <string name="settings_copy_nothing">没有可复制的内容</string>
+    <string name="settings_copy_failed">任务复制失败。未做任何改动——你的原始数据未受影响。</string>
+    <string name="settings_legacy_import_failed">你早先的任务无法迁移</string>
+    <string name="settings_legacy_import_failed_hint">它们仍然保存着，没有丢失。点按以再次尝试迁移。</string>
+    <string name="settings_legacy_import_retrying">正在迁移…</string>
+    <string name="settings_export">导出任务</string>
+    <string name="settings_export_hint">把清单另存为 iCalendar 文件</string>
+    <string name="export_hint">每个清单一个 .ics 文件，其它任务与日历应用都能读取。勾选的清单会写入你选择的文件夹，或打包成一个 zip。</string>
+    <string name="export_no_lists">没有可导出的清单</string>
+    <string name="export_to_folder">保存到文件夹</string>
+    <string name="export_to_zip">保存为 zip 文件</string>
+    <string name="export_running">正在导出…</string>
+    <string name="export_open">打开</string>
+    <plurals name="add_account_summary_lists">
+        <item quantity="other">正在同步 %1$d 个清单</item>
+        <item quantity="one">正在同步 %1$d 个清单</item>
+    </plurals>
+    <plurals name="export_done">
+        <item quantity="other">已导出 %1$d 个清单</item>
+        <item quantity="one">已导出 %1$d 个清单</item>
+    </plurals>
+    <string name="export_failed">导出内容无法写入</string>
+    <string name="export_failed_folder">无法打开所选文件夹</string>
+    <string name="export_failed_read_only">所选文件夹不可写</string>
+    <string name="export_failed_create">无法在所选文件夹中创建文件</string>
+    <string name="export_failed_access">对所选位置的访问权限已丢失</string>
+
+    <!-- 从 .ics 导入 -->
+    <string name="import_title">导入任务</string>
+    <string name="settings_import_hint">从 iCalendar 文件导入任务</string>
+    <string name="import_hint">选择一个 .ics 文件，或像导出那样的 zip 包。重复规则、子任务以及任务携带的其它内容都会一并导入。所选清单中已存在的任务会被跳过。</string>
+    <string name="import_own_store_only">导入会写入 Agendula 自己的存储。请先把任务库切换为“在此设备”再导入。</string>
+    <string name="import_open_storage">存储</string>
+    <string name="import_pick">选择文件</string>
+    <string name="import_pick_other">选择其它文件</string>
+    <string name="import_pick_another">导入另一个文件</string>
+    <string name="import_reading">正在读取文件…</string>
+    <string name="import_running">正在导入…</string>
+    <string name="import_picked_file">已选文件</string>
+    <plurals name="import_found">
+        <item quantity="other">%1$d 个任务</item>
+        <item quantity="one">%1$d 个任务</item>
+    </plurals>
+    <plurals name="import_events_left_out">
+        <item quantity="other">略过 %1$d 个日历日程</item>
+        <item quantity="one">略过 %1$d 个日历日程</item>
+    </plurals>
+    <string name="import_target_label">导入到</string>
+    <string name="import_new_list">新清单：%1$s</string>
+    <string name="import_new_list_hint">在此设备上新建一个清单</string>
+    <string name="import_new_list_default_name">导入的任务</string>
+    <string name="import_button">导入</string>
+    <plurals name="import_done">
+        <item quantity="other">已把 %1$d 个任务导入 %2$s</item>
+        <item quantity="one">已把 %1$d 个任务导入 %2$s</item>
+    </plurals>
+    <plurals name="import_done_skipped_existing">
+        <item quantity="other">%1$d 个已存在，已跳过</item>
+        <item quantity="one">%1$d 个已存在，已跳过</item>
+    </plurals>
+    <string name="import_failed_unreadable">该文件无法按 iCalendar 读取</string>
+    <string name="import_failed_no_tasks">该文件不含任务</string>
+    <string name="import_failed_write">任务无法保存</string>
+
+    <!-- 提醒提前量（自定义数量） -->
+    <plurals name="duration_minutes">
+        <item quantity="other">%d 分钟</item>
+        <item quantity="one">%d 分钟</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="other">%d 小时</item>
+        <item quantity="one">%d 小时</item>
+    </plurals>
+    <plurals name="reminder_minutes">
+        <item quantity="other">提前 %1$d 分钟</item>
+        <item quantity="one">提前 %1$d 分钟</item>
+    </plurals>
+    <plurals name="reminder_hours">
+        <item quantity="other">提前 %1$d 小时</item>
+        <item quantity="one">提前 %1$d 小时</item>
+    </plurals>
+    <plurals name="reminder_days">
+        <item quantity="other">提前 %1$d 天</item>
+        <item quantity="one">提前 %1$d 天</item>
+    </plurals>
+    <plurals name="reminder_weeks">
+        <item quantity="other">提前 %1$d 周</item>
+        <item quantity="one">提前 %1$d 周</item>
+    </plurals>
+    <plurals name="reminder_minutes_before_start">
+        <item quantity="other">开始前 %1$d 分钟</item>
+        <item quantity="one">开始前 %1$d 分钟</item>
+    </plurals>
+    <plurals name="reminder_hours_before_start">
+        <item quantity="other">开始前 %1$d 小时</item>
+        <item quantity="one">开始前 %1$d 小时</item>
+    </plurals>
+    <plurals name="reminder_days_before_start">
+        <item quantity="other">开始前 %1$d 天</item>
+        <item quantity="one">开始前 %1$d 天</item>
+    </plurals>
+    <plurals name="reminder_weeks_before_start">
+        <item quantity="other">开始前 %1$d 周</item>
+        <item quantity="one">开始前 %1$d 周</item>
+    </plurals>
+    <plurals name="reminder_minutes_before_due">
+        <item quantity="other">到期前 %1$d 分钟</item>
+        <item quantity="one">到期前 %1$d 分钟</item>
+    </plurals>
+    <plurals name="reminder_hours_before_due">
+        <item quantity="other">到期前 %1$d 小时</item>
+        <item quantity="one">到期前 %1$d 小时</item>
+    </plurals>
+    <plurals name="reminder_days_before_due">
+        <item quantity="other">到期前 %1$d 天</item>
+        <item quantity="one">到期前 %1$d 天</item>
+    </plurals>
+    <plurals name="reminder_weeks_before_due">
+        <item quantity="other">到期前 %1$d 周</item>
+        <item quantity="one">到期前 %1$d 周</item>
+    </plurals>
+
+    <!-- CalDAV 账户 -->
+    <string name="settings_section_accounts">账户</string>
+    <string name="settings_accounts_subtitle">与 CalDAV 服务器同步任务</string>
+    <string name="accounts_empty_title">还没有账户</string>
+    <string name="accounts_empty_body">添加 CalDAV 账户后，Agendula 会与它保持任务清单同步——Nextcloud、Radicale、Baïkal 以及任何支持该协议的服务。</string>
+    <string name="accounts_add">添加账户</string>
+    <string name="accounts_sync_interval">自动同步</string>
+    <string name="accounts_sync_interval_manual">仅在我同步时</string>
+    <string name="accounts_sync_interval_hint">所有账户在后台同步的频率。你的修改无论如何都会在一分钟内发出。Android 可能为了省电而拉长该间隔。</string>
+    <plurals name="accounts_sync_every_minutes">
+        <item quantity="other">每 %d 分钟</item>
+        <item quantity="one">每 %d 分钟</item>
+    </plurals>
+    <plurals name="accounts_sync_every_hours">
+        <item quantity="other">每 %d 小时</item>
+        <item quantity="one">每小时</item>
+    </plurals>
+    <string name="accounts_push">推送</string>
+    <string name="accounts_push_off">关闭</string>
+    <string name="accounts_push_via">变更即时到达，经由 %1$s</string>
+    <plurals name="accounts_push_partial">
+        <item quantity="other">%2$d 个清单中的 %1$d 个即时到达，经由 %3$s</item>
+        <item quantity="one">%2$d 个清单中的 %1$d 个即时到达，经由 %3$s</item>
+    </plurals>
+    <string name="accounts_push_unsupported">你的服务器尚未提供推送</string>
+    <string name="accounts_push_pending">正在与服务器建立推送…</string>
+    <string name="accounts_push_no_distributor">安装一个 UnifiedPush 应用即可获得即时变更</string>
+    <string name="accounts_push_choose">选择由哪个应用投递推送</string>
+    <string name="accounts_push_hint">安装了 ntfy 等 UnifiedPush 应用后，其它设备上的修改会在数秒内到达，而不必等到下次同步。服务器需要支持 WebDAV-Push——在 Nextcloud 上即 WebDAV Push 应用。</string>
+    <string name="accounts_push_none_installed">未安装 UnifiedPush 应用。安装一个——例如 ntfy、NextPush 或 Sunup——它就会出现在这里。</string>
+    <string name="accounts_push_account_on">变更即时到达</string>
+    <plurals name="accounts_push_account_partial">
+        <item quantity="other">%2$d 个清单中的 %1$d 个即时到达</item>
+        <item quantity="one">%2$d 个清单中的 %1$d 个即时到达</item>
+    </plurals>
+    <string name="accounts_push_account_unsupported">此服务器不提供推送</string>
+    <string name="accounts_remove">移除账户</string>
+    <string name="accounts_remove_body">%1$s 将不再与此设备同步。服务器上不会删除任何内容。</string>
+    <string name="accounts_remove_keep">移除，保留任务</string>
+    <string name="accounts_remove_keep_body">它的清单会作为仅限本设备的清单保留下来。</string>
+    <string name="accounts_remove_wipe">移除并删除任务</string>
+    <string name="accounts_remove_wipe_body">同时从本设备删除此账户的清单和任务。</string>
+    <string name="accounts_never_synced">从未同步</string>
+    <string name="accounts_last_sync">上次同步</string>
+    <string name="accounts_generic_provider">CalDAV 账户</string>
+    <string name="accounts_sync_failed">上次同步未完成</string>
+    <string name="accounts_failed_sign_in">同步失败——服务器不接受该密码</string>
+    <string name="accounts_failed_unreachable">同步失败——无法连接服务器</string>
+    <string name="accounts_failed_certificate">同步失败——服务器的证书不受信任</string>
+    <string name="accounts_failed_server">同步失败——服务器报告了错误</string>
+    <string name="accounts_failed_server_code">同步失败——服务器报告了错误（%1$d）</string>
+    <string name="accounts_failed_misconfigured">同步失败——账户不完整；请移除后重新添加</string>
+    <string name="accounts_sync_now">立即同步</string>
+    <string name="accounts_removing">正在移除…</string>
+    <string name="accounts_lists">清单</string>
+    <string name="accounts_lists_summary">选择要同步的清单</string>
+    <string name="accounts_lists_loading">正在从服务器读取清单…</string>
+    <string name="accounts_lists_drop_title">停止同步清单</string>
+    <string name="accounts_lists_drop_body">取消勾选的清单将不再与此设备同步。服务器上不会删除任何内容。</string>
+    <string name="accounts_lists_drop_keep">停止同步，保留任务</string>
+    <string name="accounts_lists_drop_keep_body">它们会作为仅限本设备的清单保留下来。</string>
+    <string name="accounts_lists_drop_wipe">停止同步并删除任务</string>
+    <string name="accounts_lists_drop_wipe_body">同时从本设备删除这些清单及其任务。</string>
+    <string name="accounts_external_storage_title">账户需要 Agendula 自己的存储</string>
+    <string name="accounts_external_storage">账户同步到 Agendula 自己的任务库；当你的任务来自其它应用时，它并未启用。请在 设置 → 存储 中切换。</string>
+    <string name="add_account_browser_failed_title">登录未完成</string>
+    <string name="add_account_step_of">第 %1$d 步，共 %2$d 步</string>
+    <string name="add_account_provider_title">你的任务在哪里？</string>
+    <string name="add_account_provider_body">选择你的任务清单所在的服务。Agendula 可与任何支持 CalDAV 的服务同步。</string>
+    <string name="add_account_provider_self_hosted">你自己运行服务器</string>
+    <string name="add_account_provider_unsupported">不支持通过 CalDAV 使用任务</string>
+    <string name="add_account_provider_other_header">任意 CalDAV 服务器</string>
+    <string name="add_account_provider_other">其它 CalDAV 服务器</string>
+    <string name="add_account_provider_other_summary">Baïkal、DAViCal、SOGo、Radicale，或你自己运行的服务器</string>
+    <string name="add_account_email_title">你在那里的地址是什么？</string>
+    <string name="add_account_email_body">你在该服务使用的电子邮箱地址。Agendula 会自己找到服务器。</string>
+    <string name="add_account_email_label">电子邮箱地址</string>
+    <string name="add_account_summary_title">设置完成</string>
+    <string name="add_account_summary_body">从现在起 Agendula 会保持这些清单同步。你可以在设置中更改要同步的内容。</string>
+    <string name="add_account_summary_done">完成</string>
+    <string name="add_account_server_title">你的任务在哪里？</string>
+    <string name="add_account_server_fallback_body">Agendula 无法从你的邮箱地址找到服务器。请改为输入服务商为日历提供的 CalDAV 服务器地址。</string>
+    <string name="add_account_server_body">输入你的 CalDAV 服务器地址。如果服务器以域名发布自己，填邮箱地址也可以。</string>
+    <string name="add_account_credentials_title">登录</string>
+    <string name="add_account_credentials_body">如果你的服务商提供应用专用密码，请使用它——无需更改账户密码即可吊销。</string>
+    <string name="add_account_lists_body">选择要同步的任务清单。之后可以更改。</string>
+    <string name="add_account_error_not_an_address">这看起来不像网址。试试类似 cloud.example.com 的写法。</string>
+    <string name="add_account_error_not_dav">该地址有响应，但它不是 CalDAV 服务器。如果你粘贴的是网站地址，请改用服务商为日历提供的服务器地址。</string>
+    <string name="add_account_error_no_calendar">该服务器不提供日历。请与服务商核对地址。</string>
+    <string name="add_account_error_unreachable">无法连接该服务器。请检查地址和网络连接。</string>
+    <string name="add_account_error_insecure">该地址未加密。Agendula 只会通过 https 发送你的密码。</string>
+    <string name="add_account_error_no_calendars">已登录，但此账户没有任务清单。</string>
+    <string name="add_account_error_server">服务器出现问题。请稍后重试。</string>
+    <string name="add_account_working_discovering">正在查找 CalDAV 服务器</string>
+    <string name="add_account_working_signing_in">正在登录</string>
+    <string name="add_account_working_reading_lists">正在读取你的任务清单</string>
+    <string name="add_account_working_saving">正在添加账户</string>
+    <string name="add_account_error_google_unsupported">Google 日历不支持通过 CalDAV 使用任务——它自己的文档也这么说——因此 Agendula 无法与它同步。</string>
+    <string name="add_account_error_cross_domain">该服务器把部分任务清单放在 %1$s 上，Agendula 暂时无法登录那里。</string>
+    <string name="add_account_error_already_exists">该账户已经设置好了。</string>
+    <string name="add_account_error_no_usable_lists">已登录，但此账户没有 Agendula 可用的任务清单。</string>
+    <string name="add_account_error_not_saved">账户无法保存。</string>
+    <string name="add_account_error_keystore">此设备无法保存密码。</string>
+    <string name="add_account_error_credentials_rejected">用户名或密码未被接受。</string>
+    <string name="add_account_browser_error_expired">服务器尚未回应，批准窗口就已关闭。</string>
+    <string name="add_account_browser_error_rate_limited">服务器正在拒绝重复尝试。请等几分钟再试。</string>
+    <string name="add_account_browser_error_maintenance">服务器正在维护。恢复后再试。</string>
+    <string name="add_account_browser_error_failed">服务器未能完成登录。请稍后重试。</string>
+    <string name="add_account_browser_error_unavailable">此设备没有能打开登录页的浏览器。请改用密码。</string>
+    <string name="add_account_quirk_hint_fastmail">Fastmail 需要应用专用密码，而不是账户密码——并且 Basic 套餐不含 CalDAV。</string>
+    <string name="add_account_quirk_hint_icloud">iCloud 需要应用专用密码；开启双重认证后可在 appleid.apple.com 创建。</string>
+    <string name="add_account_setup_body">你将在浏览器中完成这一步，然后回到这里收尾。</string>
+    <string name="add_account_setup_icloud_title">iCloud 需要应用专用密码</string>
+    <string-array name="add_account_setup_icloud_steps">
+        <item>登录 appleid.apple.com。</item>
+        <item>如果尚未开启双重认证，请开启——Apple 只在开启后提供应用专用密码。</item>
+        <item>在“登录与安全”下打开“应用专用密码”并创建一个。</item>
+        <item>回到这里，用该密码配合你的 iCloud 地址登录。</item>
+    </string-array>
+    <string name="add_account_setup_icloud_footnote">保存在 iCloud 中的任务不会出现在 Apple 的“提醒事项”应用中。</string>
+    <string name="add_account_setup_fastmail_title">Fastmail 需要应用专用密码</string>
+    <string-array name="add_account_setup_fastmail_steps">
+        <item>登录 fastmail.com。</item>
+        <item>打开 设置，再打开 隐私与安全，然后打开 集成。</item>
+        <item>在“应用专用密码”下创建一个，并授予 CalDAV 访问权限。</item>
+        <item>回到这里，用该密码配合你的 Fastmail 地址登录。</item>
+    </string-array>
+    <string name="add_account_setup_fastmail_footnote">Fastmail 的 Basic 套餐不含 CalDAV。</string>
+    <string name="add_account_quirk_google">Google 日历不支持通过 CalDAV 使用任务。</string>
+    <string name="accounts_needs_sign_in">重新登录以继续同步</string>
+    <string name="accounts_sign_in_again">重新登录</string>
+    <string name="accounts_summary">%1$s · %2$s</string>
+    <string name="sync_notice_channel_name">同步报告</string>
+    <string name="sync_notice_channel_desc">当同步用服务器的副本替换了你的修改，或停止尝试同步某个任务时。</string>
+    <string name="sync_notice_body">%1$s</string>
+    <string name="sync_notice_line">%1$s · %2$s</string>
+    <string name="sync_notices_title">上次同步改动了什么</string>
+    <string name="sync_notices_dismiss">知道了</string>
+    <string name="sync_notice_retry">重试</string>
+    <string name="sync_notice_cause_server_newer">已被服务器上更新的副本替换</string>
+    <string name="sync_notice_cause_deleted_on_server">你在编辑它时，它在服务器上被删除了</string>
+    <string name="sync_notice_cause_delete_lost">你在这里删除了它，但之后服务器又改动了它</string>
+    <string name="sync_notice_cause_quarantined">已停止同步——服务器一直拒绝这一条</string>
+    <string name="sync_sign_in_channel_name">需要登录</string>
+    <string name="sync_sign_in_channel_desc">当某个账户在你重新登录之前停止同步时。</string>
+    <string name="sync_sign_in_title">请重新登录 %1$s</string>
+    <string name="sync_sign_in_body">服务器不再接受 Agendula 的密码，因此此账户已停止同步。</string>
+    <string name="sync_notification_channel">同步</string>
+    <string name="sync_notification_title">正在同步任务</string>
+
+    <string name="add_account_server_label">服务器地址</string>
+    <string name="add_account_server_hint">https://cloud.example.com</string>
+    <string name="add_account_continue">继续</string>
+    <string name="add_account_start_over">重新开始</string>
+
+    <string name="add_account_username_label">用户名</string>
+    <string name="add_account_password_label">密码</string>
+    <string name="add_account_password_hint">如果你的服务器提供应用专用密码，请使用它——无需更改账户密码即可吊销。</string>
+    <string name="add_account_sign_in">登录</string>
+
+    <string name="add_account_browser_title">正在等待你的浏览器</string>
+    <string name="add_account_browser_body">在浏览器中批准 Agendula，然后回到这里。你的密码永远不会发送到这个应用——服务器会签发一个可随时吊销的独立应用专用密码。</string>
+    <string name="add_account_browser_use_password">改用密码</string>
+    <string name="add_account_browser_retry">重试</string>
+    <string name="add_account_browser_confirm_title">登录前请先确认这一点</string>
+    <string name="add_account_browser_confirm_body">登录页位于你的服务器上，而不是 Agendula 内——所以在那里输入账户密码之前，值得先看一眼。</string>
+    <string name="add_account_browser_open">打开登录页</string>
+    <string name="add_account_browser_insecure">该登录页未加密（http）。你在那里输入的任何内容，包括账户密码，都会明文传输。</string>
+    <string name="add_account_browser_host_mismatch">服务器把我们带到了 %1$s，但你输入的是 %2$s。这通常说明它的 overwrite.cli.url 设置有误。</string>
+    <string name="add_account_origin_mismatch">服务器报告的地址是 %1$s，此设备无法访问，因此改用 %2$s。它的 overwrite.cli.url 或 trusted_proxies 设置很可能有误。</string>
+
+    <string name="add_account_lists_title">哪些清单应当同步？</string>
+    <string name="add_account_lists_read_only">只读</string>
+    <string name="add_account_lists_shared">共享给你</string>
+    <string name="add_account_save">添加账户</string>
+    <string name="add_account_no_lists_selected">请至少选择一个清单</string>
+    <plurals name="sync_notice_discarded_title">
+        <item quantity="other">%1$d 处修改被服务器替换</item>
+        <item quantity="one">一处修改被服务器替换</item>
+    </plurals>
+    <plurals name="sync_notice_quarantined_title">
+        <item quantity="other">%1$d 个任务已停止同步</item>
+        <item quantity="one">一个任务已停止同步</item>
+    </plurals>
+    <plurals name="accounts_notices">
+        <item quantity="other">%1$d 份同步报告待查看</item>
+        <item quantity="one">1 份同步报告待查看</item>
+    </plurals>
+    <plurals name="sync_notice_more">
+        <item quantity="other">还有 %1$d 条</item>
+        <item quantity="one">还有 %1$d 条</item>
+    </plurals>
+
+    <!-- 桌面小组件 -->
+    <string name="widget_tasks_label">任务</string>
+    <string name="widget_tasks_description">今天的任务，或任意清单，点按即可勾掉</string>
+    <string name="widget_empty">全部完成</string>
+    <string name="widget_empty_hint">没有待办了，享受一下吧</string>
+    <string name="widget_unavailable">打开 Agendula 完成设置</string>
+    <string name="widget_complete_task">完成 %1$s</string>
+    <string name="widget_config_title">在小组件中显示</string>
+    <string name="widget_config_smart_lists">智能清单</string>
+    <string name="widget_config_group_by_list">按清单分组</string>
+    <string name="widget_config_group_by_list_hint">让每个清单的任务显示在自己的标题下</string>
+    <string name="widget_section_overdue">已逾期</string>
+    <string name="widget_section_later">稍后</string>
+    <string name="widget_section_no_date">无日期</string>
+    <string name="widget_config_background">背景</string>
+    <string name="widget_config_background_solid">纯色</string>
+    <string name="widget_config_background_solid_hint">用主题的表面色填充小组件</string>
+    <string name="widget_config_background_tinted">着色</string>
+    <string name="widget_config_background_tinted_hint">更柔和、带色调的填充</string>
+    <string name="widget_config_background_transparent">透明</string>
+    <string name="widget_config_background_transparent_hint">不填充——任务在各自的容器中依然清晰可读</string>
+    <string name="widget_config_theme">主题</string>
+    <string name="widget_config_theme_follow_app">跟随应用</string>
+    <string name="widget_config_theme_light">浅色</string>
+    <string name="widget_config_theme_dark">深色</string>
+    <string name="widget_config_row_color">行颜色</string>
+    <string name="widget_config_row_color_neutral">中性</string>
+    <string name="widget_config_row_color_neutral_hint">每一行使用相同的色调填充</string>
+    <string name="widget_config_row_color_by_list">按清单</string>
+    <string name="widget_config_row_color_by_list_hint">每一行用所属清单的颜色着色</string>
+    <string name="widget_today_label">今天</string>
+    <string name="widget_today_description">今天任务的进度环</string>
+    <string name="widget_today_all_done">全部完成</string>
+    <string name="widget_today_nothing_due">今天没有到期任务</string>
+    <plurals name="widget_today_progress_cd">
+        <item quantity="other">已完成 %1$d/%2$d</item>
+        <item quantity="one">已完成 %1$d/%2$d</item>
+    </plurals>
+    <string name="widget_up_next_label">接下来</string>
+    <string name="widget_up_next_description">离你最近的一个到期任务</string>
+    <string name="widget_up_next_empty">没有到期任务</string>
+    <string name="widget_up_next_soon">即将</string>
+    <string name="widget_up_next_tomorrow">明天</string>
+    <string name="widget_up_next_then">然后</string>
+    <string name="widget_up_next_any_list">所有清单</string>
+    <plurals name="widget_up_next_in_hours">
+        <item quantity="other">%1$d 小时后</item>
+        <item quantity="one">%1$d 小时后</item>
+    </plurals>
+    <plurals name="widget_up_next_in_days">
+        <item quantity="other">%1$d 天后</item>
+        <item quantity="one">%1$d 天后</item>
+    </plurals>
+    <plurals name="widget_up_next_overdue_hours">
+        <item quantity="other">已逾期 %1$d 小时</item>
+        <item quantity="one">已逾期 %1$d 小时</item>
+    </plurals>
+    <plurals name="widget_up_next_overdue_days">
+        <item quantity="other">已逾期 %1$d 天</item>
+        <item quantity="one">已逾期 %1$d 天</item>
+    </plurals>
+    <string name="widget_lists_label">清单</string>
+    <string name="widget_lists_description">每个清单一个快捷磁贴，附未完成数量</string>
+    <string name="widget_lists_empty">没有可显示的清单</string>
+    <string name="widget_lists_config_title">要显示的清单</string>
+    <string name="widget_week_label">本周</string>
+    <string name="widget_week_description">按七天排列的任务数量条</string>
+    <!-- 小组件选择器里的静态预览文案 -->
+    <string name="widget_preview_list_home">家庭</string>
+    <string name="widget_preview_list_work">工作</string>
+    <string name="widget_preview_list_groceries">购物</string>
+    <string name="widget_preview_list_ideas">想法</string>
+    <string name="widget_preview_task_plants">给植物浇水</string>
+    <string name="widget_preview_task_dentist">预约牙医</string>
+    <string name="widget_preview_task_groceries">买菜</string>
+    <string name="widget_preview_weekday_mon">周一</string>
+    <string name="widget_preview_weekday_tue">周二</string>
+    <string name="widget_preview_weekday_wed">周三</string>
+    <string name="widget_preview_weekday_thu">周四</string>
+
+    <!-- 其它应用请求读取 Agendula 任务时所用的权限 -->
+    <string name="permission_read_tasks_label">读取 Agendula 任务</string>
+    <string name="permission_read_tasks_description">允许该应用读取保存在 Agendula 中的任务清单和任务，包括其提醒和标签。</string>
+    <!-- 其它应用请求添加、更改或删除 Agendula 任务时所用的权限 -->
+    <string name="permission_write_tasks_label">添加、更改和删除 Agendula 任务</string>
+    <string name="permission_write_tasks_description">允许该应用添加、更改、完成和删除保存在 Agendula 中的任务，包括其提醒和标签。它无法更改或删除任务清单。</string>
+</resources>

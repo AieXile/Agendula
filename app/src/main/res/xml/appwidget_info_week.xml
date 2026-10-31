@@ -10,7 +10,7 @@
     android:widgetCategory="home_screen"
     android:description="@string/widget_week_description"
     android:updatePeriodMillis="1800000"
-    android:configure="de.jeanlucmakiola.agendula.widget.TaskWidgetConfigActivity"
+    android:configure="com.aiexile.agendula.widget.TaskWidgetConfigActivity"
     android:widgetFeatures="reconfigurable|configuration_optional"
     android:previewLayout="@layout/widget_preview_week"
     android:initialLayout="@layout/glance_default_loading_layout" />

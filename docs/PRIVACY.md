@@ -8,13 +8,10 @@ updated: 2026-10-19
   THIS FILE IS THE POLICY. Edit it here, in a PR, reviewed like any other
   change — it is the source of truth.
 
-  It is published at https://jeanlucmakiola.de/agendula/privacy, which is what
-  the app's Settings → About → Privacy policy row opens and what the Play
-  Console field must hold. That page holds no copy of the prose: the website
-  build checks this repository out beside itself and renders this file through
-  an Astro content collection, so there is exactly one copy of the policy
-  anywhere and the two cannot drift. An edit here reaches the live page on the
-  site's next build.
+  It is published from this repository at
+  https://github.com/AieXile/Agendula/blob/main/docs/PRIVACY.md, which is what
+  the app's Settings → About → Privacy policy row opens. If you distribute the
+  app through a store, that store's listing must point at the same text.
 
   The page supplies its own <h1> from the `title` above, so this body starts at
   the first section — do not add one. This comment is HTML so that it cannot
@@ -22,7 +19,7 @@ updated: 2026-10-19
 -->
 
 **Last updated:** 19 October 2026  
-Applies to the Android app **Agendula** (package `de.jeanlucmakiola.agendula`),
+Applies to the Android app **Agendula** (package `com.aiexile.agendula`),
 all versions and all distribution channels.
 
 ## In short
@@ -34,10 +31,9 @@ nothing and no one else. Nothing is ever sent to the developer.
 
 ## 1. Controller
 
-IT-Dienstleister | Jean-Luc Makiola  
-Mahlerstraße 10  
-14772 Brandenburg an der Havel  
-Email: [support@jeanlucmakiola.de](mailto:support@jeanlucmakiola.de)
+The maintainer of this fork. Contact:
+[open an issue](https://github.com/AieXile/Agendula/issues) or email
+[AieXile@qq.com](mailto:AieXile@qq.com).
 
 ## 2. No data collection by the developer
 
@@ -48,7 +44,7 @@ generated, and no data is shared with or sold to anyone. There is no Agendula
 account, and the developer operates no server that the app talks to.
 
 All of this is verifiable in the
-[source code](https://codeberg.org/jlmakiola/agendula), which is public.
+[source code](https://github.com/AieXile/Agendula), which is public.
 
 ## 3. Where your tasks live — your choice
 
@@ -89,10 +85,10 @@ exported from the device.
 
 Nothing is sent anywhere else. In particular, nothing is sent to the developer.
 
-Under Google Play's Data Safety definitions this counts as **collected** — Play
-defines collection as transmitting data off the device, regardless of who
-receives it — and **not shared**, because the only recipient is the server you
-nominated. Data is encrypted in transit.
+A strict reading of "collection" would count this as **collected** — the data
+does leave the device, even though the only recipient is the server you nominated
+— and **not shared**, because nobody else receives it. Data is encrypted in
+transit.
 
 ### Finding your server
 
@@ -177,22 +173,22 @@ server address or credentials, **no** account names, **no** log files and
 **no** personal identifiers.
 
 If you choose to submit it, the report becomes a public issue on the project's
-issue tracker at Codeberg, operated by Codeberg e. V. Their privacy policy then
+issue tracker on GitHub, operated by GitHub, Inc. Their privacy policy then
 applies to that submission.
 
 ## 8. External links
 
-The app links to the source code, the licence, the issue tracker, the
-translation platform (Weblate) and a voluntary donation page (Ko-fi). Following
-one of these links opens your browser and leaves the app; the privacy policy of
-the respective website then applies. Agendula transmits no data of yours in the
-process — it only opens the address.
+The app links to the source code, the licence, the issue tracker and the
+translation notes in the project repository. Following one of these links opens
+your browser and leaves the app; the privacy policy of the respective website
+then applies. Agendula transmits no data of yours in the process — it only opens
+the address.
 
 ## 9. Permissions and why they exist
 
 This is the complete list the released app declares — you can check it against
-the app's entry in F-Droid, or against `app/src/main/AndroidManifest.xml` in the
-source:
+`app/src/main/AndroidManifest.xml` in the source, or in your device's app
+settings:
 
 - `INTERNET`, `ACCESS_NETWORK_STATE` — CalDAV sync with the server you
   configure, and checking whether a connection exists before trying. Without a
@@ -216,9 +212,9 @@ Agendula declares two permissions that other apps can request. Android asks you
 before granting either, and you can revoke them at any time in the system
 settings.
 
-- `de.jeanlucmakiola.agendula.permission.READ_TASKS`: an app that holds it can
+- `com.aiexile.agendula.permission.READ_TASKS`: an app that holds it can
   read your task lists, tasks, reminders and tags from Agendula's own database.
-- `de.jeanlucmakiola.agendula.permission.WRITE_TASKS`: an app that holds it can
+- `com.aiexile.agendula.permission.WRITE_TASKS`: an app that holds it can
   add, change, complete and delete those tasks, reminders and tags. It cannot
   change or delete task lists. Its changes sync to your CalDAV server like your
   own edits.
@@ -229,12 +225,12 @@ policy.
 
 ## 10. Distribution channels
 
-Agendula is distributed through the project's releases on Codeberg, a
-self-hosted F-Droid repository, Obtainium, and — where applicable — F-Droid and
-the Google Play Store. When you download or update the app, the operator of
-that channel processes data (such as your IP address) under their own privacy
-policy. This is outside the developer's control and unrelated to the app's own
-behaviour.
+This fork is distributed through the project's releases on GitHub, and through
+Obtainium or any other channel that picks those releases up. Where a store
+listing exists for this application id, it is listed there too. When you
+download or update the app, the operator of that channel processes data (such
+as your IP address) under their own privacy policy. This is outside the
+developer's control and unrelated to the app's own behaviour.
 
 ## 11. Children
 

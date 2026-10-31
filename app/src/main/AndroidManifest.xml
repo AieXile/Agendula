@@ -37,7 +37,7 @@
 
     <!-- Package visibility (Android 11+): see the tasks providers so
          resolveContentProvider works, and launchable apps so we can open the
-         provider / a store listing during onboarding. -->
+         provider's app (or its listing) during onboarding. -->
     <queries>
         <provider android:authorities="org.dmfs.tasks" />
         <provider android:authorities="org.tasks.opentasks" />

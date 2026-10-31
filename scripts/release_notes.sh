@@ -20,7 +20,7 @@ section() {
 NOTES=$(section "$VERSION")
 if [[ "$VERSION" == *-beta.* ]]; then
   [ -n "$NOTES" ] || NOTES=$(section Unreleased)
-  printf '%s\n\n' "**Beta of ${VERSION%%-*}, for testing.** It updates in place to later betas and to the stable release. Obtainium only offers betas with *Include prereleases* switched on; F-Droid and Play never get them."
+  printf '%s\n\n' "**Beta of ${VERSION%%-*}, for testing.** It updates in place to later betas and to the stable release. On GitHub it is published as a pre-release, so Obtainium only offers it with *Include prereleases* switched on."
 fi
 if [ -n "$NOTES" ]; then
   printf '%s\n' "$NOTES"
